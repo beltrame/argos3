@@ -66,6 +66,16 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
     simulator/footbot_turret_default_actuator.cpp
     simulator/footbot_turret_encoder_default_sensor.cpp
     simulator/footbot_turret_entity.cpp)
+  # Compile the Jolt model only when the Jolt engine plugin is built
+  if(TARGET argos3plugin_${ARGOS_BUILD_FOR}_jolt)
+    set(ARGOS3_HEADERS_PLUGINS_ROBOTS_FOOTBOT_SIMULATOR
+      ${ARGOS3_HEADERS_PLUGINS_ROBOTS_FOOTBOT_SIMULATOR}
+      simulator/jolt_footbot_model.h)
+    set(ARGOS3_SOURCES_PLUGINS_ROBOTS_FOOTBOT
+      ${ARGOS3_SOURCES_PLUGINS_ROBOTS_FOOTBOT}
+      simulator/jolt_footbot_model.h
+      simulator/jolt_footbot_model.cpp)
+  endif()
   # Compile the graphical visualization only if the necessary libraries have been found
   if(ARGOS_QTOPENGL_FOUND)
     include_directories(${ARGOS_QTOPENGL_INCLUDE_DIRS})
@@ -90,6 +100,9 @@ target_link_libraries(argos3plugin_${ARGOS_BUILD_FOR}_footbot
 if(ARGOS_QTOPENGL_FOUND)
   target_link_libraries(argos3plugin_${ARGOS_BUILD_FOR}_footbot argos3plugin_${ARGOS_BUILD_FOR}_qtopengl)
 endif(ARGOS_QTOPENGL_FOUND)
+if(TARGET argos3plugin_${ARGOS_BUILD_FOR}_jolt)
+  target_link_libraries(argos3plugin_${ARGOS_BUILD_FOR}_footbot argos3plugin_${ARGOS_BUILD_FOR}_jolt)
+endif()
 
 #
 # Add plugin to ARGOS_PLUGIN_PATH

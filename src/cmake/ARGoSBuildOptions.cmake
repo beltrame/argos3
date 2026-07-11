@@ -55,3 +55,12 @@ endif(NOT DEFINED ARGOS_USE_DOUBLE)
 if(NOT DEFINED ARGOS_DOCUMENTATION)
   option(ARGOS_DOCUMENTATION "ON -> compile documentation, OFF -> dont'compile documentation" ON)
 endif(NOT DEFINED ARGOS_DOCUMENTATION)
+
+#
+# Build the Jolt physics engine plugin
+# Jolt is downloaded (pinned tag) and built at configure time, so this
+# option requires network access and is OFF by default
+#
+if(NOT DEFINED ARGOS_BUILD_JOLT)
+  option(ARGOS_BUILD_JOLT "ON -> download and build the Jolt physics engine plugin, OFF -> skip it" OFF)
+endif(NOT DEFINED ARGOS_BUILD_JOLT)

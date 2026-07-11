@@ -10,3 +10,7 @@ install(FILES
   ${ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHYSICS_ENGINES}
   DESTINATION
   include/argos3/plugins/simulator/physics_engines)
+
+if(ARGOS_BUILD_FOR_SIMULATOR AND ARGOS_BUILD_JOLT)
+  add_subdirectory(jolt)
+endif()

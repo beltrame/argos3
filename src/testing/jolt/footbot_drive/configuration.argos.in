@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="10" random_seed="21" />
+  </framework>
+
+  <controllers>
+    <footbot_drive_controller library="@CMAKE_CURRENT_BINARY_DIR@/libfootbot_drive_jolt_controller"
+                              id="fdc">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors />
+      <params />
+    </footbot_drive_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libfootbot_drive_jolt_loop_functions"
+                  label="footbot_drive_loop_functions" />
+
+  <arena size="2, 1, 1" center="0,0,0.5">
+    <foot-bot id="fb">
+      <body position="-0.5,0,0" orientation="0,0,0" />
+      <controller config="fdc" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" iterations="10" threads="1">
+      <floor height="0" />
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media>
+    <led id="leds" index="grid" grid_size="3,3,3" />
+    <range_and_bearing id="rab" index="grid" grid_size="3,3,3" />
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

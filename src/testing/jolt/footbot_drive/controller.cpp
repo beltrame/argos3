@@ -1,0 +1,17 @@
+#include "controller.h"
+
+#include <argos3/plugins/robots/generic/control_interface/ci_differential_steering_actuator.h>
+
+/****************************************/
+/****************************************/
+
+void CFootBotDriveController::Init(TConfigurationNode& t_tree) {
+   CCI_DifferentialSteeringActuator* pcActuator =
+      GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
+   pcActuator->SetLinearVelocity(10.0, 10.0); /* 10 cm/s forwards */
+}
+
+/****************************************/
+/****************************************/
+
+REGISTER_CONTROLLER(CFootBotDriveController, "footbot_drive_controller");
