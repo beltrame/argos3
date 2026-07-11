@@ -1,0 +1,65 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="42" />
+  </framework>
+
+  <controllers>
+    <camera_test_controller library="@CAMERA_TEST_CONTROLLER_LIB@"
+                            id="ctc">
+      <actuators />
+      <sensors>
+        <photorealistic_camera implementation="default" medium="pr"
+                               anchor="origin" position="0.1,0,0.15"
+                               orientation="0,0,0" resolution="64,64"
+                               fov="60" near="0.05" far="20"
+                               modalities="rgb,depth,seg" />
+      </sensors>
+      <params dump_ppm="@ROBOT_VISUALS_DUMP@" />
+    </camera_test_controller>
+    <camera_test_controller library="@CAMERA_TEST_CONTROLLER_LIB@"
+                            id="ctc_target">
+      <actuators />
+      <sensors>
+        <photorealistic_camera implementation="default" medium="pr"
+                               anchor="origin" position="0.1,0,0.15"
+                               orientation="0,0,0" resolution="64,64"
+                               fov="60" near="0.05" far="20"
+                               modalities="rgb,depth,seg" />
+      </sensors>
+      <params />
+    </camera_test_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/librobot_visuals_loop_functions"
+                  label="robot_visuals_loop_functions" />
+
+  <arena size="4, 4, 2" center="0,0,1">
+    <floor id="floor" source="loop_functions" pixels_per_meter="50" />
+    <foot-bot id="observer">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="ctc" />
+    </foot-bot>
+    <foot-bot id="target">
+      <body position="0.7,0,0" orientation="180,0,0" />
+      <controller config="ctc_target" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <led id="leds" index="grid" grid_size="3,3,3" />
+    <photorealism id="pr" backend="vulkan">
+      <sun direction="0.6,0.2,-1" intensity="100000" cast_shadows="true" />
+      <skybox color="0.53,0.71,0.92" />
+    </photorealism>
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

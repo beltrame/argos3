@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="@TEST_SEED@" />
+  </framework>
+
+  <controllers>
+    <camera_test_controller library="@CAMERA_TEST_CONTROLLER_LIB@"
+                            id="ctc">
+      <actuators />
+      <sensors>
+        <photorealistic_camera implementation="default" medium="pr"
+                               anchor="origin" position="0.1,0,0.15"
+                               orientation="0,0,0" resolution="64,64"
+                               fov="60" near="0.05" far="20"
+                               modalities="rgb,depth,seg" />
+      </sensors>
+      <params dump_ppm="@TEST_DUMP_PREFIX@" />
+    </camera_test_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/librandomization_loop_functions"
+                  label="randomization_loop_functions" />
+
+  <arena size="4, 4, 2" center="0,0,1">
+    <box id="box_1" size="0.3,0.3,0.3" movable="false">
+      <body position="0.8,0.2,0" orientation="20,0,0" />
+    </box>
+    <box id="box_2" size="0.2,0.5,0.4" movable="false">
+      <body position="1.2,-0.4,0" orientation="-30,0,0" />
+    </box>
+    <cylinder id="cyl_1" radius="0.15" height="0.5" movable="false">
+      <body position="0.9,-0.1,0" orientation="0,0,0" />
+    </cylinder>
+    <foot-bot id="observer">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="ctc" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <led id="leds" index="grid" grid_size="3,3,3" />
+    <photorealism id="pr" backend="vulkan">
+      <sun direction="0.6,0.2,-1" intensity="100000" cast_shadows="true" />
+      <skybox color="0.53,0.71,0.92" />
+      <randomization on_reset="true">
+        <sun intensity="60000:140000" elevation="25:80" azimuth="0:360" />
+        <sky color_min="0.3,0.4,0.55" color_max="0.7,0.8,1.0" />
+        <materials targets="box,cylinder,floor"
+                   roughness="0.2:1.0" color_jitter="0.3" />
+      </randomization>
+    </photorealism>
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

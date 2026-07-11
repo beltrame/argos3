@@ -1,0 +1,51 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="42" />
+  </framework>
+
+  <controllers>
+    <camera_test_controller library="@CMAKE_CURRENT_BINARY_DIR@/libcamera_test_controller"
+                            id="ctc">
+      <actuators />
+      <sensors>
+        <photorealistic_camera implementation="default" medium="pr"
+                               anchor="origin" position="0.1,0,0.15"
+                               orientation="0,0,0" resolution="64,64"
+                               fov="60" near="0.05" far="20"
+                               modalities="rgb,depth,seg" />
+      </sensors>
+      <params />
+    </camera_test_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libcamera_test_loop_functions"
+                  label="camera_test_loop_functions"
+                  expected_latency="@TEST_EXPECTED_LATENCY@" />
+
+  <arena size="4, 4, 2" center="0,0,1">
+    <foot-bot id="fb">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="ctc" />
+    </foot-bot>
+    <box id="wall" size="0.1,2,1" movable="false">
+      <body position="1.05,0,0" orientation="0,0,0" />
+    </box>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <photorealism id="pr" backend="vulkan" latency="@TEST_LATENCY_MODE@">
+      <sun direction="0.6,0.2,-1" intensity="100000" cast_shadows="true" />
+      <skybox color="0.53,0.71,0.92" />
+    </photorealism>
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

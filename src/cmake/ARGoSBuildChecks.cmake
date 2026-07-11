@@ -109,6 +109,15 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
 endif(ARGOS_BUILD_FOR_SIMULATOR)
 
 #
+# Check for the Filament rendering engine
+# It is required only when compiling the simulator; when absent, the
+# photorealism plugin is skipped.
+#
+if(ARGOS_BUILD_FOR_SIMULATOR)
+  find_package(Filament)
+endif(ARGOS_BUILD_FOR_SIMULATOR)
+
+#
 # Check for Lua 5.3
 #
 find_package(Lua)

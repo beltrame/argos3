@@ -1,0 +1,21 @@
+material {
+    name : pr_blit,
+    shadingModel : unlit,
+    culling : none,
+    depthWrite : false,
+    depthCulling : false,
+    requires : [ uv0 ],
+    parameters : [
+        {
+            type : sampler2d,
+            name : tex
+        }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = texture(materialParams_tex, getUV0());
+    }
+}

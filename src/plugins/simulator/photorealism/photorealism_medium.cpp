@@ -1,0 +1,407 @@
+/**
+ * @file <argos3/plugins/simulator/photorealism/photorealism_medium.cpp>
+ *
+ * @author Giovanni Beltrame - <giovanni.beltrame@polymtl.ca>
+ */
+
+#include "photorealism_medium.h"
+
+#include <argos3/core/simulator/simulator.h>
+#include <argos3/core/simulator/space/space.h>
+#include <argos3/core/utility/logging/argos_log.h>
+
+#include <filament/Engine.h>
+#include <filament/Scene.h>
+#include <filament/View.h>
+#include <filament/Viewport.h>
+#include <filament/Camera.h>
+#include <filament/Texture.h>
+#include <filament/RenderTarget.h>
+#include <filament/Skybox.h>
+#include <utils/EntityManager.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <argos3/plugins/simulator/photorealism/render_core/stb_image_write.h>
+
+#include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <iomanip>
+#include <sstream>
+
+namespace argos {
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::Init(TConfigurationNode& t_tree) {
+      try {
+         CMedium::Init(t_tree);
+         GetNodeAttributeOrDefault(t_tree, "backend", m_strBackend, m_strBackend);
+         std::string strLatency("pipelined");
+         GetNodeAttributeOrDefault(t_tree, "latency", strLatency, strLatency);
+         if(strLatency == "immediate") {
+            m_bImmediate = true;
+         }
+         else if(strLatency != "pipelined") {
+            THROW_ARGOSEXCEPTION("Unknown latency mode \"" << strLatency
+                                 << "\"; use \"pipelined\" or \"immediate\"");
+         }
+         GetNodeAttributeOrDefault(t_tree, "stats", m_bStats, m_bStats);
+         if(NodeExists(t_tree, "randomization")) {
+            m_cRandomizer.Init(GetNode(t_tree, "randomization"));
+         }
+         m_pcRNG = CRandom::CreateRNG("argos");
+         if(NodeExists(t_tree, "sun")) {
+            TConfigurationNode& tSun = GetNode(t_tree, "sun");
+            GetNodeAttributeOrDefault(tSun, "direction", m_sSunlight.Direction, m_sSunlight.Direction);
+            GetNodeAttributeOrDefault(tSun, "intensity", m_sSunlight.Intensity, m_sSunlight.Intensity);
+            GetNodeAttributeOrDefault(tSun, "cast_shadows", m_sSunlight.CastShadows, m_sSunlight.CastShadows);
+         }
+         if(NodeExists(t_tree, "skybox")) {
+            TConfigurationNode& tSkybox = GetNode(t_tree, "skybox");
+            GetNodeAttributeOrDefault(tSkybox, "color", m_cSkyColor, m_cSkyColor);
+         }
+         if(NodeExists(t_tree, "debug_camera")) {
+            TConfigurationNode& tCamera = GetNode(t_tree, "debug_camera");
+            m_sDebugCamera.Enabled = true;
+            GetNodeAttributeOrDefault(tCamera, "position", m_sDebugCamera.Position, m_sDebugCamera.Position);
+            GetNodeAttributeOrDefault(tCamera, "look_at", m_sDebugCamera.LookAt, m_sDebugCamera.LookAt);
+            GetNodeAttributeOrDefault(tCamera, "fov", m_sDebugCamera.FieldOfView, m_sDebugCamera.FieldOfView);
+            std::string strResolution("640,480");
+            GetNodeAttributeOrDefault(tCamera, "resolution", strResolution, strResolution);
+            UInt32 punResolution[2];
+            ParseValues<UInt32>(strResolution, 2, punResolution, ',');
+            m_sDebugCamera.Width = punResolution[0];
+            m_sDebugCamera.Height = punResolution[1];
+            GetNodeAttributeOrDefault(tCamera, "period", m_sDebugCamera.Period, m_sDebugCamera.Period);
+            GetNodeAttributeOrDefault(tCamera, "dump", m_sDebugCamera.Directory, m_sDebugCamera.Directory);
+         }
+      }
+      catch(CARGoSException& ex) {
+         THROW_ARGOSEXCEPTION_NESTED("Error initializing the photorealism medium \"" << GetId() << "\"", ex);
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::PostSpaceInit() {
+      try {
+         m_cEngine.Create(m_strBackend);
+         /* Constant-color sky */
+         m_pcSkybox = filament::Skybox::Builder()
+            .color({float(m_cSkyColor.GetX()),
+                    float(m_cSkyColor.GetY()),
+                    float(m_cSkyColor.GetZ()),
+                    1.0f})
+            .build(m_cEngine.GetEngine());
+         m_cEngine.GetScene().setSkybox(m_pcSkybox);
+         CSpace& cSpace = CSimulator::GetInstance().GetSpace();
+         m_cIdScene.Init(m_cEngine);
+         m_cSceneSync.Init(m_cEngine, m_cIdScene, m_sSunlight,
+                           cSpace.GetArenaSize(),
+                           cSpace.GetArenaCenter());
+         m_cCameraPool.Init(m_cEngine, m_cIdScene, m_bImmediate);
+         if(m_sDebugCamera.Enabled) {
+            CreateDebugCamera();
+            std::filesystem::create_directories(m_sDebugCamera.Directory);
+         }
+         /* Initial sync so the scene is complete before the first tick */
+         m_cSceneSync.Sync(cSpace);
+         /* Draw the initial random environment */
+         if(m_cRandomizer.IsEnabled()) {
+            m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
+         }
+      }
+      catch(CARGoSException& ex) {
+         THROW_ARGOSEXCEPTION_NESTED("Error creating the photorealism render engine", ex);
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::Reset() {
+      /* The scene is rebuilt from anchors at every Update(); a reset
+       * only needs a fresh sync so removed/re-added entities settle,
+       * plus dropping in-flight camera frames */
+      if(m_cEngine.IsCreated()) {
+         m_cCameraPool.Reset();
+         m_cSceneSync.Sync(CSimulator::GetInstance().GetSpace());
+         /* Draw a new random environment on reset (dataset generation
+          * restarts the experiment with a randomized scene) */
+         if(m_cRandomizer.IsEnabled() && m_cRandomizer.AppliesOnReset()) {
+            m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
+         }
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::Destroy() {
+      if(!m_cEngine.IsCreated()) {
+         return;
+      }
+      if(m_bStats) {
+         LogStats();
+      }
+      filament::Engine& cEngine = m_cEngine.GetEngine();
+      m_cCameraPool.Destroy();
+      if(m_pcDebugView != nullptr) {
+         cEngine.destroy(m_pcDebugView);
+         cEngine.destroy(m_pcDebugTarget);
+         cEngine.destroy(m_pcDebugColor);
+         cEngine.destroy(m_pcDebugDepth);
+         cEngine.destroyCameraComponent(*m_pcDebugCameraEntity);
+         utils::EntityManager::get().destroy(*m_pcDebugCameraEntity);
+         delete m_pcDebugCameraEntity;
+         m_pcDebugView = nullptr;
+      }
+      m_cSceneSync.Destroy();
+      m_cIdScene.Destroy();
+      if(m_pcSkybox != nullptr) {
+         cEngine.destroy(m_pcSkybox);
+         m_pcSkybox = nullptr;
+      }
+      m_cEngine.Destroy();
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::Update() {
+      using TClock = std::chrono::steady_clock;
+      TClock::time_point tStart = TClock::now();
+      CSpace& cSpace = CSimulator::GetInstance().GetSpace();
+      m_cSceneSync.Sync(cSpace);
+      double fSync = std::chrono::duration<double>(TClock::now() - tStart).count();
+      m_cCameraPool.Update(cSpace.GetSimulationClock());
+      if(m_sDebugCamera.Enabled &&
+         cSpace.GetSimulationClock() % m_sDebugCamera.Period == 0) {
+         RenderDebugFrame();
+      }
+      double fTotal = std::chrono::duration<double>(TClock::now() - tStart).count();
+      ++m_unStatTicks;
+      m_fStatSync += fSync;
+      m_fStatSyncMax = std::max(m_fStatSyncMax, fSync);
+      m_fStatTotal += fTotal;
+      m_fStatTotalMax = std::max(m_fStatTotalMax, fTotal);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::CreateDebugCamera() {
+      filament::Engine& cEngine = m_cEngine.GetEngine();
+      m_pcDebugColor = filament::Texture::Builder()
+         .width(m_sDebugCamera.Width)
+         .height(m_sDebugCamera.Height)
+         .levels(1)
+         .usage(filament::Texture::Usage::COLOR_ATTACHMENT |
+                filament::Texture::Usage::SAMPLEABLE |
+                filament::Texture::Usage::BLIT_SRC)
+         .format(filament::Texture::InternalFormat::RGBA8)
+         .build(cEngine);
+      m_pcDebugDepth = filament::Texture::Builder()
+         .width(m_sDebugCamera.Width)
+         .height(m_sDebugCamera.Height)
+         .levels(1)
+         .usage(filament::Texture::Usage::DEPTH_ATTACHMENT)
+         .format(filament::Texture::InternalFormat::DEPTH32F)
+         .build(cEngine);
+      m_pcDebugTarget = filament::RenderTarget::Builder()
+         .texture(filament::RenderTarget::AttachmentPoint::COLOR, m_pcDebugColor)
+         .texture(filament::RenderTarget::AttachmentPoint::DEPTH, m_pcDebugDepth)
+         .build(cEngine);
+      m_pcDebugCameraEntity = new utils::Entity(utils::EntityManager::get().create());
+      m_pcDebugCamera = cEngine.createCamera(*m_pcDebugCameraEntity);
+      m_pcDebugCamera->setProjection(
+         double(m_sDebugCamera.FieldOfView),
+         double(m_sDebugCamera.Width) / double(m_sDebugCamera.Height),
+         0.05, 100.0,
+         filament::Camera::Fov::VERTICAL);
+      /* Sunny-day exposure to match the default 100k lux sun */
+      m_pcDebugCamera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
+      m_pcDebugCamera->lookAt(
+         {float(m_sDebugCamera.Position.GetX()),
+          float(m_sDebugCamera.Position.GetY()),
+          float(m_sDebugCamera.Position.GetZ())},
+         {float(m_sDebugCamera.LookAt.GetX()),
+          float(m_sDebugCamera.LookAt.GetY()),
+          float(m_sDebugCamera.LookAt.GetZ())},
+         {0.0f, 0.0f, 1.0f});
+      m_pcDebugView = cEngine.createView();
+      m_pcDebugView->setViewport(
+         filament::Viewport(0, 0, m_sDebugCamera.Width, m_sDebugCamera.Height));
+      m_pcDebugView->setRenderTarget(m_pcDebugTarget);
+      m_pcDebugView->setScene(&m_cEngine.GetScene());
+      m_pcDebugView->setCamera(m_pcDebugCamera);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::SetSunlight(const CVector3& c_direction,
+                                         Real f_intensity) {
+      m_cSceneSync.SetSunlight(c_direction, f_intensity);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::SetSkyColor(const CVector3& c_color) {
+      if(m_pcSkybox != nullptr) {
+         m_pcSkybox->setColor({float(c_color.GetX()),
+                               float(c_color.GetY()),
+                               float(c_color.GetZ()),
+                               1.0f});
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::SetMaterialParam(const CEmbodiedEntity& c_entity,
+                                              const std::string& str_name,
+                                              Real f_value) {
+      m_cSceneSync.SetMaterialParam(c_entity, str_name, f_value);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::SetMaterialColor(const CEmbodiedEntity& c_entity,
+                                              const CVector3& c_color) {
+      m_cSceneSync.SetMaterialColor(c_entity, c_color);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::RandomizeAll() {
+      if(!m_cRandomizer.IsEnabled()) {
+         THROW_ARGOSEXCEPTION("RandomizeAll() called, but the photorealism "
+                              "medium \"" << GetId() << "\" has no "
+                              "<randomization> configuration");
+      }
+      m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::LogStats() {
+      if(m_unStatTicks == 0) {
+         return;
+      }
+      const CPRCameraPool::SStats& sPool = m_cCameraPool.GetStats();
+      double fTicks = double(m_unStatTicks);
+      std::ostringstream cReport;
+      cReport << std::fixed << std::setprecision(2);
+      cReport << "[INFO] Photorealism medium \"" << GetId() << "\" timing over "
+              << m_unStatTicks << " ticks, "
+              << sPool.PeakCameras << " cameras:\n";
+      cReport << "[INFO]   update total : avg "
+              << m_fStatTotal / fTicks * 1e3 << " ms/tick, max "
+              << m_fStatTotalMax * 1e3 << " ms\n";
+      cReport << "[INFO]   scene sync   : avg "
+              << m_fStatSync / fTicks * 1e3 << " ms/tick, max "
+              << m_fStatSyncMax * 1e3 << " ms\n";
+      cReport << "[INFO]   camera pool  : collect wait "
+              << sPool.CollectWait / fTicks * 1e3 << " ms/tick, submit "
+              << sPool.Submit / fTicks * 1e3 << " ms/tick, immediate wait "
+              << sPool.ImmediateWait / fTicks * 1e3 << " ms/tick\n";
+      if(sPool.CamerasRendered > 0) {
+         cReport << "[INFO]   renders      : " << sPool.CamerasRendered
+                 << " total, "
+                 << (sPool.CollectWait + sPool.Submit + sPool.ImmediateWait) /
+                    double(sPool.CamerasRendered) * 1e3
+                 << " ms/render (CPU-side)";
+      }
+      LOG << cReport.str() << std::endl;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPhotorealismMedium::RenderDebugFrame() {
+      std::vector<UInt8> vecPixels;
+      m_cEngine.RenderAndReadRGBA(*m_pcDebugView,
+                                  m_sDebugCamera.Width,
+                                  m_sDebugCamera.Height,
+                                  vecPixels);
+      char pchFileName[256];
+      ::snprintf(pchFileName, sizeof(pchFileName), "%s/frame_%010u.png",
+                 m_sDebugCamera.Directory.c_str(),
+                 CSimulator::GetInstance().GetSpace().GetSimulationClock());
+      if(stbi_write_png(pchFileName,
+                        int(m_sDebugCamera.Width),
+                        int(m_sDebugCamera.Height),
+                        4, vecPixels.data(),
+                        int(m_sDebugCamera.Width) * 4) == 0) {
+         THROW_ARGOSEXCEPTION("Cannot write frame to \"" << pchFileName << "\"");
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   REGISTER_MEDIUM(CPhotorealismMedium,
+                   "photorealism",
+                   "Giovanni Beltrame [giovanni.beltrame@polymtl.ca]",
+                   "1.0",
+                   "Photorealistic rendering of the ARGoS space (Filament).",
+                   "This medium maintains a photorealistic 3D replica of the simulated space\n"
+                   "using the Filament rendering engine. It renders fully headless (no display\n"
+                   "server required) using Vulkan (default) or OpenGL. Photorealistic camera\n"
+                   "sensors reference this medium by id to obtain per-robot images; an optional\n"
+                   "debug camera dumps PNG frames for testing and dataset generation.\n\n"
+                   "REQUIRED XML CONFIGURATION\n\n"
+                   "  <media>\n"
+                   "    ...\n"
+                   "    <photorealism id=\"pr\" />\n"
+                   "    ...\n"
+                   "  </media>\n\n"
+                   "OPTIONAL XML CONFIGURATION\n\n"
+                   "The 'backend' attribute selects the graphics API (\"vulkan\", the default,\n"
+                   "or \"opengl\"). The <sun> child node configures the directional sunlight\n"
+                   "('direction' as x,y,z; 'intensity' in lux, default 100000; 'cast_shadows').\n"
+                   "The <skybox> child node sets the constant sky color ('color' as r,g,b in\n"
+                   "[0,1]). The <debug_camera> child node enables PNG frame dumping:\n\n"
+                   "  <media>\n"
+                   "    <photorealism id=\"pr\" backend=\"vulkan\">\n"
+                   "      <sun direction=\"0.6,0.2,-1\" intensity=\"100000\" cast_shadows=\"true\" />\n"
+                   "      <skybox color=\"0.53,0.71,0.92\" />\n"
+                   "      <debug_camera position=\"2,2,2\" look_at=\"0,0,0\" fov=\"45\"\n"
+                   "                    resolution=\"640,480\" period=\"1\" dump=\"frames\" />\n"
+                   "    </photorealism>\n"
+                   "  </media>\n\n"
+                   "The debug camera renders every 'period' ticks and writes\n"
+                   "<dump>/frame_<clock>.png.\n\n"
+                   "With stats=\"true\" the medium prints a timing summary (scene sync,\n"
+                   "camera render/readback) at the end of the experiment.\n\n"
+                   "The <randomization> child node enables domain randomization for\n"
+                   "sim-to-real transfer. A new environment is drawn from the configured\n"
+                   "ranges (using the ARGoS RNG, so runs are reproducible per seed) at\n"
+                   "startup and, unless on_reset=\"false\", at every reset:\n\n"
+                   "  <photorealism id=\"pr\">\n"
+                   "    <randomization on_reset=\"true\">\n"
+                   "      <sun intensity=\"60000:140000\" elevation=\"25:80\" azimuth=\"0:360\" />\n"
+                   "      <sky color_min=\"0.3,0.4,0.55\" color_max=\"0.7,0.8,1.0\" />\n"
+                   "      <materials targets=\"box,cylinder,floor\"\n"
+                   "                 roughness=\"0.2:1.0\" color_jitter=\"0.3\" />\n"
+                   "    </randomization>\n"
+                   "  </photorealism>\n\n"
+                   "<sun> draws the light intensity (lux) and direction (elevation and\n"
+                   "azimuth in degrees); <sky> draws each sky color channel between the\n"
+                   "two given colors; <materials> randomizes the roughness and jitters\n"
+                   "the base colors of the visuals whose class is listed in 'targets'\n"
+                   "(LED emissives are never randomized; segmentation ids are\n"
+                   "unaffected). Loop functions can also call SetSunlight(),\n"
+                   "SetSkyColor(), SetMaterialParam(), SetMaterialColor(), and\n"
+                   "RandomizeAll() on the medium directly.",
+                   "Usable");
+
+}

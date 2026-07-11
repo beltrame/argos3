@@ -1,0 +1,5 @@
+add_subdirectory(static_camera_headless)
+add_subdirectory(camera_sensor)
+add_subdirectory(robot_visuals)
+add_subdirectory(scale_50)
+add_subdirectory(randomization)

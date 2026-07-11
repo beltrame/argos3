@@ -1,0 +1,28 @@
+material {
+    name : pr_lit_tex,
+    shadingModel : lit,
+    requires : [ uv0 ],
+    parameters : [
+        {
+            type : sampler2d,
+            name : baseColorMap
+        },
+        {
+            type : float,
+            name : roughness
+        },
+        {
+            type : float,
+            name : metallic
+        }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = texture(materialParams_baseColorMap, getUV0());
+        material.roughness = materialParams.roughness;
+        material.metallic = materialParams.metallic;
+    }
+}

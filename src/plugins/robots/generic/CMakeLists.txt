@@ -21,6 +21,7 @@ set(ARGOS3_HEADERS_PLUGINS_ROBOTS_GENERIC_CONTROLINTERFACE
   control_interface/ci_light_sensor.h
   control_interface/ci_magnets_actuator.h
   control_interface/ci_pan_tilt_camera_actuator.h
+  control_interface/ci_photorealistic_camera_sensor.h
   control_interface/ci_positioning_sensor.h
   control_interface/ci_proximity_sensor.h
   control_interface/ci_quadrotor_position_actuator.h
@@ -79,6 +80,7 @@ set(ARGOS3_SOURCES_PLUGINS_ROBOTS_GENERIC
   control_interface/ci_differential_steering_actuator.cpp
   control_interface/ci_differential_steering_sensor.cpp
   control_interface/ci_directional_leds_actuator.cpp
+  control_interface/ci_photorealistic_camera_sensor.cpp
   control_interface/ci_gripper_actuator.cpp
   control_interface/ci_ground_sensor.cpp
   control_interface/ci_leds_actuator.cpp

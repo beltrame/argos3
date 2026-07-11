@@ -1,0 +1,22 @@
+material {
+    name : pr_aux,
+    shadingModel : unlit,
+    culling : back,
+    parameters : [
+        {
+            type : float2,
+            name : idClass
+        }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        float3 viewPos = mulMat4x4Float3(getViewFromWorldMatrix(), getWorldPosition()).xyz;
+        material.baseColor = float4(materialParams.idClass.x,
+                                    materialParams.idClass.y,
+                                    -viewPos.z,
+                                    1.0);
+    }
+}
