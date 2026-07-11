@@ -103,9 +103,10 @@ The `filament` visualization opens a window on the medium's scene:
 The experiment behaves exactly as it does headless (the medium owns
 the renderer, the scene, and the robot cameras; the window uses its
 own Filament renderer, so its vsync never interferes with the sensor
-pipeline). SPACE pauses, N single-steps, W/A/S/D/Q/E and left-mouse
-dragging fly the camera, ESC quits; `speed` scales real time (0 = as
-fast as possible). Building the viewer needs the SDL2 headers
+pipeline). SPACE pauses, N single-steps; W/A/S/D/Q/E fly the camera
+(SHIFT accelerates), left-drag looks around, right- or middle-drag
+pans, and the scroll wheel dollies; ESC quits. `speed` scales real
+time (0 = as fast as possible). Building the viewer needs the SDL2 headers
 (`apt install libsdl2-dev`, or extract them next to the SDK like the
 libc++ runtime; see `FindARGoSSDL2.cmake`). The window is X11 (via
 XWayland on Wayland desktops), matching the surface support of the

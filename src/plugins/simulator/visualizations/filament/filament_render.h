@@ -92,6 +92,7 @@ namespace argos {
       Real m_fPitch = 0.0;
       /* Held keys / buttons */
       bool m_bDragging = false;
+      bool m_bPanning = false;
       bool m_bPaused = false;
       bool m_bSingleStep = false;
 

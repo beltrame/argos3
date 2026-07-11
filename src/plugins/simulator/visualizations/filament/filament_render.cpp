@@ -107,7 +107,8 @@ namespace argos {
                                       cDirection.GetY() * cDirection.GetY()));
       m_bPaused = m_bStartPaused;
       LOG << "[INFO] Filament visualization: SPACE pauses, N steps once, "
-             "WASD/QE + mouse drag move the camera, ESC quits" << std::endl;
+             "WASD/QE move (SHIFT: faster), left-drag looks, "
+             "right-drag pans, wheel dollies, ESC quits" << std::endl;
    }
 
    /****************************************/
@@ -160,10 +161,18 @@ namespace argos {
                if(tEvent.button.button == SDL_BUTTON_LEFT) {
                   m_bDragging = true;
                }
+               else if(tEvent.button.button == SDL_BUTTON_RIGHT ||
+                       tEvent.button.button == SDL_BUTTON_MIDDLE) {
+                  m_bPanning = true;
+               }
                break;
             case SDL_MOUSEBUTTONUP:
                if(tEvent.button.button == SDL_BUTTON_LEFT) {
                   m_bDragging = false;
+               }
+               else if(tEvent.button.button == SDL_BUTTON_RIGHT ||
+                       tEvent.button.button == SDL_BUTTON_MIDDLE) {
+                  m_bPanning = false;
                }
                break;
             case SDL_MOUSEMOTION:
@@ -172,7 +181,27 @@ namespace argos {
                   m_fPitch -= tEvent.motion.yrel * 0.005;
                   m_fPitch = std::min(1.5, std::max(-1.5, m_fPitch));
                }
+               else if(m_bPanning) {
+                  /* Drag the world with the cursor: move in the view
+                   * plane, scaled so it feels constant on screen */
+                  Real fScale = 0.0025 * m_fMoveSpeed;
+                  CVector3 cRight(std::sin(m_fYaw), -std::cos(m_fYaw), 0.0);
+                  CVector3 cUp(-std::cos(m_fYaw) * std::sin(m_fPitch),
+                               -std::sin(m_fYaw) * std::sin(m_fPitch),
+                               std::cos(m_fPitch));
+                  m_cCameraPosition -= cRight * (tEvent.motion.xrel * fScale);
+                  m_cCameraPosition += cUp * (tEvent.motion.yrel * fScale);
+               }
                break;
+            case SDL_MOUSEWHEEL: {
+               /* Dolly along the view direction */
+               CVector3 cForward(std::cos(m_fYaw) * std::cos(m_fPitch),
+                                 std::sin(m_fYaw) * std::cos(m_fPitch),
+                                 std::sin(m_fPitch));
+               m_cCameraPosition +=
+                  cForward * (tEvent.wheel.y * 0.15 * m_fMoveSpeed);
+               break;
+            }
             case SDL_WINDOWEVENT:
                if(tEvent.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                   int nWidth, nHeight;
@@ -337,9 +366,11 @@ namespace argos {
                           "as possible). 'position'/'look_at' set the initial camera pose.\n\n"
 
                           "INTERACTION\n\n"
-                          "SPACE pauses and resumes; N steps one tick; W/A/S/D/Q/E move the camera\n"
-                          "(SHIFT accelerates); dragging with the left mouse button rotates it;\n"
-                          "ESC or closing the window ends the run.\n\n"
+                          "SPACE pauses and resumes; N steps one tick. W/A/S/D fly forward/left/\n"
+                          "back/right, Q/E down/up (SHIFT accelerates). Dragging with the left\n"
+                          "mouse button looks around, dragging with the right or middle button\n"
+                          "pans in the view plane, and the scroll wheel dollies forward and\n"
+                          "backward. ESC or closing the window ends the run.\n\n"
 
                           "The window is an X11 window (through XWayland on Wayland desktops),\n"
                           "matching the surface types supported by the prebuilt Filament Vulkan\n"
