@@ -89,6 +89,28 @@ round-robin to spread the load.
 
 Run `argos3 -q photorealistic_camera` for the full reference.
 
+## Interactive viewer
+
+The `filament` visualization opens a window on the medium's scene:
+
+```xml
+<visualization>
+  <filament medium="pr" resolution="1280,720"
+            position="2.5,2.5,2" look_at="0,0,0.25" speed="1" />
+</visualization>
+```
+
+The experiment behaves exactly as it does headless (the medium owns
+the renderer, the scene, and the robot cameras; the window uses its
+own Filament renderer, so its vsync never interferes with the sensor
+pipeline). SPACE pauses, N single-steps, W/A/S/D/Q/E and left-mouse
+dragging fly the camera, ESC quits; `speed` scales real time (0 = as
+fast as possible). Building the viewer needs the SDL2 headers
+(`apt install libsdl2-dev`, or extract them next to the SDK like the
+libc++ runtime; see `FindARGoSSDL2.cmake`). The window is X11 (via
+XWayland on Wayland desktops), matching the surface support of the
+prebuilt Filament Vulkan backend.
+
 ## Domain randomization
 
 For sim-to-real transfer, the medium can redraw the environment from
@@ -188,10 +210,11 @@ Segmentation class ids: 0 none, 1 floor, 2 box, 3 cylinder,
   engine, including Jolt.
 - M7 (done): domain randomization (`<randomization>` on the medium +
   loop-function API), deterministic per seed.
+- M5 (done): interactive `filament` visualization (SDL2/X11 window,
+  free-fly camera, pause/step, real-time pacing).
 - Next: glTF asset registry (replaces placeholder bodies and the
   photorealism -> foot-bot/drone link dependencies), HDR environment
-  lighting (extends randomization with IBL swapping), interactive
-  viewer.
+  lighting (extends randomization with IBL swapping).
 
 Known issue: when an ARGoS exception unwinds through teardown while
 Filament has in-flight work, the statically linked libc++abi may

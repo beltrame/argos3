@@ -60,6 +60,6 @@
     </photorealism>
   </media>
 
-  <!-- No visualization: this test must run fully headless -->
+  @ROBOT_VISUALS_VISUALIZATION@
 
 </argos-configuration>

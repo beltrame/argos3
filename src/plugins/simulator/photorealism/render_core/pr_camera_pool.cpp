@@ -197,9 +197,10 @@ namespace argos {
          RebuildPages();
       }
       filament::Renderer& cRenderer = m_pcEngine->GetRenderer();
-      if(!cRenderer.beginFrame(&m_pcEngine->GetSwapChain())) {
-         return;
-      }
+      /* beginFrame() returning false is only a frame-skipping HINT
+       * (e.g. when a window renderer shares the engine and the GPU
+       * lags); sensor frames are not optional, so it is ignored */
+      cRenderer.beginFrame(&m_pcEngine->GetSwapChain());
       for(SCamera* psCamera : vecDue) {
          UpdateCameraTransform(*psCamera);
          if(psCamera->Config.RenderRGB) {

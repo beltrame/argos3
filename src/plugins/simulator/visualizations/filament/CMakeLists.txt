@@ -1,0 +1,30 @@
+#
+# Filament interactive visualization
+#
+set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_VISUALIZATIONS_FILAMENT
+  filament_render.h)
+
+set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_VISUALIZATIONS_FILAMENT
+  ${ARGOS3_HEADERS_PLUGINS_SIMULATOR_VISUALIZATIONS_FILAMENT}
+  filament_render.cpp)
+
+add_library(argos3plugin_${ARGOS_BUILD_FOR}_filament SHARED
+  ${ARGOS3_SOURCES_PLUGINS_SIMULATOR_VISUALIZATIONS_FILAMENT})
+target_include_directories(argos3plugin_${ARGOS_BUILD_FOR}_filament
+  PRIVATE ${FILAMENT_INCLUDE_DIRS} ${ARGOS_SDL2_INCLUDE_DIRS})
+target_link_libraries(argos3plugin_${ARGOS_BUILD_FOR}_filament
+  argos3core_${ARGOS_BUILD_FOR}
+  argos3plugin_${ARGOS_BUILD_FOR}_photorealism
+  ${ARGOS_SDL2_LIBRARIES})
+
+install(FILES ${ARGOS3_HEADERS_PLUGINS_SIMULATOR_VISUALIZATIONS_FILAMENT}
+  DESTINATION include/argos3/plugins/simulator/visualizations/filament)
+install(TARGETS argos3plugin_${ARGOS_BUILD_FOR}_filament
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib/argos3
+  ARCHIVE DESTINATION lib/argos3)
+
+#
+# Add plugin to ARGOS_PLUGIN_PATH
+#
+set(ARGOS_PLUGIN_PATH "${ARGOS_PLUGIN_PATH}:${CMAKE_CURRENT_BINARY_DIR}" CACHE INTERNAL "ARGoS plugin path")

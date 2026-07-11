@@ -108,21 +108,22 @@ namespace argos {
       AssertRenderThread();
       vec_pixels.resize(size_t(un_width) * un_height * 4);
       bool bDone = false;
-      if(m_pcRenderer->beginFrame(m_pcSwapChain)) {
-         m_pcRenderer->render(&c_view);
-         filament::backend::PixelBufferDescriptor cDescriptor(
-            vec_pixels.data(), vec_pixels.size(),
-            filament::backend::PixelDataFormat::RGBA,
-            filament::backend::PixelDataType::UBYTE,
-            [](void*, size_t, void* pt_user) {
-               *static_cast<bool*>(pt_user) = true;
-            },
-            &bDone);
-         m_pcRenderer->readPixels(c_view.getRenderTarget(),
-                                  0, 0, un_width, un_height,
-                                  std::move(cDescriptor));
-         m_pcRenderer->endFrame();
-      }
+      /* The false return of beginFrame() is only a frame-skipping
+       * hint; this readback must happen */
+      m_pcRenderer->beginFrame(m_pcSwapChain);
+      m_pcRenderer->render(&c_view);
+      filament::backend::PixelBufferDescriptor cDescriptor(
+         vec_pixels.data(), vec_pixels.size(),
+         filament::backend::PixelDataFormat::RGBA,
+         filament::backend::PixelDataType::UBYTE,
+         [](void*, size_t, void* pt_user) {
+            *static_cast<bool*>(pt_user) = true;
+         },
+         &bDone);
+      m_pcRenderer->readPixels(c_view.getRenderTarget(),
+                               0, 0, un_width, un_height,
+                               std::move(cDescriptor));
+      m_pcRenderer->endFrame();
       m_pcEngine->flushAndWait();
       if(!bDone) {
          THROW_ARGOSEXCEPTION("Filament readPixels did not complete");
