@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<!-- Foot-bot visual for the photorealism plugin. The model is glTF
+     y-up; the orientation (Euler z,y,x degrees) makes it z-up. -->
+<visual>
+  <model path="foot-bot.glb" scale="1" position="0,0,0" orientation="0,0,90" />
+  <segmentation class="4" />
+</visual>

@@ -14,6 +14,7 @@ set(CAMERA_TEST_CONTROLLER_LIB
   ${CMAKE_CURRENT_BINARY_DIR}/../camera_sensor/libcamera_test_controller)
 set(ROBOT_VISUALS_DUMP "")
 set(ROBOT_VISUALS_VISUALIZATION "<!-- No visualization: this test must run fully headless -->")
+set(ROBOT_VISUALS_ASSET_PATH "")
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/configuration.argos.in
   ${CMAKE_CURRENT_BINARY_DIR}/configuration.argos)
@@ -21,12 +22,24 @@ set(ROBOT_VISUALS_DUMP "view")
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/configuration.argos.in
   ${CMAKE_CURRENT_BINARY_DIR}/configuration_dump.argos)
+# glTF variant: same assertions, robot rendered from the asset registry
+set(ROBOT_VISUALS_ASSET_PATH "asset_path=\"${CMAKE_SOURCE_DIR}/plugins/simulator/photorealism/assets\"")
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/configuration.argos.in
+  ${CMAKE_CURRENT_BINARY_DIR}/configuration_gltf.argos)
+set(ROBOT_VISUALS_ASSET_PATH "")
 # define test
 add_test(
    NAME photorealism_robot_visuals
    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
    COMMAND bash -c "env -u DISPLAY -u WAYLAND_DISPLAY ${CMAKE_BINARY_DIR}/core/argos3 -zc configuration.argos")
 set_tests_properties(photorealism_robot_visuals
+  PROPERTIES ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+add_test(
+   NAME photorealism_robot_visuals_gltf
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   COMMAND bash -c "env -u DISPLAY -u WAYLAND_DISPLAY ${CMAKE_BINARY_DIR}/core/argos3 -zc configuration_gltf.argos")
+set_tests_properties(photorealism_robot_visuals_gltf
   PROPERTIES ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
 
 # viewer variant: runs only when a display is available (the window

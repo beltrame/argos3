@@ -54,7 +54,7 @@
 
   <media>
     <led id="leds" index="grid" grid_size="3,3,3" />
-    <photorealism id="pr" backend="vulkan">
+    <photorealism id="pr" backend="vulkan" @ROBOT_VISUALS_ASSET_PATH@>
       <sun direction="0.6,0.2,-1" intensity="100000" cast_shadows="true" />
       <skybox color="0.53,0.71,0.92" />
     </photorealism>

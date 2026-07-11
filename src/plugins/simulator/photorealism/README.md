@@ -181,17 +181,43 @@ speed.
 
 ## Robot visuals
 
-Foot-bot and drone entities render with built-in placeholder bodies
-(correct overall dimensions, taken from the qt-opengl draw code).
-LEDs are robot-agnostic: any entity with an (optionally directional)
-LED-equipped component gets a small emissive cube per LED, positioned
-from the LED's anchor and offset and colored from the LED state every
-tick, so LED signaling is visible in robot camera images. The floor
-entity's colors (any source, including loop functions) are sampled
-into a texture and refreshed whenever the floor reports a change.
+Robot visuals are data-driven: an entity type renders from a glTF
+model when a `<type>.visual.xml` descriptor is found in the asset
+search path (the medium's `asset_path` attribute, then the
+`ARGOS_PHOTOREALISM_ASSET_PATH` environment variable, then the
+installed assets in `share/argos3/photorealism`):
+
+```xml
+<visual>
+  <model path="foot-bot.glb" scale="1" position="0,0,0"
+         orientation="0,0,90" />
+  <segmentation class="4" />
+</visual>
+```
+
+The model path is relative to the descriptor; 'orientation' (Euler
+z,y,x degrees) maps the glTF frame onto the ARGoS frame ("0,0,90"
+turns the y-up glTF convention into z-up). Each entity gets two
+gltfio instances sharing the model's GPU buffers: one in the main
+scene with the glTF PBR materials, one in the segmentation scene with
+its materials swapped for the id-encoding material. `assets/` ships
+`foot-bot.glb` (procedural, dimensions from the qt-opengl code) and
+`drone.glb` (converted from the drone plugin's OBJ models); see
+`assets/generate_assets.py` to regenerate or add models.
+
+Without a descriptor, foot-bot and drone entities fall back to
+built-in placeholder bodies and boxes/cylinders render procedurally.
+LEDs are robot-agnostic either way: any entity with an (optionally
+directional) LED-equipped component gets a small emissive cube per
+LED, positioned from the LED's anchor and offset and colored from the
+LED state every tick, so LED signaling is visible in robot camera
+images. The floor entity's colors (any source, including loop
+functions) are sampled into a texture and refreshed whenever the
+floor reports a change.
 
 Segmentation class ids: 0 none, 1 floor, 2 box, 3 cylinder,
-4 foot-bot, 5 drone (see `EPRClass` in `render_core/pr_id_scene.h`).
+4 foot-bot, 5 drone (see `EPRClass` in `render_core/pr_id_scene.h`);
+glTF visuals take their class id from the descriptor.
 
 ## Status
 
@@ -212,9 +238,14 @@ Segmentation class ids: 0 none, 1 floor, 2 box, 3 cylinder,
   loop-function API), deterministic per seed.
 - M5 (done): interactive `filament` visualization (SDL2/X11 window,
   free-fly camera, pause/step, real-time pacing).
-- Next: glTF asset registry (replaces placeholder bodies and the
-  photorealism -> foot-bot/drone link dependencies), HDR environment
-  lighting (extends randomization with IBL swapping).
+- glTF asset registry (done): data-driven robot visuals with
+  descriptors, instancing, and per-instance segmentation; ships
+  foot-bot and drone models and removes the photorealism ->
+  foot-bot/drone link dependencies. Also fixed a vertical flip in
+  the sensor readback that the flip-invariant tests had not caught
+  (an orientation assertion now guards it).
+- Next: HDR environment lighting (extends randomization with IBL
+  swapping and SetIBL/SwapAsset loop-function calls).
 
 Known issue: when an ARGoS exception unwinds through teardown while
 Filament has in-flight work, the statically linked libc++abi may

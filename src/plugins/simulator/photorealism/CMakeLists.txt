@@ -11,7 +11,8 @@ set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_RENDERCORE
   render_core/pr_scene_sync.h
   render_core/pr_id_scene.h
   render_core/pr_camera_pool.h
-  render_core/pr_randomizer.h)
+  render_core/pr_randomizer.h
+  render_core/pr_asset_registry.h)
 # argos3/plugins/simulator/photorealism/sensors/
 set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_SENSORS
   sensors/photorealistic_camera_default_sensor.h)
@@ -57,6 +58,7 @@ set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_PHOTOREALISM
   render_core/pr_id_scene.cpp
   render_core/pr_camera_pool.cpp
   render_core/pr_randomizer.cpp
+  render_core/pr_asset_registry.cpp
   sensors/photorealistic_camera_default_sensor.cpp)
 
 #
@@ -73,7 +75,10 @@ add_custom_command(
   OUTPUT ${ARGOS3_FILAMENT_BUNDLE}.a
   COMMAND ${CMAKE_LINKER} -r -o ${ARGOS3_FILAMENT_BUNDLE}.o
           --whole-archive ${FILAMENT_CORE_LIBRARIES}
-          --no-whole-archive ${FILAMENT_LIBCXX_LIBRARIES}
+          ${FILAMENT_gltfio_core_LIBRARY}
+          ${FILAMENT_uberarchive_LIBRARY}
+          --no-whole-archive ${FILAMENT_GLTFIO_LIBRARIES}
+          ${FILAMENT_LIBCXX_LIBRARIES}
   COMMAND ${CMAKE_OBJCOPY} -w
           --keep-global-symbol=_ZN8filament*
           --keep-global-symbol=_ZNK8filament*
@@ -94,9 +99,10 @@ add_custom_command(
           --keep-global-symbol=_ZNK9ktxreader*
           --keep-global-symbol=_ZN5image*
           --keep-global-symbol=_ZNK5image*
+          --keep-global-symbol=UBERARCHIVE_PACKAGE
           ${ARGOS3_FILAMENT_BUNDLE}.o
   COMMAND ${CMAKE_AR} rcs ${ARGOS3_FILAMENT_BUNDLE}.a ${ARGOS3_FILAMENT_BUNDLE}.o
-  DEPENDS ${FILAMENT_CORE_LIBRARIES}
+  DEPENDS ${FILAMENT_CORE_LIBRARIES} ${FILAMENT_GLTFIO_LIBRARIES}
   COMMENT "Creating Filament symbol-firewalled bundle")
 add_custom_target(argos3_filament_bundle DEPENDS ${ARGOS3_FILAMENT_BUNDLE}.a)
 
@@ -109,15 +115,13 @@ add_dependencies(argos3plugin_${ARGOS_BUILD_FOR}_photorealism
   argos3_filament_bundle)
 target_include_directories(argos3plugin_${ARGOS_BUILD_FOR}_photorealism
   PRIVATE ${FILAMENT_INCLUDE_DIRS})
-# The foot-bot and drone dependencies provide the entity classes for
-# the built-in placeholder visuals; the data-driven glTF asset registry
-# will remove them
+# Default search directory for the installed visual assets
+target_compile_definitions(argos3plugin_${ARGOS_BUILD_FOR}_photorealism
+  PRIVATE ARGOS_PR_ASSET_DIR="${CMAKE_INSTALL_PREFIX}/share/argos3/photorealism")
 target_link_libraries(argos3plugin_${ARGOS_BUILD_FOR}_photorealism
   argos3core_${ARGOS_BUILD_FOR}
   argos3plugin_${ARGOS_BUILD_FOR}_entities
   argos3plugin_${ARGOS_BUILD_FOR}_genericrobot
-  argos3plugin_${ARGOS_BUILD_FOR}_footbot
-  argos3plugin_${ARGOS_BUILD_FOR}_drone
   ${ARGOS3_FILAMENT_BUNDLE}.a
   Threads::Threads
   ${CMAKE_DL_LIBS})
@@ -146,3 +150,5 @@ install(TARGETS argos3plugin_${ARGOS_BUILD_FOR}_photorealism
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib/argos3
   ARCHIVE DESTINATION lib/argos3)
+install(DIRECTORY assets/
+  DESTINATION share/argos3/photorealism)

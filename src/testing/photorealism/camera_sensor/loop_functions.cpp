@@ -69,6 +69,26 @@ void CCameraTestLoopFunctions::PostStep() {
                            << UInt32(sFrame.ClassId[unCenter])
                            << ", expected " << UInt32(EPRClass::Box));
    }
+   /* Image orientation: the 1 m wall fills the top of the frame and
+    * the floor in front of it fills the bottom. A vertical flip
+    * anywhere in the render/readback chain swaps these */
+   size_t unTopCenter = sFrame.Width / 2;
+   size_t unBottomCenter =
+      size_t(sFrame.Height - 1) * sFrame.Width + sFrame.Width / 2;
+   if(sFrame.ClassId[unTopCenter] != UInt8(EPRClass::Box)) {
+      THROW_ARGOSEXCEPTION("Orientation check failed: top row class id = "
+                           << UInt32(sFrame.ClassId[unTopCenter])
+                           << ", expected the wall ("
+                           << UInt32(EPRClass::Box)
+                           << "); is the image vertically flipped?");
+   }
+   if(sFrame.ClassId[unBottomCenter] != UInt8(EPRClass::Floor)) {
+      THROW_ARGOSEXCEPTION("Orientation check failed: bottom row class id = "
+                           << UInt32(sFrame.ClassId[unBottomCenter])
+                           << ", expected the floor ("
+                           << UInt32(EPRClass::Floor)
+                           << "); is the image vertically flipped?");
+   }
    /* The RGB image must not be empty black (the lit wall is visible) */
    UInt32 unSum = 0;
    for(size_t i = 0; i < sFrame.RGB.size(); ++i) {

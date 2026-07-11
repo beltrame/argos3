@@ -17,8 +17,8 @@
 #include <argos3/plugins/simulator/entities/cylinder_entity.h>
 #include <argos3/plugins/simulator/entities/led_equipped_entity.h>
 #include <argos3/plugins/simulator/entities/directional_led_equipped_entity.h>
-#include <argos3/plugins/robots/foot-bot/simulator/footbot_entity.h>
-#include <argos3/plugins/robots/drone/simulator/drone_entity.h>
+
+#include <gltfio/FilamentInstance.h>
 
 #include <filament/Engine.h>
 #include <filament/Scene.h>
@@ -86,11 +86,13 @@ namespace argos {
 
    void CPRSceneSync::Init(CPRRenderEngine& c_engine,
                            CPRIdScene& c_id_scene,
+                           CPRAssetRegistry& c_assets,
                            const SSunlight& s_sunlight,
                            const CVector3& c_arena_size,
                            const CVector3& c_arena_center) {
       m_pcEngine = &c_engine;
       m_pcIdScene = &c_id_scene;
+      m_pcAssets = &c_assets;
       filament::Engine& cEngine = c_engine.GetEngine();
       m_sBoxMesh = CPRMeshBuilder::BuildBox(cEngine);
       m_sCylinderMesh = CPRMeshBuilder::BuildCylinder(cEngine);
@@ -357,9 +359,23 @@ namespace argos {
 
    void CPRSceneSync::AddEntity(CEmbodiedEntity& c_entity) {
       CEntity& cRoot = c_entity.GetRootEntity();
+      const std::string& strType = cRoot.GetTypeDescription();
       SInstance sInstance;
       sInstance.EntityId = m_unNextEntityId++;
-      if(auto* pcBox = dynamic_cast<CBoxEntity*>(&cRoot)) {
+      sInstance.Type = strType;
+      /* A glTF visual from the asset registry takes precedence over
+       * the built-in visuals */
+      const SPRVisualDescriptor* psDescriptor = m_pcAssets->GetDescriptor(strType);
+      if(psDescriptor != nullptr) {
+         sInstance.Gltf = m_pcAssets->CreateInstance(strType,
+                                                     sInstance.EntityId,
+                                                     psDescriptor->ClassId);
+      }
+      if(sInstance.Gltf.Main != nullptr) {
+         sInstance.Class = EPRClass(psDescriptor->ClassId);
+         sInstance.GltfOffset = psDescriptor->Offset;
+      }
+      else if(auto* pcBox = dynamic_cast<CBoxEntity*>(&cRoot)) {
          sInstance.Class = EPRClass::Box;
          sInstance.Parts.push_back(
             MakePart(m_sBoxMesh,
@@ -379,16 +395,15 @@ namespace argos {
                      0.5f, 0.5f, 0.5f, 0.6f,
                      sInstance.EntityId, EPRClass::Cylinder));
       }
-      else if(dynamic_cast<CFootBotEntity*>(&cRoot) != nullptr) {
+      else if(strType == "foot-bot") {
          sInstance.Class = EPRClass::FootBot;
          BuildFootBot(sInstance);
       }
-      else if(dynamic_cast<CDroneEntity*>(&cRoot) != nullptr) {
+      else if(strType == "drone") {
          sInstance.Class = EPRClass::Drone;
          BuildDrone(sInstance);
       }
       else {
-         const std::string& strType = cRoot.GetTypeDescription();
          if(m_setWarnedTypes.insert(strType).second) {
             LOG << "[INFO] Photorealism: no visual model for entity type \""
                 << strType << "\", skipping" << std::endl;
@@ -492,6 +507,9 @@ namespace argos {
 
    void CPRSceneSync::RemoveInstance(SInstance& s_instance) {
       filament::Engine& cEngine = m_pcEngine->GetEngine();
+      if(s_instance.Gltf.Main != nullptr) {
+         m_pcAssets->ReleaseInstance(s_instance.Type, s_instance.Gltf);
+      }
       for(SPart& sPart : s_instance.Parts) {
          m_pcIdScene->RemoveInstance(sPart.Renderable);
          m_pcEngine->GetScene().remove(sPart.Renderable);
@@ -549,6 +567,13 @@ namespace argos {
                      float(sAnchor.Orientation.GetZ())));
       filament::TransformManager& cTransforms =
          m_pcEngine->GetEngine().getTransformManager();
+      /* The glTF visual follows the origin anchor (the aux instance
+       * is parented to the main one) */
+      if(s_instance.Gltf.Main != nullptr) {
+         cTransforms.setTransform(
+            cTransforms.getInstance(s_instance.Gltf.Main->getRoot()),
+            cAnchorTransform * s_instance.GltfOffset);
+      }
       for(SPart& sPart : s_instance.Parts) {
          if(sPart.LEDIndex < 0) {
             cTransforms.setTransform(

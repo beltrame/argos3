@@ -57,6 +57,11 @@ namespace argos {
          return *m_pcScene;
       }
 
+      /** The material that packs (entityId, classId, viewDepth) */
+      inline filament::Material& GetAuxMaterial() {
+         return *m_pcAuxMaterial;
+      }
+
       /**
        * Creates the paired renderable for a main-scene renderable.
        * @param s_mesh The mesh shared with the main renderable

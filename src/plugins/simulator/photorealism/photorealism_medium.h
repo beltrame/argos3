@@ -25,6 +25,7 @@ namespace argos {
 #include <argos3/plugins/simulator/photorealism/render_core/pr_id_scene.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_camera_pool.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_randomizer.h>
+#include <argos3/plugins/simulator/photorealism/render_core/pr_asset_registry.h>
 
 #include <memory>
 #include <string>
@@ -130,10 +131,14 @@ namespace argos {
       double m_fStatTotal = 0.0;   /* cumulative Update(), seconds */
       double m_fStatTotalMax = 0.0;
 
+      /* Asset search path from the XML configuration */
+      std::string m_strAssetPath;
+
       /* Filament state */
       CPRRenderEngine m_cEngine;
       CPRSceneSync m_cSceneSync;
       CPRIdScene m_cIdScene;
+      CPRAssetRegistry m_cAssetRegistry;
       CPRCameraPool m_cCameraPool;
       filament::Skybox* m_pcSkybox = nullptr;
       filament::View* m_pcDebugView = nullptr;

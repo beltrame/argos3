@@ -48,6 +48,7 @@ namespace argos {
                                  << "\"; use \"pipelined\" or \"immediate\"");
          }
          GetNodeAttributeOrDefault(t_tree, "stats", m_bStats, m_bStats);
+         GetNodeAttributeOrDefault(t_tree, "asset_path", m_strAssetPath, m_strAssetPath);
          if(NodeExists(t_tree, "randomization")) {
             m_cRandomizer.Init(GetNode(t_tree, "randomization"));
          }
@@ -99,7 +100,9 @@ namespace argos {
          m_cEngine.GetScene().setSkybox(m_pcSkybox);
          CSpace& cSpace = CSimulator::GetInstance().GetSpace();
          m_cIdScene.Init(m_cEngine);
-         m_cSceneSync.Init(m_cEngine, m_cIdScene, m_sSunlight,
+         m_cAssetRegistry.Init(m_cEngine, m_cIdScene, m_strAssetPath);
+         m_cSceneSync.Init(m_cEngine, m_cIdScene, m_cAssetRegistry,
+                           m_sSunlight,
                            cSpace.GetArenaSize(),
                            cSpace.GetArenaCenter());
          m_cCameraPool.Init(m_cEngine, m_cIdScene, m_bImmediate);
@@ -160,6 +163,7 @@ namespace argos {
          m_pcDebugView = nullptr;
       }
       m_cSceneSync.Destroy();
+      m_cAssetRegistry.Destroy();
       m_cIdScene.Destroy();
       if(m_pcSkybox != nullptr) {
          cEngine.destroy(m_pcSkybox);

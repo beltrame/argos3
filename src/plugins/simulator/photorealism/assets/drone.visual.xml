@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<!-- Drone visual for the photorealism plugin, converted from the OBJ
+     models shipped with the drone plugin (see generate_assets.py).
+     The model is glTF y-up; the orientation makes it z-up. -->
+<visual>
+  <model path="drone.glb" scale="1" position="0,0,0" orientation="0,0,90" />
+  <segmentation class="5" />
+</visual>

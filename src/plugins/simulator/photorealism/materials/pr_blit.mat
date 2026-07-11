@@ -16,6 +16,10 @@ material {
 fragment {
     void material(inout MaterialInputs material) {
         prepareMaterial(material);
-        material.baseColor = texture(materialParams_tex, getUV0());
+        /* The camera textures are sampled v-flipped so that the
+           atlas readback rows come out top-to-bottom */
+        float2 uv = getUV0();
+        material.baseColor = texture(materialParams_tex,
+                                     float2(uv.x, 1.0 - uv.y));
     }
 }

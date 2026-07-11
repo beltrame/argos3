@@ -41,6 +41,7 @@ namespace filament {
 #include <argos3/core/utility/math/rng.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_mesh_builder.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_id_scene.h>
+#include <argos3/plugins/simulator/photorealism/render_core/pr_asset_registry.h>
 
 #include <utils/Entity.h>
 #include <math/mat4.h>
@@ -72,6 +73,7 @@ namespace argos {
        */
       void Init(CPRRenderEngine& c_engine,
                 CPRIdScene& c_id_scene,
+                CPRAssetRegistry& c_assets,
                 const SSunlight& s_sunlight,
                 const CVector3& c_arena_size,
                 const CVector3& c_arena_center);
@@ -150,6 +152,11 @@ namespace argos {
          /* LED components, when the entity has them */
          CLEDEquippedEntity* LEDs = nullptr;
          CDirectionalLEDEquippedEntity* DirectionalLEDs = nullptr;
+         /* glTF visual from the asset registry, when the entity type
+          * has a descriptor; Parts then only holds the LED emissives */
+         std::string Type;
+         CPRAssetRegistry::SInstance Gltf;
+         filament::math::mat4f GltfOffset;
       };
 
       void AddEntity(CEmbodiedEntity& c_entity);
@@ -180,6 +187,7 @@ namespace argos {
 
       CPRRenderEngine* m_pcEngine = nullptr;
       CPRIdScene* m_pcIdScene = nullptr;
+      CPRAssetRegistry* m_pcAssets = nullptr;
       /* Next numeric entity id to assign (0 = none, 1 = floor) */
       UInt16 m_unNextEntityId = 2;
       SPRMesh m_sBoxMesh;
