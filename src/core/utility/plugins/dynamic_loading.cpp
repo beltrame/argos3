@@ -8,6 +8,7 @@
 
 #include <dirent.h>
 #include <cerrno>
+#include <set>
 
 namespace argos {
 
@@ -198,6 +199,13 @@ namespace argos {
       /* Directory info */
       DIR* ptDir;
       struct dirent* ptDirData;
+      /* Base names of the libraries loaded so far. Loading two
+       * libraries with the same base name from different directories
+       * (e.g., the build tree via ARGOS_PLUGIN_PATH and an installed
+       * copy in the default path) would duplicate their static symbol
+       * registrations and corrupt the process; the first directory in
+       * the search order wins, preserving ARGOS_PLUGIN_PATH overrides */
+      std::set<std::string> setLoadedBaseNames;
       /* Parse the string */
       std::istringstream issPluginPath(strPluginPath);
       std::string strDir;
@@ -215,15 +223,21 @@ namespace argos {
                if(strlen(ptDirData->d_name) > strlen(ARGOS_SHARED_LIBRARY_EXTENSION) &&
                   std::string(ptDirData->d_name).rfind("." ARGOS_SHARED_LIBRARY_EXTENSION) +
                   strlen(ARGOS_SHARED_LIBRARY_EXTENSION) + 1 == strlen(ptDirData->d_name)) {
-                  /* It's a library file, load it */
-                  LoadLibrary(strDir + ptDirData->d_name);
+                  /* It's a library file, load it unless a library with
+                   * the same base name was already loaded */
+                  if(setLoadedBaseNames.insert(ptDirData->d_name).second) {
+                     LoadLibrary(strDir + ptDirData->d_name);
+                  }
                }
                if(strcmp(ARGOS_SHARED_LIBRARY_EXTENSION, ARGOS_MODULE_LIBRARY_EXTENSION) != 0) {
                   if(strlen(ptDirData->d_name) > strlen(ARGOS_MODULE_LIBRARY_EXTENSION) &&
                      std::string(ptDirData->d_name).rfind("." ARGOS_MODULE_LIBRARY_EXTENSION) +
                      strlen(ARGOS_MODULE_LIBRARY_EXTENSION) + 1 == strlen(ptDirData->d_name)) {
-                     /* It's a library file, load it */
-                     LoadLibrary(strDir + ptDirData->d_name);
+                     /* It's a library file, load it unless a library with
+                      * the same base name was already loaded */
+                     if(setLoadedBaseNames.insert(ptDirData->d_name).second) {
+                        LoadLibrary(strDir + ptDirData->d_name);
+                     }
                   }
                }
             }
