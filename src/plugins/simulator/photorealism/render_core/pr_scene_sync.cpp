@@ -423,6 +423,22 @@ namespace argos {
                &pcComposable->GetComponent<CDirectionalLEDEquippedEntity>("directional_leds");
          }
       }
+      /* The LED cubes follow the LEDs' anchors, which the physics
+       * engines only update while enabled. Media that consume the
+       * anchors must enable them; without this, LED visuals freeze
+       * at the start pose when no <led> medium is configured */
+      if(sInstance.LEDs != nullptr) {
+         for(CLEDEquippedEntity::SActuator* psActuator :
+                sInstance.LEDs->GetLEDs()) {
+            psActuator->Anchor.Enable();
+         }
+      }
+      if(sInstance.DirectionalLEDs != nullptr) {
+         for(CDirectionalLEDEquippedEntity::SInstance& sLED :
+                sInstance.DirectionalLEDs->GetInstances()) {
+            sLED.Anchor.Enable();
+         }
+      }
       m_mapInstances[&c_entity] = sInstance;
    }
 
@@ -510,6 +526,11 @@ namespace argos {
       if(s_instance.Gltf.Main != nullptr) {
          m_pcAssets->ReleaseInstance(s_instance.Type, s_instance.Gltf);
       }
+      /* No Disable() to balance the anchor Enable() calls made in
+       * AddEntity: instances are removed only after their entity has
+       * already been destroyed (the diff in Sync() and the simulator
+       * teardown both run after entity destruction), so the LED
+       * component pointers must not be dereferenced here */
       for(SPart& sPart : s_instance.Parts) {
          m_pcIdScene->RemoveInstance(sPart.Renderable);
          m_pcEngine->GetScene().remove(sPart.Renderable);
