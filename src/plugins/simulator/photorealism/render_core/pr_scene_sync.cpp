@@ -28,8 +28,12 @@
 #include <filament/TransformManager.h>
 #include <filament/LightManager.h>
 #include <filament/IndirectLight.h>
+#include <filament/Skybox.h>
+#include <image/Ktx1Bundle.h>
+#include <ktxreader/Ktx1Reader.h>
 
 #include <algorithm>
+#include <fstream>
 #include <filament/Texture.h>
 #include <filament/TextureSampler.h>
 #include <utils/EntityManager.h>
@@ -257,6 +261,19 @@ namespace argos {
          m_pcEngine->GetScene().setIndirectLight(nullptr);
          cEngine.destroy(m_pcAmbientLight);
          m_pcAmbientLight = nullptr;
+      }
+      if(m_pcEnvironmentSkybox != nullptr) {
+         m_pcEngine->GetScene().setSkybox(nullptr);
+         cEngine.destroy(m_pcEnvironmentSkybox);
+         m_pcEnvironmentSkybox = nullptr;
+      }
+      if(m_pcEnvironmentReflections != nullptr) {
+         cEngine.destroy(m_pcEnvironmentReflections);
+         m_pcEnvironmentReflections = nullptr;
+      }
+      if(m_pcEnvironmentSkyboxTexture != nullptr) {
+         cEngine.destroy(m_pcEnvironmentSkyboxTexture);
+         m_pcEnvironmentSkyboxTexture = nullptr;
       }
       if(m_cSunlight) {
          m_pcEngine->GetScene().remove(m_cSunlight);
@@ -664,10 +681,69 @@ namespace argos {
                                   float(cDirection.GetY()),
                                   float(cDirection.GetZ())});
       cLights.setIntensity(cSun, float(f_intensity));
-      /* The ambient light follows the sun */
-      if(m_pcAmbientLight != nullptr) {
+      /* The ambient light follows the sun, unless it comes from an
+       * HDR environment with its own intensity */
+      if(m_pcAmbientLight != nullptr && !m_bHasEnvironment) {
          m_pcAmbientLight->setIntensity(float(f_intensity) * 0.2f);
       }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   static filament::Texture* LoadKtxTexture(filament::Engine& c_engine,
+                                            const std::string& str_file,
+                                            image::Ktx1Bundle** ppc_bundle) {
+      std::ifstream cFile(str_file, std::ios::binary | std::ios::ate);
+      if(!cFile) {
+         THROW_ARGOSEXCEPTION("Cannot open environment map \""
+                              << str_file << "\"");
+      }
+      std::vector<UInt8> vecBytes(size_t(cFile.tellg()));
+      cFile.seekg(0);
+      cFile.read(reinterpret_cast<char*>(vecBytes.data()), vecBytes.size());
+      auto* pcBundle = new image::Ktx1Bundle(vecBytes.data(),
+                                             uint32_t(vecBytes.size()));
+      if(ppc_bundle != nullptr) {
+         *ppc_bundle = pcBundle;
+      }
+      /* The reader destroys the bundle once the data is uploaded */
+      return ktxreader::Ktx1Reader::createTexture(&c_engine, pcBundle, false);
+   }
+
+   void CPRSceneSync::LoadEnvironment(const std::string& str_ibl_file,
+                                      const std::string& str_skybox_file,
+                                      Real f_intensity) {
+      filament::Engine& cEngine = m_pcEngine->GetEngine();
+      /* The prefiltered reflections cubemap carries the irradiance
+       * spherical harmonics in its metadata */
+      image::Ktx1Bundle* pcIblBundle = nullptr;
+      m_pcEnvironmentReflections =
+         LoadKtxTexture(cEngine, str_ibl_file, &pcIblBundle);
+      float3 pcSphericalHarmonics[9];
+      if(!pcIblBundle->getSphericalHarmonics(pcSphericalHarmonics)) {
+         THROW_ARGOSEXCEPTION("\"" << str_ibl_file << "\" carries no "
+                              "irradiance data; generate it with cmgen");
+      }
+      if(m_pcAmbientLight != nullptr) {
+         cEngine.destroy(m_pcAmbientLight);
+      }
+      m_pcAmbientLight = filament::IndirectLight::Builder()
+         .reflections(m_pcEnvironmentReflections)
+         .irradiance(3, pcSphericalHarmonics)
+         .intensity(float(f_intensity))
+         .build(cEngine);
+      m_pcEngine->GetScene().setIndirectLight(m_pcAmbientLight);
+      if(!str_skybox_file.empty()) {
+         m_pcEnvironmentSkyboxTexture =
+            LoadKtxTexture(cEngine, str_skybox_file, nullptr);
+         m_pcEnvironmentSkybox = filament::Skybox::Builder()
+            .environment(m_pcEnvironmentSkyboxTexture)
+            .intensity(float(f_intensity))
+            .build(cEngine);
+         m_pcEngine->GetScene().setSkybox(m_pcEnvironmentSkybox);
+      }
+      m_bHasEnvironment = true;
    }
 
    /****************************************/

@@ -33,6 +33,7 @@ namespace filament {
    class MaterialInstance;
    class IndirectLight;
    class Texture;
+   class Skybox;
 }
 
 #include <argos3/core/utility/datatypes/datatypes.h>
@@ -95,8 +96,20 @@ namespace argos {
       UInt16 GetEntityId(const CEmbodiedEntity& c_entity) const;
 
       /**
+       * Replaces the constant ambient light and the sky with an HDR
+       * environment: a prefiltered reflections cubemap and a skybox
+       * cubemap in KTX1 format, as produced by Filament's cmgen tool
+       * (<name>_ibl.ktx and <name>_skybox.ktx). The skybox path may
+       * be empty to keep the current sky.
+       */
+      void LoadEnvironment(const std::string& str_ibl_file,
+                           const std::string& str_skybox_file,
+                           Real f_intensity);
+
+      /**
        * Changes the sunlight direction and intensity at runtime; the
-       * ambient light intensity follows the sun.
+       * ambient light intensity follows the sun unless an HDR
+       * environment is loaded.
        */
       void SetSunlight(const CVector3& c_direction, Real f_intensity);
 
@@ -195,6 +208,11 @@ namespace argos {
       SPRMesh m_sPlaneMesh;
       utils::Entity m_cSunlight;
       filament::IndirectLight* m_pcAmbientLight = nullptr;
+      /* HDR environment, when loaded */
+      bool m_bHasEnvironment = false;
+      filament::Texture* m_pcEnvironmentReflections = nullptr;
+      filament::Texture* m_pcEnvironmentSkyboxTexture = nullptr;
+      filament::Skybox* m_pcEnvironmentSkybox = nullptr;
       /* Floor */
       utils::Entity m_cFloor;
       filament::MaterialInstance* m_pcFloorMaterial = nullptr;

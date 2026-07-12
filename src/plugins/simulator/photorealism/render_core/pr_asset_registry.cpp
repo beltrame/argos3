@@ -202,42 +202,49 @@ namespace argos {
          !ParseDescriptor(strDescriptorFile, sAsset.Descriptor)) {
          return sAsset;
       }
-      /* Load the model */
-      std::ifstream cFile(sAsset.Descriptor.ModelPath,
+      LoadModelFile(sAsset, "entity type \"" + str_type + "\"");
+      return sAsset;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRAssetRegistry::LoadModelFile(SAsset& s_asset,
+                                        const std::string& str_label) {
+      std::ifstream cFile(s_asset.Descriptor.ModelPath,
                           std::ios::binary | std::ios::ate);
       if(!cFile) {
          LOGERR << "[WARNING] Cannot open model \""
-                << sAsset.Descriptor.ModelPath << "\" for entity type \""
-                << str_type << "\"" << std::endl;
-         return sAsset;
+                << s_asset.Descriptor.ModelPath << "\" for "
+                << str_label << std::endl;
+         return;
       }
       std::vector<UInt8> vecBytes(size_t(cFile.tellg()));
       cFile.seekg(0);
       cFile.read(reinterpret_cast<char*>(vecBytes.data()), vecBytes.size());
       gltfio::FilamentInstance* pcFirstInstance = nullptr;
-      sAsset.Asset = m_pcLoader->createInstancedAsset(
+      s_asset.Asset = m_pcLoader->createInstancedAsset(
          vecBytes.data(), uint32_t(vecBytes.size()), &pcFirstInstance, 1);
-      if(sAsset.Asset == nullptr) {
+      if(s_asset.Asset == nullptr) {
          LOGERR << "[WARNING] Cannot parse model \""
-                << sAsset.Descriptor.ModelPath << "\" for entity type \""
-                << str_type << "\"" << std::endl;
-         return sAsset;
+                << s_asset.Descriptor.ModelPath << "\" for "
+                << str_label << std::endl;
+         return;
       }
-      if(!m_pcResourceLoader->loadResources(sAsset.Asset)) {
+      if(!m_pcResourceLoader->loadResources(s_asset.Asset)) {
          LOGERR << "[WARNING] Cannot load the resources of model \""
-                << sAsset.Descriptor.ModelPath << "\" for entity type \""
-                << str_type << "\"" << std::endl;
-         m_pcLoader->destroyAsset(sAsset.Asset);
-         sAsset.Asset = nullptr;
-         return sAsset;
+                << s_asset.Descriptor.ModelPath << "\" for "
+                << str_label << std::endl;
+         m_pcLoader->destroyAsset(s_asset.Asset);
+         s_asset.Asset = nullptr;
+         return;
       }
       /* The first instance is kept for the first entity */
       SInstance sSpare;
       sSpare.Main = pcFirstInstance;
-      sAsset.Recycled.push_back(sSpare);
-      LOG << "[INFO] Loaded visual \"" << sAsset.Descriptor.ModelPath
-          << "\" for entity type \"" << str_type << "\"" << std::endl;
-      return sAsset;
+      s_asset.Recycled.push_back(sSpare);
+      LOG << "[INFO] Loaded visual \"" << s_asset.Descriptor.ModelPath
+          << "\" for " << str_label << std::endl;
    }
 
    /****************************************/
@@ -256,7 +263,49 @@ namespace argos {
    CPRAssetRegistry::CreateInstance(const std::string& str_type,
                                     UInt16 un_entity_id,
                                     UInt8 un_class_id) {
-      SAsset& sAsset = LoadAsset(str_type);
+      return InstantiateAsset(LoadAsset(str_type),
+                              un_entity_id, un_class_id, str_type);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   CPRAssetRegistry::SInstance
+   CPRAssetRegistry::CreateModelInstance(const std::string& str_model_path,
+                                         UInt16 un_entity_id,
+                                         UInt8 un_class_id) {
+      /* Path-based assets are cached under a key that cannot clash
+       * with entity type descriptions */
+      SAsset& sAsset = m_mapAssets["model:" + str_model_path];
+      if(sAsset.Asset == nullptr && sAsset.Descriptor.ModelPath.empty()) {
+         sAsset.Descriptor.ModelPath = str_model_path;
+         LoadModelFile(sAsset, "the scenery");
+      }
+      return InstantiateAsset(sAsset, un_entity_id, un_class_id,
+                              str_model_path);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRAssetRegistry::ReleaseModelInstance(const std::string& str_model_path,
+                                               SInstance& s_instance) {
+      if(s_instance.Main == nullptr) {
+         return;
+      }
+      DetachFromScenes(s_instance);
+      m_mapAssets["model:" + str_model_path].Recycled.push_back(s_instance);
+      s_instance = SInstance();
+   }
+
+   /****************************************/
+   /****************************************/
+
+   CPRAssetRegistry::SInstance
+   CPRAssetRegistry::InstantiateAsset(SAsset& sAsset,
+                                      UInt16 un_entity_id,
+                                      UInt8 un_class_id,
+                                      const std::string& str_label) {
       if(sAsset.Asset == nullptr) {
          return SInstance();
       }
@@ -272,15 +321,15 @@ namespace argos {
          sInstance.Main = m_pcLoader->createInstance(sAsset.Asset);
       }
       if(sInstance.Main == nullptr) {
-         LOGERR << "[WARNING] Cannot instantiate visual for entity type \""
-                << str_type << "\"" << std::endl;
+         LOGERR << "[WARNING] Cannot instantiate visual \""
+                << str_label << "\"" << std::endl;
          return SInstance();
       }
       if(sInstance.Aux == nullptr) {
          sInstance.Aux = m_pcLoader->createInstance(sAsset.Asset);
          if(sInstance.Aux == nullptr) {
             LOGERR << "[WARNING] Cannot instantiate the segmentation visual "
-                      "for entity type \"" << str_type << "\"" << std::endl;
+                      "\"" << str_label << "\"" << std::endl;
             sAsset.Recycled.push_back(sInstance);
             return SInstance();
          }

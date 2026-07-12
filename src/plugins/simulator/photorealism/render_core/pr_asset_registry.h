@@ -112,6 +112,17 @@ namespace argos {
       void ReleaseInstance(const std::string& str_type,
                            SInstance& s_instance);
 
+      /**
+       * Like CreateInstance()/ReleaseInstance(), but for a glTF model
+       * given directly by path (no descriptor); used for scenery.
+       */
+      SInstance CreateModelInstance(const std::string& str_model_path,
+                                    UInt16 un_entity_id,
+                                    UInt8 un_class_id);
+
+      void ReleaseModelInstance(const std::string& str_model_path,
+                                SInstance& s_instance);
+
    private:
 
       struct SAsset {
@@ -123,6 +134,11 @@ namespace argos {
       };
 
       SAsset& LoadAsset(const std::string& str_type);
+      void LoadModelFile(SAsset& s_asset, const std::string& str_label);
+      SInstance InstantiateAsset(SAsset& s_asset,
+                                 UInt16 un_entity_id,
+                                 UInt8 un_class_id,
+                                 const std::string& str_label);
       bool ParseDescriptor(const std::string& str_file,
                            SPRVisualDescriptor& s_descriptor);
       void AttachToScenes(SInstance& s_instance);

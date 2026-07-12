@@ -105,6 +105,25 @@ namespace argos {
       CPRSceneSync::SSunlight m_sSunlight;
       CVector3 m_cSkyColor = CVector3(0.53, 0.71, 0.92);
 
+      /* HDR environment (cmgen KTX pair), replaces the constant
+       * ambient light and the color skybox when configured */
+      struct SEnvironment {
+         bool Enabled = false;
+         std::string Ibl;
+         std::string Skybox;
+         Real Intensity = 30000.0;
+      } m_sEnvironment;
+
+      /* Static glTF props dressing the scene (render-only) */
+      struct SProp {
+         std::string Model;
+         CVector3 Position;
+         CVector3 OrientationEuler; /* z,y,x degrees */
+         Real Scale = 1.0;
+         CPRAssetRegistry::SInstance Instance;
+      };
+      std::vector<SProp> m_vecProps;
+
       struct SDebugCamera {
          bool Enabled = false;
          CVector3 Position = CVector3(2.0, 2.0, 2.0);

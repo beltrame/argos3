@@ -56,6 +56,39 @@ other's symbols.
 
 Run `argos3 -q photorealism` for the full configuration reference.
 
+## HDR environments and scenery
+
+Instead of the constant sky and ambient light, the medium can take
+its lighting and sky from an HDR environment prefiltered with
+Filament's `cmgen` tool, and static glTF props can dress the scene
+(render-only, no physics):
+
+```xml
+<photorealism id="pr">
+  <environment ibl="assets/venetian_crossroads_ibl.ktx"
+               skybox="assets/venetian_crossroads_skybox.ktx"
+               intensity="25000" />
+  <sun direction="0.5,0.4,-0.8" intensity="70000" cast_shadows="true" />
+  <scenery>
+    <prop model="assets/DamagedHelmet.glb"
+          position="4,0,1.2" orientation="180,0,90" scale="1.5" />
+  </scenery>
+</photorealism>
+```
+
+Generate the KTX pair from any equirectangular HDR with:
+
+    cmgen --format=ktx --size=256 --deploy=. environment.hdr
+
+`cmgen` follows the glTF y-up convention; re-project the HDR to z-up
+first (see `rotate_env.py` in the argos3-examples drone_photo_tour
+experiment) so the sky ends up overhead in the ARGoS world. The
+`<environment>` replaces the ambient light and, when a skybox is
+given, the `<skybox>` color; the `<sun>` remains available for crisp
+shadows. Props take the same position/orientation/scale attributes as
+visual descriptors and appear in the RGB image only (segmentation
+id 0), so ground-truth labels stay clean.
+
 On a machine without a GPU, select the software Vulkan driver:
 
     VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.json argos3 -c experiment.argos

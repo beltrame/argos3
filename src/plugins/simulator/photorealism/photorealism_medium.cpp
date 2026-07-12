@@ -18,7 +18,11 @@
 #include <filament/Texture.h>
 #include <filament/RenderTarget.h>
 #include <filament/Skybox.h>
+#include <filament/TransformManager.h>
+#include <gltfio/FilamentInstance.h>
 #include <utils/EntityManager.h>
+#include <math/mat4.h>
+#include <math/quat.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <argos3/plugins/simulator/photorealism/render_core/stb_image_write.h>
@@ -63,6 +67,34 @@ namespace argos {
             TConfigurationNode& tSkybox = GetNode(t_tree, "skybox");
             GetNodeAttributeOrDefault(tSkybox, "color", m_cSkyColor, m_cSkyColor);
          }
+         if(NodeExists(t_tree, "environment")) {
+            TConfigurationNode& tEnvironment = GetNode(t_tree, "environment");
+            m_sEnvironment.Enabled = true;
+            GetNodeAttribute(tEnvironment, "ibl", m_sEnvironment.Ibl);
+            GetNodeAttributeOrDefault(tEnvironment, "skybox",
+                                      m_sEnvironment.Skybox,
+                                      m_sEnvironment.Skybox);
+            GetNodeAttributeOrDefault(tEnvironment, "intensity",
+                                      m_sEnvironment.Intensity,
+                                      m_sEnvironment.Intensity);
+         }
+         if(NodeExists(t_tree, "scenery")) {
+            TConfigurationNodeIterator tPropIterator("prop");
+            for(tPropIterator = tPropIterator.begin(&GetNode(t_tree, "scenery"));
+                tPropIterator != tPropIterator.end();
+                ++tPropIterator) {
+               SProp sProp;
+               GetNodeAttribute(*tPropIterator, "model", sProp.Model);
+               GetNodeAttributeOrDefault(*tPropIterator, "position",
+                                         sProp.Position, sProp.Position);
+               GetNodeAttributeOrDefault(*tPropIterator, "orientation",
+                                         sProp.OrientationEuler,
+                                         sProp.OrientationEuler);
+               GetNodeAttributeOrDefault(*tPropIterator, "scale",
+                                         sProp.Scale, sProp.Scale);
+               m_vecProps.push_back(sProp);
+            }
+         }
          if(NodeExists(t_tree, "debug_camera")) {
             TConfigurationNode& tCamera = GetNode(t_tree, "debug_camera");
             m_sDebugCamera.Enabled = true;
@@ -90,14 +122,17 @@ namespace argos {
    void CPhotorealismMedium::PostSpaceInit() {
       try {
          m_cEngine.Create(m_strBackend);
-         /* Constant-color sky */
-         m_pcSkybox = filament::Skybox::Builder()
-            .color({float(m_cSkyColor.GetX()),
-                    float(m_cSkyColor.GetY()),
-                    float(m_cSkyColor.GetZ()),
-                    1.0f})
-            .build(m_cEngine.GetEngine());
-         m_cEngine.GetScene().setSkybox(m_pcSkybox);
+         /* Constant-color sky, unless an HDR environment provides
+          * the skybox */
+         if(!m_sEnvironment.Enabled || m_sEnvironment.Skybox.empty()) {
+            m_pcSkybox = filament::Skybox::Builder()
+               .color({float(m_cSkyColor.GetX()),
+                       float(m_cSkyColor.GetY()),
+                       float(m_cSkyColor.GetZ()),
+                       1.0f})
+               .build(m_cEngine.GetEngine());
+            m_cEngine.GetScene().setSkybox(m_pcSkybox);
+         }
          CSpace& cSpace = CSimulator::GetInstance().GetSpace();
          m_cIdScene.Init(m_cEngine);
          m_cAssetRegistry.Init(m_cEngine, m_cIdScene, m_strAssetPath);
@@ -105,6 +140,40 @@ namespace argos {
                            m_sSunlight,
                            cSpace.GetArenaSize(),
                            cSpace.GetArenaCenter());
+         if(m_sEnvironment.Enabled) {
+            m_cSceneSync.LoadEnvironment(m_sEnvironment.Ibl,
+                                         m_sEnvironment.Skybox,
+                                         m_sEnvironment.Intensity);
+         }
+         /* Static scenery props */
+         filament::TransformManager& cTransforms =
+            m_cEngine.GetEngine().getTransformManager();
+         for(SProp& s_prop : m_vecProps) {
+            s_prop.Instance =
+               m_cAssetRegistry.CreateModelInstance(s_prop.Model, 0, 0);
+            if(s_prop.Instance.Main == nullptr) {
+               THROW_ARGOSEXCEPTION("Cannot load scenery model \""
+                                    << s_prop.Model << "\"");
+            }
+            CQuaternion cOrientation;
+            cOrientation.FromEulerAngles(
+               ToRadians(CDegrees(s_prop.OrientationEuler.GetX())),
+               ToRadians(CDegrees(s_prop.OrientationEuler.GetY())),
+               ToRadians(CDegrees(s_prop.OrientationEuler.GetZ())));
+            cTransforms.setTransform(
+               cTransforms.getInstance(s_prop.Instance.Main->getRoot()),
+               filament::math::mat4f::translation(
+                  filament::math::float3{float(s_prop.Position.GetX()),
+                                         float(s_prop.Position.GetY()),
+                                         float(s_prop.Position.GetZ())}) *
+               filament::math::mat4f(
+                  filament::math::quatf(float(cOrientation.GetW()),
+                                        float(cOrientation.GetX()),
+                                        float(cOrientation.GetY()),
+                                        float(cOrientation.GetZ()))) *
+               filament::math::mat4f::scaling(
+                  filament::math::float3{float(s_prop.Scale)}));
+         }
          m_cCameraPool.Init(m_cEngine, m_cIdScene, m_bImmediate);
          if(m_sDebugCamera.Enabled) {
             CreateDebugCamera();
@@ -163,6 +232,9 @@ namespace argos {
          m_pcDebugView = nullptr;
       }
       m_cSceneSync.Destroy();
+      for(SProp& s_prop : m_vecProps) {
+         m_cAssetRegistry.ReleaseModelInstance(s_prop.Model, s_prop.Instance);
+      }
       m_cAssetRegistry.Destroy();
       m_cIdScene.Destroy();
       if(m_pcSkybox != nullptr) {

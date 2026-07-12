@@ -77,6 +77,8 @@ add_custom_command(
           --whole-archive ${FILAMENT_CORE_LIBRARIES}
           ${FILAMENT_gltfio_core_LIBRARY}
           ${FILAMENT_uberarchive_LIBRARY}
+          ${FILAMENT_ktxreader_LIBRARY}
+          ${FILAMENT_image_LIBRARY}
           --no-whole-archive ${FILAMENT_GLTFIO_LIBRARIES}
           ${FILAMENT_LIBCXX_LIBRARIES}
   COMMAND ${CMAKE_OBJCOPY} -w
