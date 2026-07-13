@@ -627,17 +627,16 @@ namespace argos {
    /****************************************/
    /****************************************/
 
-   void CPRCameraPool::UpdateCameraTransform(SCamera& s_camera) {
-      const SPRCameraConfig& sConfig = s_camera.Config;
-      const CVector3& cAnchorPosition = sConfig.Anchor->Position;
-      const CQuaternion& cAnchorOrientation = sConfig.Anchor->Orientation;
+   mat4f CPRCameraPool::ComputeViewTransform(const SPRCameraConfig& s_config) {
+      const CVector3& cAnchorPosition = s_config.Anchor->Position;
+      const CQuaternion& cAnchorOrientation = s_config.Anchor->Orientation;
       /* Maps the Filament camera axes (looks along -z, +y up) onto the
        * mount frame (looks along +x, +z up) */
       static const mat4f cAxisFix(mat3f(
          float3{0.0f, -1.0f, 0.0f},   /* camera x -> mount -y */
          float3{0.0f, 0.0f, 1.0f},    /* camera y -> mount +z */
          float3{-1.0f, 0.0f, 0.0f})); /* camera z -> mount -x */
-      mat4f cTransform =
+      return
          mat4f::translation(float3{float(cAnchorPosition.GetX()),
                                    float(cAnchorPosition.GetY()),
                                    float(cAnchorPosition.GetZ())}) *
@@ -645,15 +644,33 @@ namespace argos {
                      float(cAnchorOrientation.GetX()),
                      float(cAnchorOrientation.GetY()),
                      float(cAnchorOrientation.GetZ()))) *
-         mat4f::translation(float3{float(sConfig.PositionOffset.GetX()),
-                                   float(sConfig.PositionOffset.GetY()),
-                                   float(sConfig.PositionOffset.GetZ())}) *
-         mat4f(quatf(float(sConfig.OrientationOffset.GetW()),
-                     float(sConfig.OrientationOffset.GetX()),
-                     float(sConfig.OrientationOffset.GetY()),
-                     float(sConfig.OrientationOffset.GetZ()))) *
+         mat4f::translation(float3{float(s_config.PositionOffset.GetX()),
+                                   float(s_config.PositionOffset.GetY()),
+                                   float(s_config.PositionOffset.GetZ())}) *
+         mat4f(quatf(float(s_config.OrientationOffset.GetW()),
+                     float(s_config.OrientationOffset.GetX()),
+                     float(s_config.OrientationOffset.GetY()),
+                     float(s_config.OrientationOffset.GetZ()))) *
          cAxisFix;
-      s_camera.Camera->setModelMatrix(cTransform);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   std::vector<UInt32> CPRCameraPool::GetHandles() const {
+      std::vector<UInt32> vecHandles;
+      vecHandles.reserve(m_mapCameras.size());
+      for(const auto& tCamera : m_mapCameras) {
+         vecHandles.push_back(tCamera.first);
+      }
+      return vecHandles;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRCameraPool::UpdateCameraTransform(SCamera& s_camera) {
+      s_camera.Camera->setModelMatrix(ComputeViewTransform(s_camera.Config));
    }
 
    /****************************************/

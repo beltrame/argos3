@@ -139,7 +139,12 @@ own Filament renderer, so its vsync never interferes with the sensor
 pipeline). SPACE pauses, N single-steps; W/A/S/D/Q/E fly the camera
 (SHIFT accelerates), left-drag looks around, right- or middle-drag
 pans, and the scroll wheel dollies; ESC quits. `speed` scales real
-time (0 = as fast as possible). Building the viewer needs the SDL2 headers
+time (0 = as fast as possible). With `inset_camera="<robot id>"` the
+window shows what that robot's photorealistic camera sees as a
+bottom-right inset, rendered live at the window frame rate from the
+sensor's pose, field of view, and aspect ratio (`inset_size` sets its
+height as a window fraction). With `screenshot="<prefix>"` the window
+is saved to `<prefix>_<clock>.png` every `screenshot_period` ticks. Building the viewer needs the SDL2 headers
 (`apt install libsdl2-dev`, or extract them next to the SDK like the
 libc++ runtime; see `FindARGoSSDL2.cmake`). The window is X11 (via
 XWayland on Wayland desktops), matching the surface support of the

@@ -53,6 +53,7 @@ namespace filament {
 #include <argos3/plugins/simulator/photorealism/render_core/pr_mesh_builder.h>
 
 #include <utils/Entity.h>
+#include <math/mat4.h>
 
 #include <chrono>
 #include <map>
@@ -146,6 +147,18 @@ namespace argos {
       const SOutput& GetOutput(UInt32 un_handle) const;
 
       const SPRCameraConfig& GetConfig(UInt32 un_handle) const;
+
+      /** The handles of all registered cameras */
+      std::vector<UInt32> GetHandles() const;
+
+      /**
+       * The world transform of a camera (anchor pose composed with
+       * the mount offsets and the axis fix that maps the Filament
+       * camera onto the +x-forward, +z-up mount frame). Also used by
+       * the filament visualization for its camera-view inset.
+       */
+      static filament::math::mat4f
+      ComputeViewTransform(const SPRCameraConfig& s_config);
 
       inline const SStats& GetStats() const {
          return m_sStats;

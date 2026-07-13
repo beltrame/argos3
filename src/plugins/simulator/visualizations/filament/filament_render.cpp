@@ -20,12 +20,17 @@
 #include <filament/SwapChain.h>
 #include <utils/EntityManager.h>
 
+#include <argos3/plugins/simulator/photorealism/render_core/stb_image_write.h>
+#include <backend/PixelBufferDescriptor.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
+#include <vector>
 
 namespace argos {
 
@@ -49,6 +54,10 @@ namespace argos {
          GetNodeAttributeOrDefault(t_tree, "speed", m_fSpeed, m_fSpeed);
          GetNodeAttributeOrDefault(t_tree, "paused", m_bStartPaused, m_bStartPaused);
          GetNodeAttributeOrDefault(t_tree, "autoclose", m_unAutoCloseTicks, m_unAutoCloseTicks);
+         GetNodeAttributeOrDefault(t_tree, "inset_camera", m_strInsetRobot, m_strInsetRobot);
+         GetNodeAttributeOrDefault(t_tree, "inset_size", m_fInsetSize, m_fInsetSize);
+         GetNodeAttributeOrDefault(t_tree, "screenshot", m_strScreenshotPrefix, m_strScreenshotPrefix);
+         GetNodeAttributeOrDefault(t_tree, "screenshot_period", m_unScreenshotPeriod, m_unScreenshotPeriod);
       }
       catch(CARGoSException& ex) {
          THROW_ARGOSEXCEPTION_NESTED("Error initializing the Filament visualization", ex);
@@ -105,10 +114,73 @@ namespace argos {
       m_fPitch = std::atan2(cDirection.GetZ(),
                             std::sqrt(cDirection.GetX() * cDirection.GetX() +
                                       cDirection.GetY() * cDirection.GetY()));
+      if(!m_strInsetRobot.empty()) {
+         CreateInset();
+      }
       m_bPaused = m_bStartPaused;
       LOG << "[INFO] Filament visualization: SPACE pauses, N steps once, "
              "WASD/QE move (SHIFT: faster), left-drag looks, "
              "right-drag pans, wheel dollies, ESC quits" << std::endl;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CFilamentRender::CreateInset() {
+      /* Find the first photorealistic camera mounted on the robot */
+      CPRCameraPool& cPool = m_pcMedium->GetCameraPool();
+      for(UInt32 unHandle : cPool.GetHandles()) {
+         const SPRCameraConfig& sConfig = cPool.GetConfig(unHandle);
+         if(sConfig.Anchor != nullptr &&
+            sConfig.Anchor->Body.GetRootEntity().GetId() == m_strInsetRobot) {
+            m_unInsetCameraHandle = unHandle;
+            m_bInsetFound = true;
+            break;
+         }
+      }
+      if(!m_bInsetFound) {
+         LOGERR << "[WARNING] Filament visualization: robot \""
+                << m_strInsetRobot << "\" has no photorealistic camera; "
+                "the inset is disabled" << std::endl;
+         return;
+      }
+      filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
+      m_cInsetCameraEntity = utils::EntityManager::get().create();
+      m_pcInsetCamera = cEngine.createCamera(m_cInsetCameraEntity);
+      m_pcInsetCamera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
+      m_pcInsetView = cEngine.createView();
+      m_pcInsetView->setScene(&m_pcMedium->GetRenderEngine().GetScene());
+      m_pcInsetView->setCamera(m_pcInsetCamera);
+      LayOutInset();
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CFilamentRender::LayOutInset() {
+      if(!m_bInsetFound) {
+         return;
+      }
+      const SPRCameraConfig& sConfig =
+         m_pcMedium->GetCameraPool().GetConfig(m_unInsetCameraHandle);
+      /* The inset has the sensor's aspect ratio and field of view,
+       * anchored to the bottom-right corner with a small margin */
+      UInt32 unMargin = 12;
+      UInt32 unHeight = UInt32(m_unHeight * m_fInsetSize);
+      UInt32 unWidth = UInt32(Real(unHeight) * sConfig.Width / sConfig.Height);
+      if(unWidth + 2 * unMargin > m_unWidth) {
+         unWidth = m_unWidth / 3;
+         unHeight = UInt32(Real(unWidth) * sConfig.Height / sConfig.Width);
+      }
+      m_pcInsetView->setViewport(
+         filament::Viewport(SInt32(m_unWidth - unWidth - unMargin),
+                            SInt32(unMargin),
+                            unWidth, unHeight));
+      m_pcInsetCamera->setProjection(
+         double(sConfig.FieldOfView),
+         double(unWidth) / double(unHeight),
+         double(sConfig.NearPlane), double(sConfig.FarPlane),
+         filament::Camera::Fov::VERTICAL);
    }
 
    /****************************************/
@@ -120,6 +192,13 @@ namespace argos {
       }
       filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
       cEngine.flushAndWait();
+      if(m_pcInsetView != nullptr) {
+         cEngine.destroy(m_pcInsetView);
+         cEngine.destroyCameraComponent(m_cInsetCameraEntity);
+         utils::EntityManager::get().destroy(m_cInsetCameraEntity);
+         m_pcInsetView = nullptr;
+         m_pcInsetCamera = nullptr;
+      }
       cEngine.destroy(m_pcView);
       cEngine.destroyCameraComponent(m_cCameraEntity);
       utils::EntityManager::get().destroy(m_cCameraEntity);
@@ -215,6 +294,7 @@ namespace argos {
                      double(m_unWidth) / double(m_unHeight),
                      0.05, 250.0,
                      filament::Camera::Fov::VERTICAL);
+                  LayOutInset();
                }
                break;
             default:
@@ -259,9 +339,53 @@ namespace argos {
    /****************************************/
 
    void CFilamentRender::RenderFrame() {
-      if(m_pcRenderer->beginFrame(m_pcSwapChain)) {
-         m_pcRenderer->render(m_pcView);
-         m_pcRenderer->endFrame();
+      if(!m_pcRenderer->beginFrame(m_pcSwapChain)) {
+         return;
+      }
+      m_pcRenderer->render(m_pcView);
+      if(m_bInsetFound) {
+         /* Live view from the robot camera's pose */
+         m_pcInsetCamera->setModelMatrix(
+            CPRCameraPool::ComputeViewTransform(
+               m_pcMedium->GetCameraPool().GetConfig(m_unInsetCameraHandle)));
+         m_pcRenderer->render(m_pcInsetView);
+      }
+      /* Periodic window screenshots */
+      bool bShotDone = false;
+      std::vector<UInt8> vecPixels;
+      UInt32 unClock = m_cSpace.GetSimulationClock();
+      bool bShotDue =
+         !m_strScreenshotPrefix.empty() &&
+         unClock >= m_unLastScreenshotTick + m_unScreenshotPeriod;
+      if(bShotDue) {
+         m_unLastScreenshotTick = unClock;
+         vecPixels.resize(size_t(m_unWidth) * m_unHeight * 4);
+         filament::backend::PixelBufferDescriptor cDescriptor(
+            vecPixels.data(), vecPixels.size(),
+            filament::backend::PixelDataFormat::RGBA,
+            filament::backend::PixelDataType::UBYTE,
+            [](void*, size_t, void* pt_user) {
+               *static_cast<bool*>(pt_user) = true;
+            },
+            &bShotDone);
+         m_pcRenderer->readPixels(0, 0, m_unWidth, m_unHeight,
+                                  std::move(cDescriptor));
+      }
+      m_pcRenderer->endFrame();
+      if(bShotDue) {
+         m_pcMedium->GetRenderEngine().GetEngine().flushAndWait();
+         if(bShotDone) {
+            char pchName[256];
+            ::snprintf(pchName, sizeof(pchName), "%s_%010u.png",
+                       m_strScreenshotPrefix.c_str(), unClock);
+            /* Vulkan readPixels rows are already top-to-bottom */
+            size_t unStride = size_t(m_unWidth) * 4;
+            if(stbi_write_png(pchName, int(m_unWidth), int(m_unHeight), 4,
+                              vecPixels.data(), int(unStride)) == 0) {
+               LOGERR << "[WARNING] Cannot write screenshot \""
+                      << pchName << "\"" << std::endl;
+            }
+         }
       }
    }
 
@@ -364,6 +488,12 @@ namespace argos {
                           "'medium' is the id of the photorealism medium to display. 'speed' is the\n"
                           "simulation speed factor (1 = real time, 2 = twice as fast, 0 = as fast\n"
                           "as possible). 'position'/'look_at' set the initial camera pose.\n\n"
+
+                          "With inset_camera=\"<robot id>\" the window shows what that robot's\n"
+                          "photorealistic camera sees as an inset in the bottom-right corner,\n"
+                          "rendered live at the window frame rate from the sensor's pose, field\n"
+                          "of view, and aspect ratio. 'inset_size' (default 0.3) is the inset\n"
+                          "height as a fraction of the window height.\n\n"
 
                           "INTERACTION\n\n"
                           "SPACE pauses and resumes; N steps one tick. W/A/S/D fly forward/left/\n"

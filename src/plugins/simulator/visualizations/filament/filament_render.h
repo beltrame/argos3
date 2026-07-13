@@ -51,6 +51,8 @@ namespace argos {
    private:
 
       void CreateWindow();
+      void CreateInset();
+      void LayOutInset();
       void DestroyWindow();
       /** Returns false when the user asked to quit */
       bool HandleEvents(Real f_frame_seconds);
@@ -75,6 +77,16 @@ namespace argos {
       /* Close automatically after this many ticks (0 = never); used
        * by the automated tests */
       UInt32 m_unAutoCloseTicks = 0;
+      /* Robot whose photorealistic camera is shown as an inset in a
+       * window corner (empty = no inset), and the inset height as a
+       * fraction of the window height */
+      std::string m_strInsetRobot;
+      Real m_fInsetSize = 0.3;
+      /* Window screenshots: written every screenshot_period ticks to
+       * <screenshot>_<clock>.png (empty = disabled) */
+      std::string m_strScreenshotPrefix;
+      UInt32 m_unScreenshotPeriod = 100;
+      UInt32 m_unLastScreenshotTick = 0;
 
       /* Runtime state */
       CPhotorealismMedium* m_pcMedium = nullptr;
@@ -86,6 +98,12 @@ namespace argos {
       filament::View* m_pcView = nullptr;
       filament::Camera* m_pcCamera = nullptr;
       utils::Entity m_cCameraEntity;
+      /* Camera-view inset */
+      filament::View* m_pcInsetView = nullptr;
+      filament::Camera* m_pcInsetCamera = nullptr;
+      utils::Entity m_cInsetCameraEntity;
+      UInt32 m_unInsetCameraHandle = 0;
+      bool m_bInsetFound = false;
       /* Free-fly camera pose */
       CVector3 m_cCameraPosition;
       Real m_fYaw = 0.0;
