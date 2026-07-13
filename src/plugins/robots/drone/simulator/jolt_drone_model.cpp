@@ -40,9 +40,9 @@ namespace argos {
          JPH::EMotionType::Dynamic,
          JoltLayers::MOVING);
       cSettings.mFriction = c_engine.GetDefaultFriction();
-      /* the original model has no air drag; the PIDs stabilize */
       cSettings.mLinearDamping = 0.0f;
-      cSettings.mAngularDamping = 0.0f;
+      /* mild rotational aero damping */
+      cSettings.mAngularDamping = 0.5f;
       cSettings.mMotionQuality = JPH::EMotionQuality::LinearCast;
       /* forces are applied every sub-step; never sleep */
       cSettings.mAllowSleeping = false;
@@ -95,7 +95,6 @@ namespace argos {
       m_fHomeYawAngle += fDeltaYaw;
       CVector3 cOffsetPosition(m_cHomePosition - m_cPosition);
       m_cHomePosition = c_position + cOffsetPosition.RotateZ(CRadians(fDeltaYaw));
-      m_cOrientationTargetPrev.SetZ(m_cOrientationTargetPrev.GetZ() + fDeltaYaw);
       /* move the body (also updates the entity status) */
       CJoltSingleBodyObjectModel::MoveTo(c_position, c_orientation);
    }
@@ -117,10 +116,11 @@ namespace argos {
       ToARGoS(cBodyRotation).ToEulerAngles(cYaw, cPitch, cRoll);
       m_cOrientation.Set(cRoll.GetValue(), cPitch.GetValue(), cYaw.GetValue());
       m_cVelocity = ToARGoS(cInterface.GetLinearVelocity(sBody.Id));
-      /* angular velocity in the body frame */
-      m_cAngularVelocity =
-         ToARGoS(cBodyRotation.Conjugated() *
-                 cInterface.GetAngularVelocity(sBody.Id));
+      /* angular velocity in the world frame: the ARGoS Euler angles
+       * are extrinsic (R = Rx*Ry*Rz), so roll and pitch are tilts
+       * about the WORLD axes and the attitude PIDs must see (and
+       * apply torques in, see UpdatePhysics) the world frame */
+      m_cAngularVelocity = ToARGoS(cInterface.GetAngularVelocity(sBody.Id));
    }
 
    /****************************************/
@@ -190,16 +190,18 @@ namespace argos {
       cTransVelocityError -= m_cVelocity;
       /* desired XY accelerations */
       CVector3 cTargetTransAcc = cTransVelocityError * XY_VEL_KP;
-      /* yaw angle correction to get the downward Z axis in the right
-       * handed coordinate system */
-      Real fYawAngleCorrected(m_cOrientation.GetZ() + M_PI);
-      /* outputs of the position controller */
-      Real fDesiredRollAngle = std::cos(m_cOrientation.GetY()) * std::cos(m_cOrientation.GetX()) *
-         (std::sin(fYawAngleCorrected) * cTargetTransAcc.GetX() -
-          std::cos(fYawAngleCorrected) * cTargetTransAcc.GetY()) / fGravity;
+      /* outputs of the position controller. The ARGoS Euler angles
+       * are EXTRINSIC (R = Rx*Ry*Rz): roll and pitch are tilts about
+       * the world axes, so the thrust direction is
+       * (sin(pitch), -sin(roll)cos(pitch), cos(roll)cos(pitch)),
+       * independent of yaw, and the tilt mapping needs no yaw terms
+       * (pointmass3d's yaw+pi trigonometry expresses the same mapping
+       * only after its sign conventions cancel; wired to a real rigid
+       * body it cross-couples the loops as yaw grows) */
+      Real fDesiredRollAngle = -std::cos(m_cOrientation.GetY()) * std::cos(m_cOrientation.GetX()) *
+         cTargetTransAcc.GetY() / fGravity;
       Real fDesiredPitchAngle = std::cos(m_cOrientation.GetY()) * std::cos(m_cOrientation.GetX()) *
-         (std::cos(fYawAngleCorrected) * cTargetTransAcc.GetX() +
-          std::sin(fYawAngleCorrected) * cTargetTransAcc.GetY()) / fGravity;
+         cTargetTransAcc.GetX() / fGravity;
       Real fDesiredYawAngle = m_fInputYawAngle;
       ROLL_PITCH_LIMIT.TruncValue(fDesiredRollAngle);
       ROLL_PITCH_LIMIT.TruncValue(fDesiredPitchAngle);
@@ -213,11 +215,41 @@ namespace argos {
                               ALTITUDE_KI,
                               ALTITUDE_KD) /
          (std::cos(m_cOrientation.GetX()) * std::cos(m_cOrientation.GetY()));
-      /* attitude (roll, pitch, yaw) control */
+      /* attitude (roll, pitch, yaw) control. This inner loop departs
+       * from pointmass3d in two ways required by exact rigid-body
+       * integration:
+       * - the yaw read from the Jolt body wraps at +/- pi (pointmass3d
+       *   integrates an unwrapped yaw state), so the yaw error must be
+       *   normalized or a wrap crossing looks like a full-turn error;
+       * - pointmass3d's angular-velocity target differentiates the
+       *   commanded attitude, which spikes when the position
+       *   controller moves its output between sub-steps; its half-step
+       *   integration absorbs the kicks, an exact integrator turns
+       *   them into a sustained attitude limit cycle; the feedforward
+       *   is therefore clamped to a physical slew rate */
       CVector3 cOrientationError(cOrientationTarget - m_cOrientation);
+      cOrientationError.SetZ(
+         NormalizedDifference(CRadians(cOrientationTarget.GetZ()),
+                              CRadians(m_cOrientation.GetZ())).GetValue());
+      /* Yaw-rate limit, implemented as a clamp on the yaw error fed
+       * to the PID. On a real rigid body a fast yaw rate r transports
+       * tilt between the roll and pitch channels (dphi/dt ~ wx +
+       * theta*r), a coupling absent from pointmass3d's per-axis
+       * integration; an unrestricted yaw slew destabilizes the tilt
+       * loops into a rotating +/- 50 deg cone */
+      Real fYawError = cOrientationError.GetZ();
+      YAW_ERROR_LIMIT.TruncValue(fYawError);
+      cOrientationError.SetZ(fYawError);
       CVector3 cAngularVelocityTarget =
          (cOrientationTarget - m_cOrientationTargetPrev) / fClockTick;
       m_cOrientationTargetPrev = cOrientationTarget;
+      Real fRateX = cAngularVelocityTarget.GetX();
+      Real fRateY = cAngularVelocityTarget.GetY();
+      Real fRateZ = cAngularVelocityTarget.GetZ();
+      ANGULAR_RATE_LIMIT.TruncValue(fRateX);
+      ANGULAR_RATE_LIMIT.TruncValue(fRateY);
+      ANGULAR_RATE_LIMIT.TruncValue(fRateZ);
+      cAngularVelocityTarget.Set(fRateX, fRateY, fRateZ);
       CVector3 cAngularVelocityError(cAngularVelocityTarget - m_cAngularVelocity);
       m_cAngularVelocityCumulativeError += cAngularVelocityError * fClockTick;
       Real fAttitudeControlSignalX = INERTIA.GetX() *
@@ -280,23 +312,19 @@ namespace argos {
        * original model are handled by Jolt's rigid-body integrator) */
       fTorqueX -= JR * m_cAngularVelocity.GetY() * fOmegaR;
       fTorqueY += JR * m_cAngularVelocity.GetX() * fOmegaR;
-      /* the world-frame thrust force, using the same expansion as the
-       * pointmass3d model (gravity itself is applied by Jolt) */
-      CVector3 cForce(
-         (std::cos(fYawAngleCorrected) * std::sin(m_cOrientation.GetY()) * std::cos(m_cOrientation.GetX()) +
-          std::sin(fYawAngleCorrected) * std::sin(m_cOrientation.GetX())) * fThrust,
-         (std::sin(fYawAngleCorrected) * std::sin(m_cOrientation.GetY()) * std::cos(m_cOrientation.GetX()) -
-          std::cos(fYawAngleCorrected) * std::sin(m_cOrientation.GetX())) * fThrust,
-         std::cos(m_cOrientation.GetY()) * std::cos(m_cOrientation.GetX()) * fThrust);
-      /* apply force and torques to the Jolt body */
+      /* apply the thrust along the true body z axis and the torques
+       * in the body frame (gravity itself is applied by Jolt) */
       JPH::BodyInterface& cInterface = GetJoltEngine().GetBodyInterface();
       const JPH::BodyID& cId = m_vecBodies[0].Id;
       JPH::Quat cBodyRotation = cInterface.GetRotation(cId);
-      cInterface.AddForce(cId, ToJolt(cForce));
+      cInterface.AddForce(
+         cId, cBodyRotation * JPH::Vec3(0.0f, 0.0f, float(fThrust)));
+      /* world-frame torques: the roll/pitch/yaw PIDs work on the
+       * extrinsic (world-axis) Euler angles */
       cInterface.AddTorque(
-         cId, cBodyRotation * JPH::Vec3(float(fTorqueX),
-                                        float(fTorqueY),
-                                        float(fTorqueZ)));
+         cId, JPH::Vec3(float(fTorqueX),
+                        float(fTorqueY),
+                        float(fTorqueZ)));
    }
 
    /****************************************/
@@ -323,6 +351,8 @@ namespace argos {
    const Real CJoltDroneModel::D = 1.4088e-7;
    const Real CJoltDroneModel::JR = 5.225e-5;
    const CRange<Real> CJoltDroneModel::TORQUE_LIMIT = CRange<Real>(-0.5721, 0.5721);
+   const CRange<Real> CJoltDroneModel::YAW_ERROR_LIMIT = CRange<Real>(-0.3, 0.3);
+   const CRange<Real> CJoltDroneModel::ANGULAR_RATE_LIMIT = CRange<Real>(-3.0, 3.0);
    const CRange<Real> CJoltDroneModel::THRUST_LIMIT = CRange<Real>(-15, 15);
    const CRange<Real> CJoltDroneModel::ROLL_PITCH_LIMIT = CRange<Real>(-0.5, 0.5);
    const Real CJoltDroneModel::XY_VEL_MAX = 1;
@@ -335,6 +365,12 @@ namespace argos {
    const Real CJoltDroneModel::ALTITUDE_KP = 5;
    const Real CJoltDroneModel::ALTITUDE_KI = 0;
    const Real CJoltDroneModel::ALTITUDE_KD = 6;
+   /* Stiffer than pointmass3d (12/6): its half-step integration slows
+    * the simulated plant, so its attitude loop (wn ~3.5 rad/s) stays
+    * clear of the velocity loop pole (XY_VEL_KP = 3 rad/s). Under
+    * exact rigid-body integration those bandwidths collide and the
+    * drone circles in a +/- 60 deg coning limit cycle; wn ~7 rad/s
+    * with damping ratio ~0.7 restores the cascade separation */
    const Real CJoltDroneModel::ROLL_PITCH_KP = 12;
    const Real CJoltDroneModel::ROLL_PITCH_KI = 0;
    const Real CJoltDroneModel::ROLL_PITCH_KD = 6;

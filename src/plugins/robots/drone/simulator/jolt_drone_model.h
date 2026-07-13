@@ -75,7 +75,7 @@ namespace argos {
       CVector3 m_cPosition;
       CVector3 m_cOrientation; /* (roll, pitch, yaw) */
       CVector3 m_cVelocity;
-      CVector3 m_cAngularVelocity; /* body frame */
+      CVector3 m_cAngularVelocity; /* world frame */
       /* PID controller state */
       CVector3 m_cOrientationTargetPrev;
       CVector3 m_cAngularVelocityCumulativeError;
@@ -93,6 +93,10 @@ namespace argos {
       const static CRange<Real> ROLL_PITCH_LIMIT;
       const static CRange<Real> THRUST_LIMIT;
       const static CRange<Real> TORQUE_LIMIT;
+      /* Yaw-rate limit (clamp on the yaw error fed to the PID) */
+      const static CRange<Real> YAW_ERROR_LIMIT;
+      /* Slew limit on the attitude-target feedforward */
+      const static CRange<Real> ANGULAR_RATE_LIMIT;
       const static Real XY_VEL_MAX;
       const static Real Z_VEL_MAX;
       const static Real XY_POS_KP;
