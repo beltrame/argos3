@@ -16,6 +16,8 @@
 #include <filament/View.h>
 #include <filament/Material.h>
 #include <backend/PixelBufferDescriptor.h>
+#include <utils/Entity.h>
+#include <utils/EntityManager.h>
 
 #include <cstring>
 
@@ -128,6 +130,29 @@ namespace argos {
       if(!bDone) {
          THROW_ARGOSEXCEPTION("Filament readPixels did not complete");
       }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   utils::Entity CPRRenderEngine::CreateEntity() {
+      AssertRenderThread();
+      return utils::EntityManager::get().create();
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRRenderEngine::DestroyEntity(utils::Entity c_entity) {
+      AssertRenderThread();
+      utils::EntityManager::get().destroy(c_entity);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   const void* CPRRenderEngine::GetEntityManagerAddress() const {
+      return static_cast<const void*>(&utils::EntityManager::get());
    }
 
    /****************************************/

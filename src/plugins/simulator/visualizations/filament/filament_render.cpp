@@ -18,7 +18,11 @@
 #include <filament/Viewport.h>
 #include <filament/Camera.h>
 #include <filament/SwapChain.h>
-#include <utils/EntityManager.h>
+/* No <utils/EntityManager.h>: this plugin has its own copy of that
+ * singleton and must not mint Filament entities with it. They all come
+ * from CPRRenderEngine::CreateEntity(), which the photorealism plugin
+ * (the owner of the engine) compiles on its side of the symbol
+ * firewall */
 
 #include <argos3/plugins/simulator/photorealism/render_core/stb_image_write.h>
 #include <backend/PixelBufferDescriptor.h>
@@ -30,6 +34,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <vector>
 
 namespace argos {
@@ -54,7 +59,28 @@ namespace argos {
          GetNodeAttributeOrDefault(t_tree, "speed", m_fSpeed, m_fSpeed);
          GetNodeAttributeOrDefault(t_tree, "paused", m_bStartPaused, m_bStartPaused);
          GetNodeAttributeOrDefault(t_tree, "autoclose", m_unAutoCloseTicks, m_unAutoCloseTicks);
-         GetNodeAttributeOrDefault(t_tree, "inset_camera", m_strInsetRobot, m_strInsetRobot);
+         /* One or more robot ids, comma separated: one inset per
+          * window corner */
+         std::string strInsetRobots;
+         GetNodeAttributeOrDefault(t_tree, "inset_camera", strInsetRobots, strInsetRobots);
+         std::istringstream cInsetRobots(strInsetRobots);
+         std::string strRobot;
+         while(std::getline(cInsetRobots, strRobot, ',')) {
+            /* Trim, so "a, b" works as well as "a,b" */
+            size_t unFirst = strRobot.find_first_not_of(" \t\n\r");
+            if(unFirst == std::string::npos) {
+               continue;
+            }
+            size_t unLast = strRobot.find_last_not_of(" \t\n\r");
+            m_vecInsetRobots.push_back(
+               strRobot.substr(unFirst, unLast - unFirst + 1));
+         }
+         if(m_vecInsetRobots.size() > MAX_INSETS) {
+            LOGERR << "[WARNING] Filament visualization: at most "
+                   << MAX_INSETS << " insets (one per window corner) are "
+                   "supported; ignoring the extra ones" << std::endl;
+            m_vecInsetRobots.resize(MAX_INSETS);
+         }
          GetNodeAttributeOrDefault(t_tree, "inset_size", m_fInsetSize, m_fInsetSize);
          GetNodeAttributeOrDefault(t_tree, "screenshot", m_strScreenshotPrefix, m_strScreenshotPrefix);
          GetNodeAttributeOrDefault(t_tree, "screenshot_period", m_unScreenshotPeriod, m_unScreenshotPeriod);
@@ -94,8 +120,10 @@ namespace argos {
       m_pcSwapChain = cEngine.GetEngine().createSwapChain(
          reinterpret_cast<void*>(sWMInfo.info.x11.window));
       m_pcRenderer = cEngine.GetEngine().createRenderer();
-      /* The window camera and view */
-      m_cCameraEntity = utils::EntityManager::get().create();
+      /* The window camera and view. Every Filament entity this class
+       * creates must be minted by the photorealism plugin, which owns
+       * the engine: see CPRRenderEngine::CreateEntity() */
+      m_cCameraEntity = cEngine.CreateEntity();
       m_pcCamera = cEngine.GetEngine().createCamera(m_cCameraEntity);
       m_pcCamera->setProjection(double(m_fFieldOfView),
                                 double(m_unWidth) / double(m_unHeight),
@@ -114,8 +142,8 @@ namespace argos {
       m_fPitch = std::atan2(cDirection.GetZ(),
                             std::sqrt(cDirection.GetX() * cDirection.GetX() +
                                       cDirection.GetY() * cDirection.GetY()));
-      if(!m_strInsetRobot.empty()) {
-         CreateInset();
+      if(!m_vecInsetRobots.empty()) {
+         CreateInsets();
       }
       m_bPaused = m_bStartPaused;
       LOG << "[INFO] Filament visualization: SPACE pauses, N steps once, "
@@ -126,61 +154,88 @@ namespace argos {
    /****************************************/
    /****************************************/
 
-   void CFilamentRender::CreateInset() {
-      /* Find the first photorealistic camera mounted on the robot */
+   void CFilamentRender::CreateInsets() {
       CPRCameraPool& cPool = m_pcMedium->GetCameraPool();
-      for(UInt32 unHandle : cPool.GetHandles()) {
-         const SPRCameraConfig& sConfig = cPool.GetConfig(unHandle);
-         if(sConfig.Anchor != nullptr &&
-            sConfig.Anchor->Body.GetRootEntity().GetId() == m_strInsetRobot) {
-            m_unInsetCameraHandle = unHandle;
-            m_bInsetFound = true;
-            break;
-         }
-      }
-      if(!m_bInsetFound) {
-         LOGERR << "[WARNING] Filament visualization: robot \""
-                << m_strInsetRobot << "\" has no photorealistic camera; "
-                "the inset is disabled" << std::endl;
-         return;
-      }
       filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
-      m_cInsetCameraEntity = utils::EntityManager::get().create();
-      m_pcInsetCamera = cEngine.createCamera(m_cInsetCameraEntity);
-      m_pcInsetCamera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
-      m_pcInsetView = cEngine.createView();
-      m_pcInsetView->setScene(&m_pcMedium->GetRenderEngine().GetScene());
-      m_pcInsetView->setCamera(m_pcInsetCamera);
-      LayOutInset();
+      for(const std::string& str_robot : m_vecInsetRobots) {
+         /* Find the first photorealistic camera mounted on the robot */
+         bool bFound = false;
+         SInset sInset;
+         sInset.Robot = str_robot;
+         for(UInt32 unHandle : cPool.GetHandles()) {
+            const SPRCameraConfig& sConfig = cPool.GetConfig(unHandle);
+            if(sConfig.Anchor != nullptr &&
+               sConfig.Anchor->Body.GetRootEntity().GetId() == str_robot) {
+               sInset.CameraHandle = unHandle;
+               bFound = true;
+               break;
+            }
+         }
+         if(!bFound) {
+            LOGERR << "[WARNING] Filament visualization: robot \""
+                   << str_robot << "\" has no photorealistic camera; "
+                   "its inset is disabled" << std::endl;
+            continue;
+         }
+         sInset.CameraEntity = m_pcMedium->GetRenderEngine().CreateEntity();
+         sInset.Camera = cEngine.createCamera(sInset.CameraEntity);
+         sInset.Camera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
+         sInset.View = cEngine.createView();
+         sInset.View->setScene(&m_pcMedium->GetRenderEngine().GetScene());
+         sInset.View->setCamera(sInset.Camera);
+         m_vecInsets.push_back(sInset);
+      }
+      LayOutInsets();
    }
 
    /****************************************/
    /****************************************/
 
-   void CFilamentRender::LayOutInset() {
-      if(!m_bInsetFound) {
-         return;
+   void CFilamentRender::LayOutInsets() {
+      const UInt32 unMargin = 12;
+      /* With more than one inset the corners share the window, so an
+       * inset may take at most half of it minus the margins */
+      UInt32 unMaxWidth = (m_vecInsets.size() > 1) ?
+         (m_unWidth - 3 * unMargin) / 2 : (m_unWidth - 2 * unMargin);
+      UInt32 unMaxHeight = (m_vecInsets.size() > 2) ?
+         (m_unHeight - 3 * unMargin) / 2 : (m_unHeight - 2 * unMargin);
+      for(size_t i = 0; i < m_vecInsets.size(); ++i) {
+         SInset& sInset = m_vecInsets[i];
+         const SPRCameraConfig& sConfig =
+            m_pcMedium->GetCameraPool().GetConfig(sInset.CameraHandle);
+         /* Each inset keeps its own sensor's aspect ratio and field
+          * of view, shrunk to fit its half of the window */
+         UInt32 unHeight = UInt32(m_unHeight * m_fInsetSize);
+         UInt32 unWidth =
+            UInt32(Real(unHeight) * sConfig.Width / sConfig.Height);
+         if(unWidth > unMaxWidth) {
+            unWidth = unMaxWidth;
+            unHeight =
+               UInt32(Real(unWidth) * sConfig.Height / sConfig.Width);
+         }
+         if(unHeight > unMaxHeight) {
+            unHeight = unMaxHeight;
+            unWidth =
+               UInt32(Real(unHeight) * sConfig.Width / sConfig.Height);
+         }
+         /* Corners are filled bottom-right, bottom-left, top-left,
+          * top-right, so a lone inset keeps its usual place. The
+          * Filament viewport origin is the bottom-left corner */
+         bool bRight = (i == 0 || i == 3);
+         bool bTop = (i == 2 || i == 3);
+         sInset.View->setViewport(
+            filament::Viewport(
+               bRight ? SInt32(m_unWidth - unWidth - unMargin)
+                      : SInt32(unMargin),
+               bTop ? SInt32(m_unHeight - unHeight - unMargin)
+                    : SInt32(unMargin),
+               unWidth, unHeight));
+         sInset.Camera->setProjection(
+            double(sConfig.FieldOfView),
+            double(unWidth) / double(unHeight),
+            double(sConfig.NearPlane), double(sConfig.FarPlane),
+            filament::Camera::Fov::VERTICAL);
       }
-      const SPRCameraConfig& sConfig =
-         m_pcMedium->GetCameraPool().GetConfig(m_unInsetCameraHandle);
-      /* The inset has the sensor's aspect ratio and field of view,
-       * anchored to the bottom-right corner with a small margin */
-      UInt32 unMargin = 12;
-      UInt32 unHeight = UInt32(m_unHeight * m_fInsetSize);
-      UInt32 unWidth = UInt32(Real(unHeight) * sConfig.Width / sConfig.Height);
-      if(unWidth + 2 * unMargin > m_unWidth) {
-         unWidth = m_unWidth / 3;
-         unHeight = UInt32(Real(unWidth) * sConfig.Height / sConfig.Width);
-      }
-      m_pcInsetView->setViewport(
-         filament::Viewport(SInt32(m_unWidth - unWidth - unMargin),
-                            SInt32(unMargin),
-                            unWidth, unHeight));
-      m_pcInsetCamera->setProjection(
-         double(sConfig.FieldOfView),
-         double(unWidth) / double(unHeight),
-         double(sConfig.NearPlane), double(sConfig.FarPlane),
-         filament::Camera::Fov::VERTICAL);
    }
 
    /****************************************/
@@ -192,16 +247,15 @@ namespace argos {
       }
       filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
       cEngine.flushAndWait();
-      if(m_pcInsetView != nullptr) {
-         cEngine.destroy(m_pcInsetView);
-         cEngine.destroyCameraComponent(m_cInsetCameraEntity);
-         utils::EntityManager::get().destroy(m_cInsetCameraEntity);
-         m_pcInsetView = nullptr;
-         m_pcInsetCamera = nullptr;
+      for(SInset& s_inset : m_vecInsets) {
+         cEngine.destroy(s_inset.View);
+         cEngine.destroyCameraComponent(s_inset.CameraEntity);
+         m_pcMedium->GetRenderEngine().DestroyEntity(s_inset.CameraEntity);
       }
+      m_vecInsets.clear();
       cEngine.destroy(m_pcView);
       cEngine.destroyCameraComponent(m_cCameraEntity);
-      utils::EntityManager::get().destroy(m_cCameraEntity);
+      m_pcMedium->GetRenderEngine().DestroyEntity(m_cCameraEntity);
       cEngine.destroy(m_pcRenderer);
       cEngine.destroy(m_pcSwapChain);
       m_pcView = nullptr;
@@ -294,7 +348,7 @@ namespace argos {
                      double(m_unWidth) / double(m_unHeight),
                      0.05, 250.0,
                      filament::Camera::Fov::VERTICAL);
-                  LayOutInset();
+                  LayOutInsets();
                }
                break;
             default:
@@ -343,12 +397,12 @@ namespace argos {
          return;
       }
       m_pcRenderer->render(m_pcView);
-      if(m_bInsetFound) {
+      for(SInset& s_inset : m_vecInsets) {
          /* Live view from the robot camera's pose */
-         m_pcInsetCamera->setModelMatrix(
+         s_inset.Camera->setModelMatrix(
             CPRCameraPool::ComputeViewTransform(
-               m_pcMedium->GetCameraPool().GetConfig(m_unInsetCameraHandle)));
-         m_pcRenderer->render(m_pcInsetView);
+               m_pcMedium->GetCameraPool().GetConfig(s_inset.CameraHandle)));
+         m_pcRenderer->render(s_inset.View);
       }
       /* Periodic window screenshots */
       bool bShotDone = false;
@@ -494,6 +548,14 @@ namespace argos {
                           "rendered live at the window frame rate from the sensor's pose, field\n"
                           "of view, and aspect ratio. 'inset_size' (default 0.3) is the inset\n"
                           "height as a fraction of the window height.\n\n"
+
+                          "Up to four robot ids can be given, comma separated, to show one inset\n"
+                          "per window corner: they fill the corners in the order bottom-right,\n"
+                          "bottom-left, top-left, top-right, so a lone inset keeps its usual\n"
+                          "place. Each inset keeps its own sensor's aspect ratio and field of\n"
+                          "view, shrunk to fit its half of the window when it has neighbours:\n\n"
+                          "  <filament medium=\"pr\" inset_camera=\"drone0,drone1,drone2,drone3\"\n"
+                          "            inset_size=\"0.3\" />\n\n"
 
                           "INTERACTION\n\n"
                           "SPACE pauses and resumes; N steps one tick. W/A/S/D fly forward/left/\n"

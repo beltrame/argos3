@@ -94,6 +94,36 @@ namespace argos {
                              std::vector<UInt8>& vec_pixels);
 
       /**
+       * Allocates a Filament entity.
+       *
+       * Filament is statically linked, with hidden visibility, into
+       * every plugin that uses it (the symbol firewall that keeps its
+       * libc++ out of the ARGoS runtime), so each plugin gets its own
+       * copy of Filament's utils::EntityManager singleton. The
+       * managers number their entities independently, but they all
+       * index the *same* component managers inside the one shared
+       * Engine: entities minted on one side of the firewall therefore
+       * collide with entities minted on the other, and the components
+       * of one silently overwrite the components of the other.
+       *
+       * All entities must consequently come from a single manager.
+       * These two calls are compiled into the photorealism plugin,
+       * which owns the engine, so plugins that render into its scene
+       * (the Filament visualization) must allocate their entities
+       * through them rather than calling utils::EntityManager
+       * themselves.
+       */
+      utils::Entity CreateEntity();
+      void DestroyEntity(utils::Entity c_entity);
+
+      /**
+       * The address of the utils::EntityManager singleton as seen by
+       * the photorealism plugin. Only useful to check the firewall
+       * has not been breached; see CreateEntity().
+       */
+      const void* GetEntityManagerAddress() const;
+
+      /**
        * Asserts that the caller runs on the thread that created the
        * Filament engine. No-op in release builds.
        */

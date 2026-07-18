@@ -33,6 +33,7 @@ struct SDL_Window;
 #include <utils/Entity.h>
 
 #include <string>
+#include <vector>
 
 namespace argos {
 
@@ -51,8 +52,8 @@ namespace argos {
    private:
 
       void CreateWindow();
-      void CreateInset();
-      void LayOutInset();
+      void CreateInsets();
+      void LayOutInsets();
       void DestroyWindow();
       /** Returns false when the user asked to quit */
       bool HandleEvents(Real f_frame_seconds);
@@ -77,11 +78,14 @@ namespace argos {
       /* Close automatically after this many ticks (0 = never); used
        * by the automated tests */
       UInt32 m_unAutoCloseTicks = 0;
-      /* Robot whose photorealistic camera is shown as an inset in a
-       * window corner (empty = no inset), and the inset height as a
-       * fraction of the window height */
-      std::string m_strInsetRobot;
+      /* Robots whose photorealistic cameras are shown as insets in
+       * the window corners (empty = no inset; at most one per
+       * corner), and the inset height as a fraction of the window
+       * height */
+      std::vector<std::string> m_vecInsetRobots;
       Real m_fInsetSize = 0.3;
+      /* At most one inset per window corner */
+      static const size_t MAX_INSETS = 4;
       /* Window screenshots: written every screenshot_period ticks to
        * <screenshot>_<clock>.png (empty = disabled) */
       std::string m_strScreenshotPrefix;
@@ -98,12 +102,15 @@ namespace argos {
       filament::View* m_pcView = nullptr;
       filament::Camera* m_pcCamera = nullptr;
       utils::Entity m_cCameraEntity;
-      /* Camera-view inset */
-      filament::View* m_pcInsetView = nullptr;
-      filament::Camera* m_pcInsetCamera = nullptr;
-      utils::Entity m_cInsetCameraEntity;
-      UInt32 m_unInsetCameraHandle = 0;
-      bool m_bInsetFound = false;
+      /* Camera-view insets, one per window corner */
+      struct SInset {
+         std::string Robot;
+         UInt32 CameraHandle = 0;
+         filament::View* View = nullptr;
+         filament::Camera* Camera = nullptr;
+         utils::Entity CameraEntity;
+      };
+      std::vector<SInset> m_vecInsets;
       /* Free-fly camera pose */
       CVector3 m_cCameraPosition;
       Real m_fYaw = 0.0;
