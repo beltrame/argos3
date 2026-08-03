@@ -20,6 +20,38 @@ ARGoS' main features are:
 
 Starting from version 3, ARGoS is released under the terms of the MIT license.
 
+What this fork adds
+--------------------
+
+This fork extends upstream ARGoS with photorealistic rendering, a second
+3D physics engine, and the sensors needed to drive external SLAM stacks.
+Everything below is additive: existing experiments keep working unchanged,
+and the new components are opt-in from the XML configuration.
+
+* *Photorealism medium* (+src/plugins/simulator/photorealism+), a headless-capable
+  render subsystem built on Google Filament. Provides per-robot RGB, depth and
+  segmentation camera sensors that render the real scene rather than an
+  abstract approximation, a glTF asset registry for data-driven robot visuals,
+  HDR image-based lighting, glTF scenery props, and domain randomization of
+  lighting and materials for sim-to-real work. Benchmarked at 50+ simultaneous
+  cameras on an integrated GPU.
+* *Filament visualization* (+src/plugins/simulator/visualizations/filament+), an
+  interactive window onto the same scene, with a free-fly camera, live
+  per-robot camera insets and periodic screenshots.
+* *Jolt physics engine* (+src/plugins/simulator/physics_engines/jolt+), a 3D engine
+  mirroring dynamics3d and built on Jolt Physics, compiled in deterministic
+  mode. Opt-in at build time with +-DARGOS_BUILD_JOLT=ON+.
+* *Generic IMU and odometry sensors* (+src/plugins/robots/generic+). The IMU
+  reports body-frame angular velocity and linear acceleration with configurable
+  noise and bias random walks. The odometry sensor perturbs locally measured
+  relative motion and integrates it through its own drifted frame, so error
+  compounds over distance the way real dead reckoning does. Both exist to feed
+  localization stacks that expect noisy but continuous external input.
+
+The companion repository https://github.com/beltrame/argos3-examples contains
+worked examples built on these features, including a four-robot collaborative
+SLAM demo running in the Amazon Lumberyard Bistro scene.
+
 Downloading ARGoS
 ------------------
 
@@ -175,6 +207,7 @@ The compilation of ARGoS can be configured through a set of CMake options:
 | +ARGOS_USE_DOUBLE+       | _BOOLEAN_ | Use +double+ (+ON+) or +float+ (+OFF+) [+ON+]
 | +ARGOS_DOCUMENTATION+    | _BOOLEAN_ | Create API documentation [+ON+]
 | +ARGOS_INSTALL_LDSOCONF+ | _BOOLEAN_ | Install the file +/etc/ld.so.conf/argos3.conf+ [+ON+ on Linux, +OFF+ on Mac]
+| +ARGOS_BUILD_JOLT+       | _BOOLEAN_ | Download and build the Jolt physics engine plugin [+OFF+]
 |====================================================================================================================
 
 You can pass the wanted values from the command line. For instance, if you
