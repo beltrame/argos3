@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="10" random_seed="33" />
+  </framework>
+
+  <controllers>
+    <drone_odometry_controller library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_odometry_jolt_controller"
+                          id="doc">
+      <actuators>
+        <drone_flight_system implementation="default" />
+      </actuators>
+      <sensors>
+        <drone_flight_system implementation="default" />
+        <odometry implementation="drift" position_drift="0.05" orientation_drift="0.02" />
+      </sensors>
+      <params />
+    </drone_odometry_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_odometry_jolt_loop_functions"
+                  label="drone_odometry_loop_functions" />
+
+  <arena size="10, 4, 3" center="4,0,1.5">
+    <drone id="drone">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="doc" />
+    </drone>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" iterations="10" threads="1">
+      <floor height="0" />
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>
