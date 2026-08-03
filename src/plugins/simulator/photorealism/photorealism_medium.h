@@ -153,6 +153,12 @@ namespace argos {
       /* Asset search path from the XML configuration */
       std::string m_strAssetPath;
 
+      /* Entity id prefixes excluded from rendering (hide_prefix attr) */
+      std::vector<std::string> m_vecHiddenIdPrefixes;
+
+      /* When false, the arena floor plane is not rendered */
+      bool m_bDrawFloor = true;
+
       /* Filament state */
       CPRRenderEngine m_cEngine;
       CPRSceneSync m_cSceneSync;

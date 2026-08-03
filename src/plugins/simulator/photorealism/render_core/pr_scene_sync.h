@@ -142,6 +142,22 @@ namespace argos {
                               const CRange<Real>& c_roughness,
                               Real f_color_jitter);
 
+      /**
+       * Entities whose root id starts with one of these prefixes are
+       * never added to the render scene (any modality). Meant for
+       * collision proxies that approximate scenery geometry which is
+       * already rendered as a glTF prop. Set before the first Sync().
+       */
+      void SetHiddenIdPrefixes(const std::vector<std::string>& vec_prefixes);
+
+      /**
+       * When false, the arena floor plane is never created: scenery
+       * props that model their own ground would otherwise be occluded
+       * wherever their surface dips below z=0. Set before the first
+       * Sync().
+       */
+      void SetDrawFloor(bool b_draw_floor);
+
    private:
 
       struct SPart {
@@ -173,6 +189,7 @@ namespace argos {
       };
 
       void AddEntity(CEmbodiedEntity& c_entity);
+      bool IsHidden(const CEmbodiedEntity& c_entity) const;
       void RemoveInstance(SInstance& s_instance);
       void UpdateInstance(CEmbodiedEntity& c_entity, SInstance& s_instance);
 
@@ -201,6 +218,10 @@ namespace argos {
       CPRRenderEngine* m_pcEngine = nullptr;
       CPRIdScene* m_pcIdScene = nullptr;
       CPRAssetRegistry* m_pcAssets = nullptr;
+      /* Root entity id prefixes excluded from rendering */
+      std::vector<std::string> m_vecHiddenIdPrefixes;
+      /* When false, the arena floor plane is not rendered */
+      bool m_bDrawFloor = true;
       /* Next numeric entity id to assign (0 = none, 1 = floor) */
       UInt16 m_unNextEntityId = 2;
       SPRMesh m_sBoxMesh;

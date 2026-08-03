@@ -293,7 +293,7 @@ namespace argos {
       m_pcEngine->AssertRenderThread();
       /* The floor is created on the first sync (the floor entity does
        * not exist yet when Init() runs) and refreshed on change */
-      if(!m_cFloor) {
+      if(m_bDrawFloor && !m_cFloor) {
          InitFloor(c_space, m_cArenaSize, m_cArenaCenter);
       }
       else if(m_pcFloorEntity != nullptr && m_pcFloorEntity->HasChanged()) {
@@ -310,7 +310,7 @@ namespace argos {
                pcEmbodied = &pcComposable->GetComponent<CEmbodiedEntity>("body");
             }
          }
-         if(pcEmbodied != nullptr) {
+         if(pcEmbodied != nullptr && !IsHidden(*pcEmbodied)) {
             setCurrent.insert(pcEmbodied);
          }
       }
@@ -369,6 +369,36 @@ namespace argos {
       m_pcIdScene->AddInstance(s_mesh, sPart.Renderable,
                                un_entity_id, UInt8(e_class));
       return sPart;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   bool CPRSceneSync::IsHidden(const CEmbodiedEntity& c_entity) const {
+      if(m_vecHiddenIdPrefixes.empty()) {
+         return false;
+      }
+      const std::string& strId = c_entity.GetRootEntity().GetId();
+      for(const std::string& strPrefix : m_vecHiddenIdPrefixes) {
+         if(strId.compare(0, strPrefix.size(), strPrefix) == 0) {
+            return true;
+         }
+      }
+      return false;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRSceneSync::SetHiddenIdPrefixes(const std::vector<std::string>& vec_prefixes) {
+      m_vecHiddenIdPrefixes = vec_prefixes;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRSceneSync::SetDrawFloor(bool b_draw_floor) {
+      m_bDrawFloor = b_draw_floor;
    }
 
    /****************************************/

@@ -53,6 +53,21 @@ namespace argos {
          }
          GetNodeAttributeOrDefault(t_tree, "stats", m_bStats, m_bStats);
          GetNodeAttributeOrDefault(t_tree, "asset_path", m_strAssetPath, m_strAssetPath);
+         /* Comma-separated entity id prefixes to exclude from rendering
+          * (all modalities). Used for collision proxies that stand in,
+          * physics-wise, for scenery already rendered as a glTF prop. */
+         GetNodeAttributeOrDefault(t_tree, "draw_floor", m_bDrawFloor, m_bDrawFloor);
+         std::string strHidePrefixes;
+         GetNodeAttributeOrDefault(t_tree, "hide_prefix", strHidePrefixes, strHidePrefixes);
+         if(!strHidePrefixes.empty()) {
+            std::istringstream cPrefixes(strHidePrefixes);
+            std::string strPrefix;
+            while(std::getline(cPrefixes, strPrefix, ',')) {
+               if(!strPrefix.empty()) {
+                  m_vecHiddenIdPrefixes.push_back(strPrefix);
+               }
+            }
+         }
          if(NodeExists(t_tree, "randomization")) {
             m_cRandomizer.Init(GetNode(t_tree, "randomization"));
          }
@@ -140,6 +155,8 @@ namespace argos {
                            m_sSunlight,
                            cSpace.GetArenaSize(),
                            cSpace.GetArenaCenter());
+         m_cSceneSync.SetHiddenIdPrefixes(m_vecHiddenIdPrefixes);
+         m_cSceneSync.SetDrawFloor(m_bDrawFloor);
          if(m_sEnvironment.Enabled) {
             m_cSceneSync.LoadEnvironment(m_sEnvironment.Ibl,
                                          m_sEnvironment.Skybox,
