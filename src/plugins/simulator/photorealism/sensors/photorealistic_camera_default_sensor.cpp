@@ -13,6 +13,7 @@
 #include <argos3/plugins/simulator/photorealism/photorealism_medium.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_camera_pool.h>
 
+#include <algorithm>
 #include <cmath>
 
 namespace argos {
@@ -133,8 +134,17 @@ namespace argos {
                m_sFrame.ClassId[i] = UInt8(std::lround(pfAux[1]));
             }
             if(m_bDepthEnabled) {
-               /* Background pixels carry the far-plane distance */
-               m_sFrame.Depth[i] = unEntityId != 0 ? Real(pfAux[2]) : m_fFarPlane;
+               /* Background pixels carry the far-plane distance. This
+                * relies on every renderable having a nonzero entity id:
+                * the aux buffer clears to zero, so id 0 means nothing
+                * was drawn. Geometry registered with id 0 would be
+                * silently reported as empty space instead.
+                *
+                * Real fragments can land marginally beyond the nominal
+                * far plane, so clamp to keep the documented range. */
+               m_sFrame.Depth[i] = unEntityId != 0
+                  ? std::min(Real(pfAux[2]), m_fFarPlane)
+                  : m_fFarPlane;
             }
          }
       }

@@ -166,8 +166,18 @@ namespace argos {
          filament::TransformManager& cTransforms =
             m_cEngine.GetEngine().getTransformManager();
          for(SProp& s_prop : m_vecProps) {
+            /* Scenery needs a real identity like any other renderable:
+             * the camera sensor reads entity id 0 as "no geometry" and
+             * substitutes the far plane, so a prop registered with id 0
+             * is rendered into the aux buffer and then discarded,
+             * leaving depth and segmentation blank wherever the scenery
+             * is visible. Ids come from the scene sync allocator so
+             * they cannot collide with the ones given to entities. */
+            s_prop.EntityId = m_cSceneSync.AllocateEntityId();
             s_prop.Instance =
-               m_cAssetRegistry.CreateModelInstance(s_prop.Model, 0, 0);
+               m_cAssetRegistry.CreateModelInstance(s_prop.Model,
+                                                    s_prop.EntityId,
+                                                    UInt8(EPRClass::Scenery));
             if(s_prop.Instance.Main == nullptr) {
                THROW_ARGOSEXCEPTION("Cannot load scenery model \""
                                     << s_prop.Model << "\"");

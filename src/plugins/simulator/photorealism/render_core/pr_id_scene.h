@@ -43,7 +43,14 @@ namespace argos {
       Box = 2,
       Cylinder = 3,
       FootBot = 4,
-      Drone = 5
+      Drone = 5,
+      /* Static glTF scenery props. Like every other renderable, scenery
+       * must carry a NONZERO entity id: the aux buffer clears to zero,
+       * so id 0 is the "no geometry here" sentinel the camera sensor
+       * uses to fill background pixels with the far plane. Scenery was
+       * originally registered with id 0 and was therefore invisible to
+       * the depth and segmentation modalities. */
+      Scenery = 6
    };
 
    class CPRIdScene {

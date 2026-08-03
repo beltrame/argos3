@@ -1,0 +1,70 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <!--
+      Regression test: a <scenery> glTF prop must be visible to the
+      depth and segmentation modalities, not only to the colour image.
+
+      Scenery was originally instantiated with entity id 0, which the
+      camera sensor reads as "no geometry here" and replaces with the
+      far-plane distance. Colour looked perfect while depth came back
+      blank, and no existing test noticed because they all put robots
+      and boxes in front of the camera, and those carry real entity ids.
+
+      The observer looks along +x at a glTF prop parked in front of it.
+  -->
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="42" />
+  </framework>
+
+  <controllers>
+    <camera_test_controller library="@CAMERA_TEST_CONTROLLER_LIB@"
+                            id="ctc">
+      <actuators />
+      <sensors>
+        <photorealistic_camera implementation="default" medium="pr"
+                               anchor="origin" position="0.1,0,0.15"
+                               orientation="0,0,0" resolution="64,64"
+                               fov="60" near="0.05" far="20"
+                               modalities="rgb,depth,seg" />
+      </sensors>
+      <params />
+    </camera_test_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libscenery_depth_loop_functions"
+                  label="scenery_depth_loop_functions"
+                  expected_depth="@SCENERY_EXPECTED_DEPTH@"
+                  depth_tolerance="@SCENERY_DEPTH_TOLERANCE@"
+                  far_plane="20" />
+
+  <arena size="8, 8, 4" center="0,0,2">
+    <foot-bot id="observer">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="ctc" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <photorealism id="pr" backend="vulkan">
+      <sun direction="0.6,0.2,-1" intensity="100000" cast_shadows="false" />
+      <skybox color="0.53,0.71,0.92" />
+      <scenery>
+        <!-- The shipped foot-bot asset, scaled up into a wall-sized
+             object so it fills the narrow test view. Any glTF would do;
+             what matters is that it arrives through the scenery path. -->
+        <prop model="@SCENERY_MODEL@"
+              position="1.5,0,0" orientation="0,0,90" scale="6" />
+      </scenery>
+    </photorealism>
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

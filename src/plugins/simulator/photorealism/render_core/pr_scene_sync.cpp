@@ -404,6 +404,13 @@ namespace argos {
    /****************************************/
    /****************************************/
 
+   UInt16 CPRSceneSync::AllocateEntityId() {
+      return m_unNextEntityId++;
+   }
+
+   /****************************************/
+   /****************************************/
+
    void CPRSceneSync::AddEntity(CEmbodiedEntity& c_entity) {
       CEntity& cRoot = c_entity.GetRootEntity();
       const std::string& strType = cRoot.GetTypeDescription();

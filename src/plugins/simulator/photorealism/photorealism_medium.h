@@ -114,12 +114,15 @@ namespace argos {
          Real Intensity = 30000.0;
       } m_sEnvironment;
 
-      /* Static glTF props dressing the scene (render-only) */
+      /* Static glTF props dressing the scene. They take no part in
+       * physics, but they are real geometry to the cameras and so
+       * carry an entity id like any other renderable. */
       struct SProp {
          std::string Model;
          CVector3 Position;
          CVector3 OrientationEuler; /* z,y,x degrees */
          Real Scale = 1.0;
+         UInt16 EntityId = 0;
          CPRAssetRegistry::SInstance Instance;
       };
       std::vector<SProp> m_vecProps;

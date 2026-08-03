@@ -158,6 +158,16 @@ namespace argos {
        */
       void SetDrawFloor(bool b_draw_floor);
 
+      /**
+       * Reserves the next free numeric entity id. Every renderable that
+       * reaches the id scene must have one, including geometry this
+       * class does not own (scenery props, created by the medium), so
+       * that id 0 keeps meaning "nothing was drawn here". Ids are
+       * handed out monotonically and are never reused, so allocating
+       * before the first Sync() is safe.
+       */
+      UInt16 AllocateEntityId();
+
    private:
 
       struct SPart {
