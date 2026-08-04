@@ -29,6 +29,7 @@ namespace argos {
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace filament {
    class View;
@@ -104,6 +105,14 @@ namespace argos {
       std::string m_strBackend = "vulkan";
       CPRSceneSync::SSunlight m_sSunlight;
       CVector3 m_cSkyColor = CVector3(0.53, 0.71, 0.92);
+
+      /* Local lights (street lamps, headlights, windows), placed once
+       * at PostSpaceInit() and never moved */
+      std::vector<CPRSceneSync::SLight> m_vecLights;
+
+      /* Camera exposure, shared by the sensors, the debug camera and
+       * the interactive viewer */
+      SPRExposure m_sExposure;
 
       /* HDR environment (cmgen KTX pair), replaces the constant
        * ambient light and the color skybox when configured */

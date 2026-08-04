@@ -545,8 +545,7 @@ namespace argos {
          double(sConfig.Width) / double(sConfig.Height),
          double(sConfig.NearPlane), double(sConfig.FarPlane),
          filament::Camera::Fov::VERTICAL);
-      /* Sunny-day exposure, matching the default 100k lux sun */
-      s_camera.Camera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
+      m_pcEngine->ApplyExposure(*s_camera.Camera);
       if(sConfig.RenderRGB) {
          s_camera.RGBColor = filament::Texture::Builder()
             .width(sConfig.Width).height(sConfig.Height).levels(1)

@@ -129,8 +129,9 @@ namespace argos {
                                 double(m_unWidth) / double(m_unHeight),
                                 0.05, 250.0,
                                 filament::Camera::Fov::VERTICAL);
-      /* Sunny-day exposure, like the robot cameras */
-      m_pcCamera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
+      /* The same exposure as the robot cameras, so the window shows
+       * the world at the brightness the sensors see */
+      cEngine.ApplyExposure(*m_pcCamera);
       m_pcView = cEngine.GetEngine().createView();
       m_pcView->setViewport(filament::Viewport(0, 0, m_unWidth, m_unHeight));
       m_pcView->setScene(&cEngine.GetScene());
@@ -179,7 +180,7 @@ namespace argos {
          }
          sInset.CameraEntity = m_pcMedium->GetRenderEngine().CreateEntity();
          sInset.Camera = cEngine.createCamera(sInset.CameraEntity);
-         sInset.Camera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
+         m_pcMedium->GetRenderEngine().ApplyExposure(*sInset.Camera);
          sInset.View = cEngine.createView();
          sInset.View->setScene(&m_pcMedium->GetRenderEngine().GetScene());
          sInset.View->setCamera(sInset.Camera);

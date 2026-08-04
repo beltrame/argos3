@@ -14,6 +14,8 @@
 #include <filament/SwapChain.h>
 #include <filament/Scene.h>
 #include <filament/View.h>
+#include <filament/Camera.h>
+#include <filament/Exposure.h>
 #include <filament/Material.h>
 #include <backend/PixelBufferDescriptor.h>
 #include <utils/Entity.h>
@@ -98,6 +100,25 @@ namespace argos {
          m_pcScene = nullptr;
          m_pcLitMaterial = nullptr;
       }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   Real CPRRenderEngine::GetExposureScale() const {
+      return Real(filament::Exposure::exposure(
+                     float(m_sExposure.Aperture),
+                     float(m_sExposure.ShutterSpeed),
+                     float(m_sExposure.Sensitivity)));
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRRenderEngine::ApplyExposure(filament::Camera& c_camera) const {
+      c_camera.setExposure(float(m_sExposure.Aperture),
+                           float(m_sExposure.ShutterSpeed),
+                           float(m_sExposure.Sensitivity));
    }
 
    /****************************************/

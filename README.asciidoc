@@ -35,6 +35,14 @@ and the new components are opt-in from the XML configuration.
   HDR image-based lighting, glTF scenery props, and domain randomization of
   lighting and materials for sim-to-real work. Benchmarked at 50+ simultaneous
   cameras on an integrated GPU.
+* *Local lights and camera exposure* on that medium. +<lights>+ places point and
+  spot lights (lamps, headlights, lit windows) in lumens with a finite reach,
+  which is what makes night and indoor scenes readable; +<exposure>+ sets the
+  aperture, shutter speed and sensitivity shared by the robot sensors, the debug
+  camera and the interactive viewer. The two go together: the renderer is
+  physically based, so dimming a scene without opening the camera up just
+  produces a black image. LED emissives follow the exposure, so they read the
+  same at any camera setting.
 * *Filament visualization* (+src/plugins/simulator/visualizations/filament+), an
   interactive window onto the same scene, with a free-fly camera, live
   per-robot camera insets and periodic screenshots.

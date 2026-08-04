@@ -64,6 +64,33 @@ namespace argos {
          bool CastShadows = true;
       };
 
+      /**
+       * A local light: a lamp, a headlight, a window. Unlike the sun
+       * it has a position and a finite reach, so it is what makes a
+       * dim scene readable near the light and dark away from it.
+       *
+       * Intensity is in lumens (the number printed on a real bulb: a
+       * street lamp is roughly 10000 lm, a domestic bulb 800 lm), and
+       * FalloffRadius is the distance at which the light is cut off
+       * completely. Filament's inverse-square falloff means a radius
+       * far larger than the lit area costs performance without
+       * changing the image, so keep it near the useful reach.
+       */
+      struct SLight {
+         bool Spot = false;
+         CVector3 Position;
+         /* Spot only; points from the lamp towards what it lights */
+         CVector3 Direction = CVector3(0.0, 0.0, -1.0);
+         CVector3 Color = CVector3(1.0, 1.0, 1.0); /* linear r,g,b */
+         Real Intensity = 10000.0;   /* lumens */
+         Real FalloffRadius = 10.0;  /* m */
+         Real InnerAngle = 30.0;     /* degrees, spot only */
+         Real OuterAngle = 45.0;     /* degrees, spot only */
+         /* Shadow maps for local lights are expensive and there is one
+          * atlas for all of them, so this is off by default */
+         bool CastShadows = false;
+      };
+
       CPRSceneSync() {}
       ~CPRSceneSync() {}
 
@@ -112,6 +139,25 @@ namespace argos {
        * environment is loaded.
        */
       void SetSunlight(const CVector3& c_direction, Real f_intensity);
+
+      /**
+       * Adds a local light to the scene and returns its index, which
+       * SetLightIntensity() takes. Lights are static: they are placed
+       * once and never follow an entity, which is what scenery lamps
+       * need.
+       */
+      size_t AddLight(const SLight& s_light);
+
+      /**
+       * Switches a light created by AddLight() on or off, or dims it
+       * (lumens). Meant for loop functions that vary the lighting
+       * across runs.
+       */
+      void SetLightIntensity(size_t un_light, Real f_intensity);
+
+      inline size_t GetLightCount() const {
+         return m_vecLights.size();
+      }
 
       /**
        * Sets a float material parameter ("roughness" or "metallic")
@@ -234,10 +280,16 @@ namespace argos {
       bool m_bDrawFloor = true;
       /* Next numeric entity id to assign (0 = none, 1 = floor) */
       UInt16 m_unNextEntityId = 2;
+      /* Emissive luminance of a fully lit LED, in nits, resolved from
+       * the engine exposure at Init() so LEDs read the same whatever
+       * the camera is set to */
+      float m_fLedNits = 25000.0f;
       SPRMesh m_sBoxMesh;
       SPRMesh m_sCylinderMesh;
       SPRMesh m_sPlaneMesh;
       utils::Entity m_cSunlight;
+      /* Local lights (lamps), in AddLight() order */
+      std::vector<utils::Entity> m_vecLights;
       filament::IndirectLight* m_pcAmbientLight = nullptr;
       /* HDR environment, when loaded */
       bool m_bHasEnvironment = false;

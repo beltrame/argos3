@@ -1,0 +1,98 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <!--
+      Regression test: <lights> and <exposure>.
+
+      There is no sun and no ambient light here, so the only thing that
+      can make anything visible is the single <point> lamp. Two
+      identical boxes stand the same distance from the camera: one
+      under the lamp, one beyond its falloff radius. The first must
+      come out bright, the second must stay black.
+
+      Both halves matter. A light that lights everything (or an ambient
+      term quietly standing in for one) still produces a plausible
+      screenshot, and only the dark box catches it.
+
+      This same file is configured twice, at two exposures. Filament is
+      physically based, so a scene lit by a lamp is only visible if the
+      camera is opened up for it: at the default sunny-16 exposure the
+      very same lamp must NOT register. Without that second run, an
+      <exposure> node that was parsed and then dropped on the floor
+      would go unnoticed.
+  -->
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="42" />
+  </framework>
+
+  <controllers>
+    <camera_test_controller library="@CAMERA_TEST_CONTROLLER_LIB@"
+                            id="ctc">
+      <actuators />
+      <sensors>
+        <!-- A wide field of view so both boxes fit while staying far
+             enough apart for the lamp to reach only one -->
+        <photorealistic_camera implementation="default" medium="pr"
+                               anchor="origin" position="0.1,0,0.15"
+                               orientation="0,0,0" resolution="64,64"
+                               fov="90" near="0.05" far="20"
+                               modalities="rgb,depth,seg" />
+      </sensors>
+      <params />
+    </camera_test_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/liblights_loop_functions"
+                  label="lights_loop_functions"
+                  near_lamp_box="near_lamp" far_box="far"
+                  min_near_luminance="@MIN_NEAR_LUMINANCE@"
+                  max_near_luminance="@MAX_NEAR_LUMINANCE@"
+                  max_far_luminance="@MAX_FAR_LUMINANCE@" />
+
+  <arena size="16, 16, 8" center="0,0,4">
+    <foot-bot id="observer">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="ctc" />
+    </foot-bot>
+    <!-- Same size, same distance from the camera, same material: the
+         only difference between them is the lamp -->
+    <box id="near_lamp" size="0.4,0.6,0.6" movable="false">
+      <body position="3.0,-1.5,0" orientation="0,0,0" />
+    </box>
+    <box id="far" size="0.4,0.6,0.6" movable="false">
+      <body position="3.0,1.5,0" orientation="0,0,0" />
+    </box>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <photorealism id="pr" backend="vulkan">
+      <!-- Nothing but the lamp: the ambient term follows the sun, so
+           a zero sun leaves the scene genuinely unlit -->
+      <sun direction="0.6,0.2,-1" intensity="0" cast_shadows="false" />
+      <skybox color="0,0,0" />
+@EXPOSURE_NODE@
+      <lights>
+        <!-- Offset back towards the camera rather than hung directly
+             over the box: the camera only ever sees the box's vertical
+             faces, and a lamp straight overhead rakes those at a
+             grazing angle and barely lights them.
+
+             2.5 m of reach: 1.06 m to the near face of the first box,
+             2.84 m to the nearest corner of the second, so the second
+             is outside the light by construction rather than by a
+             threshold that could drift. -->
+        <point position="2.0,-1.5,1.0" intensity="@LAMP_LUMENS@"
+               falloff="2.5" color="1.0,0.95,0.85" />
+      </lights>
+    </photorealism>
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

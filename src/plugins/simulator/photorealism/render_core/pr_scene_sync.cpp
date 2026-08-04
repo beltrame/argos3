@@ -13,6 +13,7 @@
 #include <argos3/core/simulator/entity/embodied_entity.h>
 #include <argos3/core/simulator/entity/floor_entity.h>
 #include <argos3/core/utility/logging/argos_log.h>
+#include <argos3/core/utility/math/angles.h>
 #include <argos3/plugins/simulator/entities/box_entity.h>
 #include <argos3/plugins/simulator/entities/cylinder_entity.h>
 #include <argos3/plugins/simulator/entities/led_equipped_entity.h>
@@ -50,9 +51,18 @@ namespace argos {
    extern const unsigned char PR_LIT_TEX_FILAMAT[];
    extern const size_t PR_LIT_TEX_FILAMAT_SIZE;
 
-   /* Emissive luminance of a fully lit LED, in nits; must compete
-    * with the sunny-day exposure of the cameras */
-   static const float LED_EMISSIVE_NITS = 25000.0f;
+   /* What a fully lit LED should read as on screen, before tone
+    * mapping: well clipped, so it looks like a light source and not
+    * like a painted dot.
+    *
+    * The material takes absolute nits, so the value has to be divided
+    * by the exposure. Hard-coding the nits instead (it used to be
+    * 25000, right for the sunny-day exposure the cameras once always
+    * had) ties LED rendering to one exposure: open the camera up for a
+    * night scene and every LED becomes a blown white blob, close it
+    * down and they vanish. An LED exists to be seen by the cameras, so
+    * it has to hold its brightness across exposures. */
+   static const float LED_EXPOSED_LUMINANCE = 0.65f;
 
    /* Edge of the emissive cube that visualizes an LED. Real LEDs
     * light up a lens/diffusor area much larger than the die, and the
@@ -132,6 +142,9 @@ namespace argos {
          .intensity(float(s_sunlight.Intensity) * 0.2f)
          .build(cEngine);
       c_engine.GetScene().setIndirectLight(m_pcAmbientLight);
+      /* The exposure is fixed for the run and set on the engine before
+       * this point, so the LED emissive can be resolved once */
+      m_fLedNits = float(LED_EXPOSED_LUMINANCE / c_engine.GetExposureScale());
       m_cArenaSize = c_arena_size;
       m_cArenaCenter = c_arena_center;
    }
@@ -280,6 +293,12 @@ namespace argos {
          cEngine.destroy(m_cSunlight);
          utils::EntityManager::get().destroy(m_cSunlight);
       }
+      for(utils::Entity& c_light : m_vecLights) {
+         m_pcEngine->GetScene().remove(c_light);
+         cEngine.destroy(c_light);
+         utils::EntityManager::get().destroy(c_light);
+      }
+      m_vecLights.clear();
       m_sBoxMesh.Release(cEngine);
       m_sCylinderMesh.Release(cEngine);
       m_sPlaneMesh.Release(cEngine);
@@ -688,7 +707,7 @@ namespace argos {
                "emissive",
                float3{float(cColor.GetRed()) / 255.0f,
                       float(cColor.GetGreen()) / 255.0f,
-                      float(cColor.GetBlue()) / 255.0f} * LED_EMISSIVE_NITS);
+                      float(cColor.GetBlue()) / 255.0f} * m_fLedNits);
          }
       }
    }
@@ -723,6 +742,60 @@ namespace argos {
       if(m_pcAmbientLight != nullptr && !m_bHasEnvironment) {
          m_pcAmbientLight->setIntensity(float(f_intensity) * 0.2f);
       }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   size_t CPRSceneSync::AddLight(const SLight& s_light) {
+      filament::Engine& cEngine = m_pcEngine->GetEngine();
+      utils::Entity cLight = utils::EntityManager::get().create();
+      filament::LightManager::Builder cBuilder(
+         s_light.Spot ? filament::LightManager::Type::FOCUSED_SPOT
+                      : filament::LightManager::Type::POINT);
+      cBuilder
+         .position({float(s_light.Position.GetX()),
+                    float(s_light.Position.GetY()),
+                    float(s_light.Position.GetZ())})
+         .color({float(s_light.Color.GetX()),
+                 float(s_light.Color.GetY()),
+                 float(s_light.Color.GetZ())})
+         .intensity(float(s_light.Intensity))
+         .falloff(float(s_light.FalloffRadius))
+         .castShadows(s_light.CastShadows);
+      if(s_light.Spot) {
+         CVector3 cDirection(s_light.Direction);
+         if(cDirection.Length() == 0.0) {
+            THROW_ARGOSEXCEPTION("A spot light needs a non-zero direction");
+         }
+         cDirection.Normalize();
+         cBuilder.direction({float(cDirection.GetX()),
+                             float(cDirection.GetY()),
+                             float(cDirection.GetZ())});
+         /* Filament wants half-angles in radians, inner <= outer */
+         float fOuter = float(ToRadians(CDegrees(s_light.OuterAngle)).GetValue());
+         float fInner = float(ToRadians(CDegrees(s_light.InnerAngle)).GetValue());
+         cBuilder.spotLightCone(std::min(fInner, fOuter), fOuter);
+      }
+      cBuilder.build(cEngine, cLight);
+      m_pcEngine->GetScene().addEntity(cLight);
+      m_vecLights.push_back(cLight);
+      return m_vecLights.size() - 1;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRSceneSync::SetLightIntensity(size_t un_light, Real f_intensity) {
+      if(un_light >= m_vecLights.size()) {
+         THROW_ARGOSEXCEPTION("Light index " << un_light << " does not exist "
+                              "(the scene has " << m_vecLights.size()
+                              << " local lights)");
+      }
+      filament::LightManager& cLights =
+         m_pcEngine->GetEngine().getLightManager();
+      cLights.setIntensity(cLights.getInstance(m_vecLights[un_light]),
+                           float(f_intensity));
    }
 
    /****************************************/

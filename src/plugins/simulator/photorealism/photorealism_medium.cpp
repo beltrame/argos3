@@ -82,6 +82,58 @@ namespace argos {
             TConfigurationNode& tSkybox = GetNode(t_tree, "skybox");
             GetNodeAttributeOrDefault(tSkybox, "color", m_cSkyColor, m_cSkyColor);
          }
+         /* Exposure. Filament is physically based: dimming the sun
+          * without opening the camera up gives a black image, so a
+          * scene lit by lamps needs both. */
+         if(NodeExists(t_tree, "exposure")) {
+            TConfigurationNode& tExposure = GetNode(t_tree, "exposure");
+            GetNodeAttributeOrDefault(tExposure, "aperture",
+                                      m_sExposure.Aperture,
+                                      m_sExposure.Aperture);
+            GetNodeAttributeOrDefault(tExposure, "shutter_speed",
+                                      m_sExposure.ShutterSpeed,
+                                      m_sExposure.ShutterSpeed);
+            GetNodeAttributeOrDefault(tExposure, "sensitivity",
+                                      m_sExposure.Sensitivity,
+                                      m_sExposure.Sensitivity);
+            if(m_sExposure.Aperture <= 0.0 ||
+               m_sExposure.ShutterSpeed <= 0.0 ||
+               m_sExposure.Sensitivity <= 0.0) {
+               THROW_ARGOSEXCEPTION("Exposure settings must be positive "
+                                    "(aperture is an f-number, shutter_speed "
+                                    "is in seconds, sensitivity is an ISO)");
+            }
+         }
+         if(NodeExists(t_tree, "lights")) {
+            TConfigurationNode& tLights = GetNode(t_tree, "lights");
+            for(const std::string& str_kind : {"point", "spot"}) {
+               TConfigurationNodeIterator tLightIterator(str_kind);
+               for(tLightIterator = tLightIterator.begin(&tLights);
+                   tLightIterator != tLightIterator.end();
+                   ++tLightIterator) {
+                  CPRSceneSync::SLight sLight;
+                  sLight.Spot = (str_kind == "spot");
+                  GetNodeAttribute(*tLightIterator, "position", sLight.Position);
+                  GetNodeAttributeOrDefault(*tLightIterator, "direction",
+                                            sLight.Direction, sLight.Direction);
+                  GetNodeAttributeOrDefault(*tLightIterator, "color",
+                                            sLight.Color, sLight.Color);
+                  GetNodeAttributeOrDefault(*tLightIterator, "intensity",
+                                            sLight.Intensity, sLight.Intensity);
+                  GetNodeAttributeOrDefault(*tLightIterator, "falloff",
+                                            sLight.FalloffRadius,
+                                            sLight.FalloffRadius);
+                  GetNodeAttributeOrDefault(*tLightIterator, "inner_angle",
+                                            sLight.InnerAngle, sLight.InnerAngle);
+                  GetNodeAttributeOrDefault(*tLightIterator, "outer_angle",
+                                            sLight.OuterAngle, sLight.OuterAngle);
+                  GetNodeAttributeOrDefault(*tLightIterator, "cast_shadows",
+                                            sLight.CastShadows,
+                                            sLight.CastShadows);
+                  m_vecLights.push_back(sLight);
+               }
+            }
+         }
          if(NodeExists(t_tree, "environment")) {
             TConfigurationNode& tEnvironment = GetNode(t_tree, "environment");
             m_sEnvironment.Enabled = true;
@@ -137,6 +189,9 @@ namespace argos {
    void CPhotorealismMedium::PostSpaceInit() {
       try {
          m_cEngine.Create(m_strBackend);
+         /* Before any camera is created: the pool and the viewer read
+          * the exposure off the engine when they build theirs */
+         m_cEngine.SetExposure(m_sExposure);
          /* Constant-color sky, unless an HDR environment provides
           * the skybox */
          if(!m_sEnvironment.Enabled || m_sEnvironment.Skybox.empty()) {
@@ -161,6 +216,9 @@ namespace argos {
             m_cSceneSync.LoadEnvironment(m_sEnvironment.Ibl,
                                          m_sEnvironment.Skybox,
                                          m_sEnvironment.Intensity);
+         }
+         for(const CPRSceneSync::SLight& s_light : m_vecLights) {
+            m_cSceneSync.AddLight(s_light);
          }
          /* Static scenery props */
          filament::TransformManager& cTransforms =
@@ -325,8 +383,7 @@ namespace argos {
          double(m_sDebugCamera.Width) / double(m_sDebugCamera.Height),
          0.05, 100.0,
          filament::Camera::Fov::VERTICAL);
-      /* Sunny-day exposure to match the default 100k lux sun */
-      m_pcDebugCamera->setExposure(16.0f, 1.0f / 125.0f, 100.0f);
+      m_cEngine.ApplyExposure(*m_pcDebugCamera);
       m_pcDebugCamera->lookAt(
          {float(m_sDebugCamera.Position.GetX()),
           float(m_sDebugCamera.Position.GetY()),
@@ -483,6 +540,40 @@ namespace argos {
                    "  </media>\n\n"
                    "The debug camera renders every 'period' ticks and writes\n"
                    "<dump>/frame_<clock>.png.\n\n"
+                   "The <lights> child node adds local lights: lamps, headlights, lit\n"
+                   "windows. Unlike the sun they have a position and a finite reach, so\n"
+                   "they are what makes a night or indoor scene readable. 'intensity' is\n"
+                   "in lumens (the number on a real bulb: about 10000 for a street lamp,\n"
+                   "800 for a domestic one) and 'falloff' is the radius in metres beyond\n"
+                   "which the light has no effect. Keep the falloff close to the useful\n"
+                   "reach: an oversized one costs performance without changing the image.\n"
+                   "A <spot> also takes a 'direction' and the half-angles 'inner_angle'\n"
+                   "and 'outer_angle' in degrees:\n\n"
+                   "  <photorealism id=\"pr\">\n"
+                   "    <lights>\n"
+                   "      <point position=\"3,0,3.2\" intensity=\"12000\" falloff=\"9\"\n"
+                   "             color=\"1.0,0.85,0.6\" />\n"
+                   "      <spot position=\"0,0,4\" direction=\"0,0,-1\" intensity=\"20000\"\n"
+                   "            falloff=\"12\" inner_angle=\"25\" outer_angle=\"40\" />\n"
+                   "    </lights>\n"
+                   "  </photorealism>\n\n"
+                   "Local lights do not cast shadows unless cast_shadows=\"true\": every\n"
+                   "shadow-casting local light shares one shadow atlas and costs an extra\n"
+                   "render pass per frame.\n\n"
+                   "The renderer is physically based, so the image is only as bright as\n"
+                   "the exposure allows. The default is the \"sunny 16\" rule, which is\n"
+                   "correct for the 100000 lux default sun and renders a lamp-lit scene\n"
+                   "black. The <exposure> child node opens the camera up; it applies to\n"
+                   "the robot sensors, the debug camera and the <filament> viewer alike,\n"
+                   "so they always agree on brightness:\n\n"
+                   "  <photorealism id=\"pr\">\n"
+                   "    <!-- dusk: about 6 stops brighter than sunny 16 -->\n"
+                   "    <exposure aperture=\"2.8\" shutter_speed=\"0.0166\"\n"
+                   "              sensitivity=\"400\" />\n"
+                   "  </photorealism>\n\n"
+                   "'aperture' is an f-number, 'shutter_speed' is in seconds and\n"
+                   "'sensitivity' is an ISO value; each stop down in aperture, or\n"
+                   "doubling of shutter_speed or sensitivity, doubles the brightness.\n\n"
                    "With stats=\"true\" the medium prints a timing summary (scene sync,\n"
                    "camera render/readback) at the end of the experiment.\n\n"
                    "The <randomization> child node enables domain randomization for\n"

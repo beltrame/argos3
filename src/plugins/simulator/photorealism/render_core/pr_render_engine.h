@@ -34,6 +34,23 @@ namespace utils {
 
 namespace argos {
 
+   /**
+    * Photographic exposure shared by every camera that renders this
+    * scene: the robot sensors, the debug camera and the interactive
+    * viewer. Filament is a physically based renderer, so the image is
+    * only as bright as the exposure lets it be: leaving the default
+    * sunny-16 settings on a scene lit by street lamps produces a black
+    * frame no matter how many lamps are added.
+    *
+    * The defaults are the "sunny 16" rule (f/16 at 1/100 s, ISO 100),
+    * correct for the 100 klux default sun.
+    */
+   struct SPRExposure {
+      Real Aperture = 16.0;          /* f-number */
+      Real ShutterSpeed = 1.0 / 125.0; /* seconds */
+      Real Sensitivity = 100.0;      /* ISO */
+   };
+
    class CPRRenderEngine {
 
    public:
@@ -80,6 +97,37 @@ namespace argos {
          AssertRenderThread();
          return *m_pcLitMaterial;
       }
+
+      /**
+       * The exposure every camera on this scene is set up with. The
+       * medium reads it from the <exposure> node before any camera
+       * exists; cameras created later pick it up through
+       * ApplyExposure().
+       */
+      inline const SPRExposure& GetExposure() const {
+         return m_sExposure;
+      }
+
+      inline void SetExposure(const SPRExposure& s_exposure) {
+         m_sExposure = s_exposure;
+      }
+
+      /**
+       * The factor scene luminance is multiplied by before tone
+       * mapping, at the current exposure. Emissive materials are
+       * authored in absolute nits, so anything that has to land at a
+       * fixed brightness on screen whatever the exposure (an LED, a
+       * marker) must be scaled by the inverse of this.
+       */
+      Real GetExposureScale() const;
+
+      /**
+       * Applies the scene exposure to a camera. Every camera rendering
+       * this scene must go through here: two cameras with different
+       * exposures show the same world at different brightness, which
+       * looks like a lighting bug and is very hard to track down.
+       */
+      void ApplyExposure(filament::Camera& c_camera) const;
 
       /**
        * Renders a view and synchronously reads back RGBA8 pixels.
@@ -136,6 +184,7 @@ namespace argos {
       filament::SwapChain* m_pcSwapChain   = nullptr;
       filament::Scene*     m_pcScene       = nullptr;
       filament::Material*  m_pcLitMaterial = nullptr;
+      SPRExposure          m_sExposure;
       std::thread::id      m_cRenderThreadId;
 
    };
