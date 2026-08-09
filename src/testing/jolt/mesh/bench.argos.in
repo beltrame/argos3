@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<!--
+  Ray throughput against a 105,208-triangle terrain, loaded with the default
+  double_sided="true", so the figure reported is the one a world pays without
+  any tuning. 16 rings x 900 azimuth steps = 14,400 rays per step, 100 m
+  range, origin walking a 3 m circle at 0.75 m height, 2 warm-up steps
+  discarded and 10 steps timed, i.e. 144,000 timed rays.
+
+  Only the three ray checks are gated. The cook time (reported by the mesh
+  entity itself) and the mean time per ray are informational: they depend on
+  the machine and are printed so that a run substantiates the numbers in
+  README.md.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1.2" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers />
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  ray_length="100" ray_tolerance="1e-3"
+                  scan="true" rings="16" azimuth_steps="900"
+                  elevation_min="-15" elevation_max="15"
+                  scan_range="100" scan_height="0.75" scan_radius="3"
+                  warmup_steps="2">
+    <!-- the terrain is z = 0.6 sin(0.08 x) cos(0.11 y), hence exactly 0 all
+         along x = 0 -->
+    <ray label="terrain_down" origin="0,0,5" direction="0,0,-1" expect="5.0" />
+    <!-- the perimeter walls; no block stands on either axis -->
+    <ray label="wall_south"   origin="0,0,3" direction="0,-1,0" expect="50.0" />
+    <ray label="wall_east"    origin="0,0,3" direction="1,0,0"  expect="65.0" />
+  </loop_functions>
+
+  <arena size="140,110,20" center="0,0,10">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/terrain.glb" />
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1" />
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

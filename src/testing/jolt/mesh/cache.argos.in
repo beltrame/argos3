@@ -1,0 +1,62 @@
+<?xml version="1.0" ?>
+<!--
+  One asset, six entities: three plain copies, one uniformly scaled, one read
+  without the Y-up conversion, and one with double-sided collision switched
+  off. The mesh entity cooks a shape once per distinct (file, y_up,
+  double_sided) key and wraps the cached shape in a scaled shape rather than
+  cooking it again, so every one of these instances must answer rays exactly
+  like the copy it shares its shape with.
+
+  The unconverted copy is the same corridor read straight in glTF axes, so its
+  floor becomes the plane y = 60, its ceiling y = 66, and its two walls the
+  planes z = -2 and z = +2.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers />
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  ray_length="100" ray_tolerance="1e-3">
+    <ray label="copy_a_floor"     origin="0,0,1"    direction="0,0,-1" expect="1.0" />
+    <ray label="copy_b_floor"     origin="0,10,1"   direction="0,0,-1" expect="1.0" />
+    <ray label="copy_c_floor"     origin="0,-10,1"  direction="0,0,-1" expect="1.0" />
+    <ray label="copy_a_wall"      origin="0,0,1"    direction="0,1,0"  expect="2.0" />
+    <!-- scale 2: the floor stays at z = 0, the wall moves to y = 30 + 4,
+         the ceiling to z = 12 -->
+    <ray label="scaled_floor"     origin="0,30,1"   direction="0,0,-1" expect="1.0" />
+    <ray label="scaled_wall"      origin="0,30,1"   direction="0,1,0"  expect="4.0" />
+    <ray label="scaled_ceiling"   origin="0,30,1"   direction="0,0,1"  expect="11.0" />
+    <!-- y_up="false": the axes are taken as written in the file -->
+    <ray label="unconverted_floor"   origin="0,62,0" direction="0,-1,0" expect="2.0" />
+    <ray label="unconverted_ceiling" origin="0,62,0" direction="0,1,0"  expect="4.0" />
+    <ray label="unconverted_wall"    origin="0,62,0" direction="0,0,1"  expect="2.0" />
+    <!-- double_sided="false" cooks its own shape; rays are two-sided either
+         way, so it must answer exactly like the plain copies -->
+    <ray label="single_sided_floor" origin="0,-20,1" direction="0,0,-1" expect="1.0" />
+    <ray label="single_sided_wall"  origin="0,-20,1" direction="0,1,0"  expect="2.0" />
+  </loop_functions>
+
+  <arena size="90,110,30" center="20,22,5">
+    <mesh id="copy_a"       file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" />
+    <mesh id="copy_b"       file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" position="0,10,0" />
+    <mesh id="copy_c"       file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" position="0,-10,0" />
+    <mesh id="scaled"       file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" position="0,30,0" scale="2.0" />
+    <mesh id="unconverted"  file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" position="0,60,0" y_up="false" />
+    <mesh id="single_sided" file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" position="0,-20,0" double_sided="false" />
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1" />
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>
