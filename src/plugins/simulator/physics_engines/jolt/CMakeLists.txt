@@ -37,7 +37,10 @@ set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHYSICS_ENGINES_JOLT
   jolt_floor_plugin.h
   jolt_gravity_plugin.h
   jolt_box_model.h
-  jolt_cylinder_model.h)
+  jolt_cylinder_model.h
+  jolt_mesh_asset.h
+  jolt_mesh_model.h
+  mesh_entity.h)
 
 #
 # Source files
@@ -51,7 +54,10 @@ set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_PHYSICS_ENGINES_JOLT
   jolt_floor_plugin.cpp
   jolt_gravity_plugin.cpp
   jolt_box_model.cpp
-  jolt_cylinder_model.cpp)
+  jolt_cylinder_model.cpp
+  jolt_mesh_asset.cpp
+  jolt_mesh_model.cpp
+  mesh_entity.cpp)
 
 #
 # Create the jolt engine plugin
