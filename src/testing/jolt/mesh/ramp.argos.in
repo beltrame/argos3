@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<!--
+  A foot-bot with its wheels stopped, released 0.1 m above the 1:4 ramp of the
+  corridor. It must come to rest on the sloped surface, i.e. at
+  z = 0.25 * (x - 10) + 0.25 * 0.085037 for its final x, rather than falling
+  through the mesh to z = 0.
+
+  The foot-bot's Jolt body carries zero friction (jolt_footbot_model.cpp sets
+  mFriction = 0, since wheel velocities are imposed directly), so the robot
+  also creeps down the slope; what is checked is that it stays on the surface
+  while it does, wherever it has got to.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="10" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers>
+    <mesh_drive_controller id="stopped"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors />
+      <params left="0" right="0" />
+    </mesh_drive_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  robot="fb" slope="0.25" slope_origin="10"
+                  position_tolerance="2e-3" />
+
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" />
+    <foot-bot id="fb">
+      <body position="13,0,0.85" orientation="0,0,0" />
+      <controller config="stopped" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

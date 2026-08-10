@@ -1,0 +1,52 @@
+<?xml version="1.0" ?>
+<!--
+  A foot-bot driven at a constant wheel velocity into the end cap of the
+  corridor at x = 30. It must be stopped by the mesh one body radius short of
+  it, at 30 - 0.085037 = 29.914963 m, and be carried by the mesh landing at
+  z = 2.5 the whole way: there is no floor plugin in this arena. Without mesh
+  collision it would drive straight through and fall.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="20" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers>
+    <mesh_drive_controller id="drive"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors />
+      <!-- the differential steering actuator takes cm/s: 50 is 0.5 m/s -->
+      <params left="50" right="50" />
+    </mesh_drive_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  robot="fb" expect_x="29.914963" expect_z="2.5"
+                  position_tolerance="2e-3" lateral_tolerance="5e-2"
+                  poses_file="@POSES_FILE@" />
+
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" />
+    <foot-bot id="fb">
+      <body position="24,0,2.55" orientation="0,0,0" />
+      <controller config="drive" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

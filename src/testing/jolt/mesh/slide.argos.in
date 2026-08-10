@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<!--
+  A foot-bot driven straight along the X axis for 20 m across a floor
+  tessellated into 2 m cells, so that it slides over about 20 internal edges
+  of the triangulation. Its lateral deviation must stay negligible.
+
+  This guards the contact normals a mesh surface hands to a sliding body.
+  Jolt records, for every triangle of a cooked mesh, which of its edges are
+  active, and a body sliding over an inactive edge has its contact normal
+  replaced by the normal of the face; over an active edge it keeps the edge
+  normal, which points off the surface and pushes the body off its heading.
+  Which edges come out active depends on how the triangles were handed to the
+  cooker, so this is what a change in the loading path would break first. The
+  entity cooks the two windings of a double-sided mesh into two mesh shapes
+  held by a compound rather than into one mesh shape holding both, which
+  leaves each shape with the active-edge information its own winding implies.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="40" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers>
+    <mesh_drive_controller id="drive"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors />
+      <!-- the differential steering actuator takes cm/s: 50 is 0.5 m/s -->
+      <params left="50" right="50" />
+    </mesh_drive_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  robot="fb" expect_x="4.95" expect_z="0.0"
+                  position_tolerance="0.02" lateral_tolerance="0.1" />
+
+  <arena size="40,12,4" center="0,0,2">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/tiled_floor.glb" />
+    <foot-bot id="fb">
+      <body position="-15,0,0.05" orientation="0,0,0" />
+      <controller config="drive" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

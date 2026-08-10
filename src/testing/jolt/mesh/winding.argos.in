@@ -1,0 +1,73 @@
+<?xml version="1.0" ?>
+<!--
+  Collision against a wrongly wound wall, with double-sided loading on and
+  off. flipped_wall.glb is one wall across the corridor landing at x = 27,
+  wound so that its normal points at +X, i.e. away from the foot-bot that
+  drives at it from x = 24. The corridor itself is correctly wound and keeps
+  the default double_sided="true"; only the flag of the flipped wall varies.
+
+    double_sided="true"   the robot is stopped at 27 - 0.085037 = 26.914963 m
+    double_sided="false"  the robot passes through the flipped wall and is
+                          stopped only by the correctly wound end cap, at
+                          30 - 0.085037 = 29.914963 m
+
+  The four ray checks are the same in both configurations: Jolt answers ray
+  queries from both faces of a triangle whatever the flag says, so the wall is
+  visible to sensors either way. That is what makes the single-sided failure
+  mode silent, and why double-sided loading is the default.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="20" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers>
+    <mesh_drive_controller id="drive"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors />
+      <!-- the differential steering actuator takes cm/s: 50 is 0.5 m/s -->
+      <params left="50" right="50" />
+    </mesh_drive_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  ray_length="100" ray_tolerance="1e-3"
+                  robot="fb" expect_x="@EXPECT_X@" expect_z="2.5"
+                  position_tolerance="2e-3" lateral_tolerance="5e-2">
+    <!-- the flipped wall, seen from the side its normal points away from.
+         The origins clear the robot, which starts at x = 24 -->
+    <ray label="flipped_front" origin="24,0,3"     direction="1,0,0"  expect="3.0" />
+    <ray label="flipped_low"   origin="25.5,0,2.6" direction="1,0,0"  expect="1.5" />
+    <!-- and from the side it points at -->
+    <ray label="flipped_back"  origin="29,0,3"     direction="-1,0,0" expect="2.0" />
+    <!-- the correctly wound end cap, past the flipped wall -->
+    <ray label="end_cap"       origin="28,0,3"     direction="1,0,0"  expect="2.0" />
+  </loop_functions>
+
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world"        file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" />
+    <mesh id="flipped_wall" file="@CMAKE_CURRENT_BINARY_DIR@/flipped_wall.glb"
+          double_sided="@DOUBLE_SIDED@" />
+    <foot-bot id="fb">
+      <body position="24,0,2.55" orientation="0,0,0" />
+      <controller config="drive" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

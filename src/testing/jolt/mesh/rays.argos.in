@@ -1,0 +1,51 @@
+<?xml version="1.0" ?>
+<!--
+  Ray accuracy against the corridor mesh. Every expected distance is closed
+  form from the geometry make_meshes.py writes; README.md lists them.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers />
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  ray_length="100" ray_tolerance="1e-3">
+    <!-- the flat part of the floor, the ceiling and the two walls -->
+    <ray label="floor_down"     origin="0,0,1"    direction="0,0,-1" expect="1.0" />
+    <ray label="ceiling_up"     origin="0,0,1"    direction="0,0,1"  expect="5.0" />
+    <ray label="wall_left"      origin="0,0,1"    direction="0,1,0"  expect="2.0" />
+    <ray label="wall_right"     origin="0,0,1"    direction="0,-1,0" expect="2.0" />
+    <ray label="wall_diagonal"  origin="0,0,1"    direction="0,1,1"  expect="2.8284271247" />
+    <!-- the sloped surface, which box entities could not represent -->
+    <ray label="ramp_frontal"   origin="0,0,1"    direction="1,0,0"  expect="14.0" />
+    <ray label="ramp_down"      origin="12,0,3"   direction="0,0,-1" expect="2.5" />
+    <ray label="ramp_oblique"   origin="12,0,3"   direction="1,0,-1" expect="2.8284271247" />
+    <ray label="landing_down"   origin="25,0,5"   direction="0,0,-1" expect="2.5" />
+    <ray label="end_cap"        origin="25,0,4"   direction="1,0,0"  expect="5.0" />
+    <!-- openings: the corridor is open at x = -10 and has a window in the
+         left wall over x in [4,6], z in [0.5,1.5] -->
+    <ray label="open_end"       origin="0,0,1"    direction="-1,0,0" expect="none" />
+    <ray label="window_through" origin="5,0,1"    direction="0,1,0"  expect="none" />
+    <ray label="window_above"   origin="5,0,2"    direction="0,1,0"  expect="2.0" />
+    <ray label="window_below"   origin="5,0,0.25" direction="0,1,0"  expect="2.0" />
+    <ray label="enter_open_end" origin="-15,0,1"  direction="1,0,0"  expect="29.0" />
+  </loop_functions>
+
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" />
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1" />
+  </physics_engines>
+
+  <media />
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>
