@@ -15,7 +15,8 @@ set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_RENDERCORE
   render_core/pr_asset_registry.h)
 # argos3/plugins/simulator/photorealism/sensors/
 set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_SENSORS
-  sensors/photorealistic_camera_default_sensor.h)
+  sensors/photorealistic_camera_default_sensor.h
+  sensors/photorealistic_lidar_default_sensor.h)
 
 #
 # Compile the Filament materials with matc and embed them as C++ arrays
@@ -59,7 +60,8 @@ set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_PHOTOREALISM
   render_core/pr_camera_pool.cpp
   render_core/pr_randomizer.cpp
   render_core/pr_asset_registry.cpp
-  sensors/photorealistic_camera_default_sensor.cpp)
+  sensors/photorealistic_camera_default_sensor.cpp
+  sensors/photorealistic_lidar_default_sensor.cpp)
 
 #
 # Symbol firewall: pre-link the Filament archives together with the

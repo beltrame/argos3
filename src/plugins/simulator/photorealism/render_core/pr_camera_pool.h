@@ -82,6 +82,13 @@ namespace argos {
       bool RenderAux = true;
       /** Render every n-th tick (cameras are skewed round-robin) */
       UInt32 FramerateDivider = 1;
+      /** Which tick of the divider's cycle this camera renders on.
+       *  Negative means auto: the camera is skewed by its handle, so
+       *  cameras sharing a divider spread their load over the cycle.
+       *  Set it explicitly to keep a group of cameras coincident, as
+       *  the lidar does with the faces of one scan: skewed faces would
+       *  each depict a different tick. */
+      SInt32 Phase = -1;
    };
 
    class CPRCameraPool {

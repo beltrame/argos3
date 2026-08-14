@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="42" />
+  </framework>
+
+  <controllers>
+    <lidar_test_controller library="@CMAKE_CURRENT_BINARY_DIR@/liblidar_test_controller"
+                           id="ltc">
+      <actuators />
+      <sensors>
+        <!-- VLP-16 defaults: 16 rings over -15..+15 degrees, 0.2 degree
+             azimuth steps, 20 m range. Mounted well above the foot-bot so
+             the robot's own body does not occlude the downward rays. -->
+        <photorealistic_lidar implementation="default" medium="pr"
+                              anchor="origin" position="0,0,0.6" />
+      </sensors>
+      <!-- The room the walls below enclose: x in [-4,2], y in [-5,3],
+           floor at 0, walls 3 m tall. Deliberately asymmetric, so a
+           face pointing the wrong way cannot pass by coincidence. -->
+      <params room="-4,2,-5,3,3" sensor_position="0,0,0.6"
+              expected_rings="16" expected_azimuths="1800"
+              max_error="@TEST_MAX_ERROR@" mean_error="@TEST_MEAN_ERROR@" />
+    </lidar_test_controller>
+  </controllers>
+
+  <arena size="14, 14, 3" center="0,0,1.5">
+    <foot-bot id="fb">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="ltc" />
+    </foot-bot>
+    <!-- Four walls, 0.1 thick, enclosing the room. Inner faces at
+         x = 2, x = -4, y = 3, y = -5. -->
+    <box id="wall_xmax" size="0.1,8.2,3" movable="false">
+      <body position="2.05,-1,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_xmin" size="0.1,8.2,3" movable="false">
+      <body position="-4.05,-1,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_ymax" size="6.2,0.1,3" movable="false">
+      <body position="-1,3.05,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_ymin" size="6.2,0.1,3" movable="false">
+      <body position="-1,-5.05,0" orientation="0,0,0" />
+    </box>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <photorealism id="pr" backend="vulkan" latency="@TEST_LATENCY_MODE@">
+      <sun direction="0.6,0.2,-1" intensity="100000" cast_shadows="true" />
+      <skybox color="0.53,0.71,0.92" />
+    </photorealism>
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

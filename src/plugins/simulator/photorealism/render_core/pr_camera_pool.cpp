@@ -185,7 +185,10 @@ namespace argos {
       for(auto& tCamera : m_mapCameras) {
          SCamera& sCamera = tCamera.second;
          sCamera.Due = false;
-         if((un_tick + tCamera.first) % sCamera.Config.FramerateDivider == 0) {
+         const UInt32 unPhase = sCamera.Config.Phase < 0
+            ? tCamera.first
+            : UInt32(sCamera.Config.Phase);
+         if((un_tick + unPhase) % sCamera.Config.FramerateDivider == 0) {
             sCamera.Due = true;
             vecDue.push_back(&sCamera);
          }
