@@ -15,6 +15,10 @@ namespace argos {
 
 #include <argos3/core/simulator/sensor.h>
 #include <argos3/plugins/robots/generic/control_interface/ci_photorealistic_camera_sensor.h>
+#include <argos3/plugins/simulator/photorealism/render_core/pr_camera_pool.h>
+
+#include <string>
+#include <vector>
 
 namespace argos {
 
@@ -33,24 +37,49 @@ namespace argos {
       virtual void Destroy();
 
       virtual const SFrame& GetFrame() const {
-         return m_sFrame;
+         return m_vecMounts.front().Frame;
       }
 
       virtual bool HasNewFrame() const {
-         return m_bNewFrame;
+         for(const SMount& sMount : m_vecMounts) {
+            if(sMount.NewFrame) return true;
+         }
+         return false;
+      }
+
+      virtual size_t GetNumCameras() const { return m_vecMounts.size(); }
+
+      virtual const SFrame& GetFrame(size_t un_index) const {
+         return m_vecMounts.at(un_index).Frame;
+      }
+
+      virtual bool HasNewFrame(size_t un_index) const {
+         return m_vecMounts.at(un_index).NewFrame;
       }
 
    private:
 
+      /** One camera mounted on the robot. ARGoS keys sensors by type, so a
+       *  robot cannot carry two <photorealistic_camera> entries: the second
+       *  would overwrite the first in the controller's sensor map. Multiple
+       *  viewpoints are therefore mounts of a single sensor. */
+      struct SMount {
+         std::string Id = "default";
+         UInt32 Handle = 0;
+         SFrame Frame;
+         bool NewFrame = false;
+         bool RGBEnabled = true;
+         bool DepthEnabled = true;
+         bool SegEnabled = true;
+         Real FarPlane = 20.0;
+      };
+
+      /** Reads one camera's attributes from `t_node` into a pool config. */
+      void ParseMount(TConfigurationNode& t_node, const std::string& str_id);
+
       CEmbodiedEntity* m_pcEmbodiedEntity = nullptr;
       CPhotorealismMedium* m_pcMedium = nullptr;
-      UInt32 m_unCameraHandle = 0;
-      SFrame m_sFrame;
-      bool m_bNewFrame = false;
-      bool m_bRGBEnabled = true;
-      bool m_bDepthEnabled = true;
-      bool m_bSegEnabled = true;
-      Real m_fFarPlane = 20.0;
+      std::vector<SMount> m_vecMounts;
 
    };
 

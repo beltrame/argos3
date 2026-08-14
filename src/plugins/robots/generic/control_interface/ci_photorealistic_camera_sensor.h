@@ -25,6 +25,7 @@ namespace argos {
 #include <argos3/core/control_interface/ci_sensor.h>
 #include <argos3/core/utility/datatypes/datatypes.h>
 
+#include <string>
 #include <vector>
 
 namespace argos {
@@ -34,6 +35,9 @@ namespace argos {
    public:
 
       struct SFrame {
+         /** Mount id, from the <camera id="..."> attribute. "default"
+          *  for a sensor configured with a single unnamed camera. */
+         std::string Id = "default";
          /** Image width in pixels */
          UInt32 Width = 0;
          /** Image height in pixels */
@@ -59,17 +63,30 @@ namespace argos {
       virtual ~CCI_PhotorealisticCameraSensor() {}
 
       /**
-       * Returns the most recent frame.
+       * Returns the most recent frame of the first mount.
        * Contents are valid only when a frame has been delivered at
        * least once; check HasNewFrame() or SFrame::Tick.
        */
       virtual const SFrame& GetFrame() const = 0;
 
       /**
-       * Returns true when a new frame was delivered during the
+       * Returns true when any mount delivered a new frame during the
        * current control step.
        */
       virtual bool HasNewFrame() const = 0;
+
+      /**
+       * Number of camera mounts this sensor carries. A sensor
+       * configured the classic way, with the camera attributes on the
+       * <photorealistic_camera> element itself, reports 1.
+       */
+      virtual size_t GetNumCameras() const = 0;
+
+      /** Most recent frame of mount un_index. */
+      virtual const SFrame& GetFrame(size_t un_index) const = 0;
+
+      /** Whether mount un_index delivered a frame this control step. */
+      virtual bool HasNewFrame(size_t un_index) const = 0;
 
 #ifdef ARGOS_WITH_LUA
       virtual void CreateLuaState(lua_State* pt_lua_state);

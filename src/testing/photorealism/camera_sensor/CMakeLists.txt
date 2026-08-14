@@ -27,6 +27,12 @@ set(TEST_EXPECTED_LATENCY "0")
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/configuration.argos.in
   ${CMAKE_CURRENT_BINARY_DIR}/configuration_immediate.argos)
+# multi-mount variant: three cameras on one sensor
+set(TEST_LATENCY_MODE "immediate")
+set(TEST_EXPECTED_LATENCY "0")
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/configuration_multi.argos.in
+  ${CMAKE_CURRENT_BINARY_DIR}/configuration_multi.argos)
 # define tests
 add_test(
    NAME photorealism_camera_sensor_pipelined
@@ -36,7 +42,12 @@ add_test(
    NAME photorealism_camera_sensor_immediate
    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
    COMMAND bash -c "env -u DISPLAY -u WAYLAND_DISPLAY ${CMAKE_BINARY_DIR}/core/argos3 -zc configuration_immediate.argos")
+add_test(
+   NAME photorealism_camera_sensor_multi
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   COMMAND bash -c "env -u DISPLAY -u WAYLAND_DISPLAY ${CMAKE_BINARY_DIR}/core/argos3 -zc configuration_multi.argos")
 set_tests_properties(
   photorealism_camera_sensor_pipelined
   photorealism_camera_sensor_immediate
+  photorealism_camera_sensor_multi
   PROPERTIES ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")

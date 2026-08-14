@@ -30,6 +30,9 @@ public:
    /* When set (XML params attribute "dump_ppm"), the first frame is
     * written to <prefix>_rgb.ppm / _depth.pgm / _seg.pgm */
    std::string m_strDumpPrefix;
+   /** Per-mount expectations, "id:min,max" of the minimum depth,
+    *  separated by ';'. Empty disables the multi-mount check. */
+   std::string m_strMountDepthChecks;
    bool m_bDumped = false;
 
 };

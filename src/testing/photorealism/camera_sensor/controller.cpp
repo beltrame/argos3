@@ -1,5 +1,7 @@
 #include "controller.h"
 
+#include <argos3/core/utility/logging/argos_log.h>
+
 #include <argos3/core/utility/string_utilities.h>
 
 #include <algorithm>
@@ -11,6 +13,8 @@
 void CCameraTestController::Init(TConfigurationNode& t_tree) {
    m_pcCamera = GetSensor<CCI_PhotorealisticCameraSensor>("photorealistic_camera");
    GetNodeAttributeOrDefault(t_tree, "dump_ppm", m_strDumpPrefix, m_strDumpPrefix);
+   GetNodeAttributeOrDefault(t_tree, "mount_depth_checks",
+                             m_strMountDepthChecks, m_strMountDepthChecks);
    std::string strExpectedSize;
    GetNodeAttributeOrDefault(t_tree, "expected_size", strExpectedSize, strExpectedSize);
    if(!strExpectedSize.empty()) {
@@ -27,6 +31,59 @@ void CCameraTestController::Init(TConfigurationNode& t_tree) {
 void CCameraTestController::ControlStep() {
    if(!m_pcCamera->HasNewFrame()) {
       return;
+   }
+   /* Multi-mount checks. ARGoS keys sensors by type, so several viewpoints
+    * have to be mounts of one sensor rather than several sensor entries; this
+    * verifies they are genuinely independent cameras and not aliases of the
+    * same render. Each entry is "id:min,max" bounding that mount's minimum
+    * depth. */
+   if(!m_strMountDepthChecks.empty()) {
+      std::vector<std::string> vecChecks;
+      Tokenize(m_strMountDepthChecks, vecChecks, ";");
+      if(vecChecks.size() != m_pcCamera->GetNumCameras()) {
+         THROW_ARGOSEXCEPTION("Expected " << vecChecks.size() << " mounts, sensor has "
+                              << m_pcCamera->GetNumCameras());
+      }
+      for(size_t i = 0; i < m_pcCamera->GetNumCameras(); ++i) {
+         if(!m_pcCamera->HasNewFrame(i)) return;   /* wait for all mounts */
+      }
+      for(size_t i = 0; i < m_pcCamera->GetNumCameras(); ++i) {
+         const CCI_PhotorealisticCameraSensor::SFrame& sM = m_pcCamera->GetFrame(i);
+         if(sM.Depth.empty()) continue;
+         const size_t unCentre = size_t(sM.Height / 2) * sM.Width + sM.Width / 2;
+         LOG << "[MOUNT] " << sM.Id << " centre=" << sM.Depth[unCentre]
+             << " min=" << *std::min_element(sM.Depth.begin(), sM.Depth.end())
+             << std::endl;
+      }
+      LOG.Flush();
+      for(const std::string& strCheck : vecChecks) {
+         const size_t unColon = strCheck.find(':');
+         const std::string strId = strCheck.substr(0, unColon);
+         Real pfRange[2];
+         ParseValues<Real>(strCheck.substr(unColon + 1), 2, pfRange, ',');
+         bool bFound = false;
+         for(size_t i = 0; i < m_pcCamera->GetNumCameras(); ++i) {
+            const CCI_PhotorealisticCameraSensor::SFrame& sM = m_pcCamera->GetFrame(i);
+            if(sM.Id != strId) continue;
+            bFound = true;
+            if(sM.Depth.empty()) {
+               THROW_ARGOSEXCEPTION("Mount \"" << strId << "\" produced no depth");
+            }
+            /* Centre pixel, i.e. along this mount's optical axis. The global
+             * minimum is the floor, which every mount sees regardless of where
+             * it points, so it cannot tell the mounts apart. */
+            const size_t unCentre = size_t(sM.Height / 2) * sM.Width + sM.Width / 2;
+            const Real fCentre = sM.Depth[unCentre];
+            if(fCentre < pfRange[0] || fCentre > pfRange[1]) {
+               THROW_ARGOSEXCEPTION("Mount \"" << strId << "\" centre depth " << fCentre
+                                    << " outside [" << pfRange[0] << ", "
+                                    << pfRange[1] << "]");
+            }
+         }
+         if(!bFound) {
+            THROW_ARGOSEXCEPTION("No mount with id \"" << strId << "\"");
+         }
+      }
    }
    const CCI_PhotorealisticCameraSensor::SFrame& sFrame = m_pcCamera->GetFrame();
    size_t unPixels = size_t(sFrame.Width) * sFrame.Height;
