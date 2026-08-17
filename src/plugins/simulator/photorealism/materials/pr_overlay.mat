@@ -14,11 +14,13 @@
 material {
     name : pr_overlay,
     shadingModel : unlit,
+    blending : transparent,
     culling : none,
     depthWrite : false,
     depthCulling : false,
     requires : [ color ]
 }
+
 
 fragment {
     void material(inout MaterialInputs material) {
