@@ -45,6 +45,26 @@ namespace argos {
       virtual void AddLine(const CVector3& c_from, const CVector3& c_to,
                            const CColor& c_color) = 0;
 
+      /**
+       * A line with real width, in metres.
+       *
+       * Filament draws the LINES primitive one pixel wide and offers no line
+       * width, so anything that has to be legible over a photorealistic scene
+       * needs actual geometry. This builds each segment as two thin quads
+       * crossed at right angles, which keeps a similar apparent thickness from
+       * any viewing angle without having to be rebuilt when the camera moves.
+       *
+       * Costs 12 vertices a segment against 2, so it is for the handful of
+       * things being watched - a path, a frontier - and not for a graph with
+       * thousands of edges.
+       */
+      virtual void AddThickLine(const CVector3& c_from, const CVector3& c_to,
+                                Real f_width, const CColor& c_color) = 0;
+
+      /** A polyline of AddThickLine segments. */
+      virtual void AddThickPolyline(const std::vector<CVector3>& vec_points,
+                                    Real f_width, const CColor& c_color) = 0;
+
       /** A polyline through the points; nothing for fewer than two. */
       virtual void AddPolyline(const std::vector<CVector3>& vec_points,
                                const CColor& c_color) = 0;

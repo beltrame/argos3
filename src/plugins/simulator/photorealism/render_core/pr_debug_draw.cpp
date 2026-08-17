@@ -41,7 +41,7 @@ namespace argos {
    /****************************************/
    /****************************************/
 
-   void CPRDebugDraw::ReleaseGeometry() {
+   void CPRDebugDraw::ReleaseLines() {
       if(m_pcEngine == nullptr) {
          return;
       }
@@ -66,6 +66,36 @@ namespace argos {
    /****************************************/
    /****************************************/
 
+   void CPRDebugDraw::ReleaseTriangles() {
+      if(m_pcEngine == nullptr) {
+         return;
+      }
+      filament::Engine& cEngine = m_pcEngine->GetEngine();
+      if(m_bHasTriangles) {
+         m_pcEngine->GetScene().remove(m_cTriangleRenderable);
+         cEngine.getRenderableManager().destroy(m_cTriangleRenderable);
+         utils::EntityManager::get().destroy(m_cTriangleRenderable);
+         m_cTriangleRenderable = utils::Entity();
+         m_bHasTriangles = false;
+      }
+      if(m_pcTriangleVertices != nullptr) {
+         cEngine.destroy(m_pcTriangleVertices);
+         m_pcTriangleVertices = nullptr;
+      }
+      if(m_pcTriangleIndices != nullptr) {
+         cEngine.destroy(m_pcTriangleIndices);
+         m_pcTriangleIndices = nullptr;
+      }
+   }
+
+   void CPRDebugDraw::ReleaseGeometry() {
+      ReleaseLines();
+      ReleaseTriangles();
+   }
+
+   /****************************************/
+   /****************************************/
+
    void CPRDebugDraw::Destroy() {
       ReleaseGeometry();
       if(m_pcEngine != nullptr) {
@@ -80,6 +110,9 @@ namespace argos {
          }
       }
       m_vecVertices.clear();
+      m_vecCommitted.clear();
+      m_vecTriangles.clear();
+      m_vecTrianglesCommitted.clear();
       m_pcEngine = nullptr;
    }
 
@@ -87,8 +120,9 @@ namespace argos {
    /****************************************/
 
    void CPRDebugDraw::Clear() {
-      if(!m_vecVertices.empty()) {
+      if(!m_vecVertices.empty() || !m_vecTriangles.empty()) {
          m_vecVertices.clear();
+         m_vecTriangles.clear();
          m_bDirty = true;
       }
    }
@@ -129,6 +163,75 @@ namespace argos {
    /****************************************/
    /****************************************/
 
+   void CPRDebugDraw::AddTriangle(const CVector3& c_a, const CVector3& c_b,
+                                  const CVector3& c_c, const CColor& c_color) {
+      SVertex sVertex;
+      sVertex.Color[0] = float(c_color.GetRed()) / 255.0f;
+      sVertex.Color[1] = float(c_color.GetGreen()) / 255.0f;
+      sVertex.Color[2] = float(c_color.GetBlue()) / 255.0f;
+      sVertex.Color[3] = float(c_color.GetAlpha()) / 255.0f;
+      const CVector3* pcCorners[3] = {&c_a, &c_b, &c_c};
+      for(const CVector3* pcCorner : pcCorners) {
+         sVertex.Position[0] = float(pcCorner->GetX());
+         sVertex.Position[1] = float(pcCorner->GetY());
+         sVertex.Position[2] = float(pcCorner->GetZ());
+         m_vecTriangles.push_back(sVertex);
+      }
+      m_bDirty = true;
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRDebugDraw::AddThickLine(const CVector3& c_from, const CVector3& c_to,
+                                   Real f_width, const CColor& c_color) {
+      CVector3 cAlong = c_to - c_from;
+      const Real fLength = cAlong.Length();
+      if(fLength < 1e-9) {
+         return;
+      }
+      cAlong /= fLength;
+      /* Two perpendiculars to the segment. The first is taken against
+       * whichever world axis the segment is least aligned with, so the cross
+       * product never degenerates on a vertical or axis-aligned line - which
+       * is most of them, since these paths run along a lattice. */
+      CVector3 cReference =
+         std::abs(cAlong.GetZ()) < 0.9 ? CVector3::Z : CVector3::X;
+      CVector3 cSide = cAlong;
+      cSide.CrossProduct(cReference);
+      cSide.Normalize();
+      CVector3 cUp = cAlong;
+      cUp.CrossProduct(cSide);
+      cUp.Normalize();
+
+      const Real fHalf = f_width * 0.5;
+      /* Two quads crossed at right angles: a flat ribbon alone vanishes when
+       * seen edge-on, which for a path lying on the ground is exactly the
+       * viewpoint someone watching from above has. */
+      const CVector3 pcOffsets[2] = {cSide * fHalf, cUp * fHalf};
+      for(const CVector3& cOffset : pcOffsets) {
+         const CVector3 cA = c_from - cOffset;
+         const CVector3 cB = c_from + cOffset;
+         const CVector3 cC = c_to + cOffset;
+         const CVector3 cD = c_to - cOffset;
+         AddTriangle(cA, cB, cC, c_color);
+         AddTriangle(cA, cC, cD, c_color);
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRDebugDraw::AddThickPolyline(const std::vector<CVector3>& vec_points,
+                                       Real f_width, const CColor& c_color) {
+      for(size_t i = 1; i < vec_points.size(); ++i) {
+         AddThickLine(vec_points[i - 1], vec_points[i], f_width, c_color);
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
    void CPRDebugDraw::AddMarker(const CVector3& c_at, Real f_size,
                                 const CColor& c_color) {
       const Real fHalf = f_size * 0.5;
@@ -143,17 +246,10 @@ namespace argos {
    /****************************************/
    /****************************************/
 
-   void CPRDebugDraw::Commit() {
-      if(m_pcEngine == nullptr || !m_bDirty) {
-         return;
-      }
-      m_bDirty = false;
-      ReleaseGeometry();
-      if(m_vecVertices.empty()) {
-         return;
-      }
+   void CPRDebugDraw::Upload(const std::vector<SVertex>& vec_vertices,
+                             bool b_triangles) {
       filament::Engine& cEngine = m_pcEngine->GetEngine();
-      const auto unVertices = UInt32(m_vecVertices.size());
+      const auto unVertices = UInt32(vec_vertices.size());
 
       /* Buffers handed to Filament must outlive the async upload, so
        * these heap copies are freed in the descriptor callbacks */
@@ -166,7 +262,7 @@ namespace argos {
                        std::numeric_limits<float>::lowest(),
                        std::numeric_limits<float>::lowest()};
       for(UInt32 i = 0; i < unVertices; ++i) {
-         const SVertex& sVertex = m_vecVertices[i];
+         const SVertex& sVertex = vec_vertices[i];
          for(UInt32 a = 0; a < 3; ++a) {
             const float fValue = sVertex.Position[a];
             pfPositions[size_t(i) * 3 + a] = fValue;
@@ -182,7 +278,7 @@ namespace argos {
          punIndices[i] = i;
       }
 
-      m_pcVertices = filament::VertexBuffer::Builder()
+      filament::VertexBuffer* pcVertices = filament::VertexBuffer::Builder()
          .vertexCount(unVertices)
          .bufferCount(2)
          .attribute(filament::VertexAttribute::POSITION, 0,
@@ -190,25 +286,25 @@ namespace argos {
          .attribute(filament::VertexAttribute::COLOR, 1,
                     filament::VertexBuffer::AttributeType::FLOAT4)
          .build(cEngine);
-      m_pcVertices->setBufferAt(
+      pcVertices->setBufferAt(
          cEngine, 0,
          filament::VertexBuffer::BufferDescriptor(
             pfPositions, size_t(unVertices) * 3 * sizeof(float),
             [](void* pt_buffer, size_t, void*) {
                delete[] static_cast<float*>(pt_buffer);
             }));
-      m_pcVertices->setBufferAt(
+      pcVertices->setBufferAt(
          cEngine, 1,
          filament::VertexBuffer::BufferDescriptor(
             pfColors, size_t(unVertices) * 4 * sizeof(float),
             [](void* pt_buffer, size_t, void*) {
                delete[] static_cast<float*>(pt_buffer);
             }));
-      m_pcIndices = filament::IndexBuffer::Builder()
+      filament::IndexBuffer* pcIndices = filament::IndexBuffer::Builder()
          .indexCount(unVertices)
          .bufferType(filament::IndexBuffer::IndexType::UINT)
          .build(cEngine);
-      m_pcIndices->setBuffer(
+      pcIndices->setBuffer(
          cEngine,
          filament::IndexBuffer::BufferDescriptor(
             punIndices, size_t(unVertices) * sizeof(UInt32),
@@ -216,12 +312,14 @@ namespace argos {
                delete[] static_cast<UInt32*>(pt_buffer);
             }));
 
-      m_cRenderable = utils::EntityManager::get().create();
+      utils::Entity cRenderable = utils::EntityManager::get().create();
       filament::RenderableManager::Builder(1)
          .boundingBox({{fMin[0], fMin[1], fMin[2]}, {fMax[0], fMax[1], fMax[2]}})
          .material(0, m_pcMaterialInstance)
-         .geometry(0, filament::RenderableManager::PrimitiveType::LINES,
-                   m_pcVertices, m_pcIndices)
+         .geometry(0, b_triangles
+                      ? filament::RenderableManager::PrimitiveType::TRIANGLES
+                      : filament::RenderableManager::PrimitiveType::LINES,
+                   pcVertices, pcIndices)
          /* The point of the exercise: only a view that opts into this
           * layer sees the overlays, so sensors never do.
           *
@@ -235,13 +333,57 @@ namespace argos {
          .culling(false)
          .receiveShadows(false)
          .castShadows(false)
-         .build(cEngine, m_cRenderable);
+         .build(cEngine, cRenderable);
       /* Overlays are given in world coordinates and never move as a
        * body, so the transform is identity and never updated */
       filament::TransformManager& cTransforms = cEngine.getTransformManager();
-      cTransforms.create(m_cRenderable);
-      m_pcEngine->GetScene().addEntity(m_cRenderable);
-      m_bHasGeometry = true;
+      cTransforms.create(cRenderable);
+      m_pcEngine->GetScene().addEntity(cRenderable);
+
+      if(b_triangles) {
+         m_cTriangleRenderable = cRenderable;
+         m_pcTriangleVertices = pcVertices;
+         m_pcTriangleIndices = pcIndices;
+         m_bHasTriangles = true;
+      }
+      else {
+         m_cRenderable = cRenderable;
+         m_pcVertices = pcVertices;
+         m_pcIndices = pcIndices;
+         m_bHasGeometry = true;
+      }
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CPRDebugDraw::Commit() {
+      if(m_pcEngine == nullptr || !m_bDirty) {
+         return;
+      }
+      m_bDirty = false;
+      /* Nothing actually changed: keep the buffers that are already on the
+       * GPU. The usual case by far, because a caller redraws the same overlay
+       * every tick so that stale geometry disappears on its own, and tearing
+       * the buffers down and back up for that is both wasted work and visible
+       * as flicker while the asynchronous uploads catch up. The two lists are
+       * compared separately so a moving path does not force the graph, which
+       * is far larger and changes far less often, to be re-uploaded with it. */
+      const bool bLinesSame = m_vecVertices == m_vecCommitted;
+      const bool bTrianglesSame = m_vecTriangles == m_vecTrianglesCommitted;
+      if(bLinesSame && bTrianglesSame) {
+         return;
+      }
+      if(!bLinesSame) {
+         ReleaseLines();
+         if(!m_vecVertices.empty()) Upload(m_vecVertices, false);
+         m_vecCommitted = m_vecVertices;
+      }
+      if(!bTrianglesSame) {
+         ReleaseTriangles();
+         if(!m_vecTriangles.empty()) Upload(m_vecTriangles, true);
+         m_vecTrianglesCommitted = m_vecTriangles;
+      }
    }
 
 }

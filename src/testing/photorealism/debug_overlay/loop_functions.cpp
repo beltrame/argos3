@@ -42,18 +42,25 @@ void CDebugOverlayLoopFunctions::PostStep() {
     * distance avoids having to reason about which real surface happens to
     * be nearest, which is the floor and is nearer than the overlay. */
    if(unTick == m_unDrawAtTick && m_bEnableOverlay) {
-      const CPRDebugDraw::SColor sRed{1.0f, 0.0f, 0.0f, 1.0f};
+      const CColor cRed = CColor::RED;
       for(int i = -20; i <= 20; ++i) {
          const Real fOffset = Real(i) * 0.02;
          cDraw.AddLine(CVector3(m_fOverlayDistance, fOffset, 0.0),
-                       CVector3(m_fOverlayDistance, fOffset, 1.0), sRed);
+                       CVector3(m_fOverlayDistance, fOffset, 1.0), cRed);
          cDraw.AddLine(CVector3(m_fOverlayDistance, -0.4, 0.25 + fOffset),
-                       CVector3(m_fOverlayDistance, 0.4, 0.25 + fOffset), sRed);
+                       CVector3(m_fOverlayDistance, 0.4, 0.25 + fOffset), cRed);
       }
       if(cDraw.GetNumLines() != 82) {
          THROW_ARGOSEXCEPTION("Expected 82 overlay lines, the draw API holds "
                               << cDraw.GetNumLines());
       }
+      /* Thick lines are triangles rather than the LINES primitive and live in
+       * a second renderable, so they are a separate path onto the GPU and need
+       * their own proof that they stay off the sensors. */
+      cDraw.AddThickPolyline({CVector3(m_fOverlayDistance, -0.4, 0.2),
+                              CVector3(m_fOverlayDistance, 0.0, 0.2),
+                              CVector3(m_fOverlayDistance, 0.4, 0.2)},
+                             0.15, cRed);
       LOG << "[OVERLAY] drew " << cDraw.GetNumLines() << " lines at "
           << m_fOverlayDistance << " m, in front of the wall" << std::endl;
       LOG.Flush();

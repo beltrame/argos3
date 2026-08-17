@@ -72,6 +72,12 @@ namespace argos {
       virtual void AddPolyline(const std::vector<CVector3>& vec_points,
                                const CColor& c_color);
 
+      virtual void AddThickLine(const CVector3& c_from, const CVector3& c_to,
+                                Real f_width, const CColor& c_color);
+
+      virtual void AddThickPolyline(const std::vector<CVector3>& vec_points,
+                                    Real f_width, const CColor& c_color);
+
       /** An axis-aligned cross, for marking a position. Points rather
        *  than lines would need a material with point size and would
        *  not scale with the scene. */
@@ -82,20 +88,43 @@ namespace argos {
        *  on the render thread, before the frame. */
       void Commit();
 
-      /** Number of line segments currently held. */
+      /** Number of line segments currently held. Thick segments are made of
+       *  triangles and are not counted here. */
       virtual size_t GetNumLines() const {
          return m_vecVertices.size() / 2;
       }
 
    private:
 
-      void ReleaseGeometry();
-
       struct SVertex {
          float Position[3];
          /** Linear RGBA, as the material's COLOR attribute */
          float Color[4];
+
+         bool operator==(const SVertex& s_other) const {
+            return !(*this != s_other);
+         }
+
+         bool operator!=(const SVertex& s_other) const {
+            for(UInt32 i = 0; i < 3; ++i) {
+               if(Position[i] != s_other.Position[i]) return true;
+            }
+            for(UInt32 i = 0; i < 4; ++i) {
+               if(Color[i] != s_other.Color[i]) return true;
+            }
+            return false;
+         }
       };
+
+      void ReleaseGeometry();
+      void ReleaseLines();
+      void ReleaseTriangles();
+      /** Builds a renderable from a vertex list, as lines or triangles */
+      void Upload(const std::vector<SVertex>& vec_vertices, bool b_triangles);
+
+      /** Appends one triangle to the solid overlay geometry */
+      void AddTriangle(const CVector3& c_a, const CVector3& c_b,
+                       const CVector3& c_c, const CColor& c_color);
 
       CPRRenderEngine* m_pcEngine = nullptr;
       filament::Material* m_pcMaterial = nullptr;
@@ -107,6 +136,25 @@ namespace argos {
       /** Set when the vertex list changed and Commit() has work */
       bool m_bDirty = false;
       std::vector<SVertex> m_vecVertices;
+      /** What was last uploaded, so an unchanged redraw can be skipped.
+       *
+       *  A caller that rebuilds its overlay every tick - which is the intended
+       *  usage, since anything not redrawn should disappear - would otherwise
+       *  destroy and recreate the Filament buffers 10 times a second even when
+       *  the geometry is identical. Uploads are asynchronous, so some frames
+       *  land while the new buffers are not ready yet and the overlay flickers.
+       */
+      std::vector<SVertex> m_vecCommitted;
+      /** Thick lines, as triangles. Kept in a second renderable because a
+       *  Filament renderable draws one primitive type, and mixing the two
+       *  would mean either drawing the graph as triangles (12 vertices an edge
+       *  for thousands of edges) or the path as hairlines. */
+      std::vector<SVertex> m_vecTriangles;
+      std::vector<SVertex> m_vecTrianglesCommitted;
+      utils::Entity m_cTriangleRenderable;
+      filament::VertexBuffer* m_pcTriangleVertices = nullptr;
+      filament::IndexBuffer* m_pcTriangleIndices = nullptr;
+      bool m_bHasTriangles = false;
 
    };
 
