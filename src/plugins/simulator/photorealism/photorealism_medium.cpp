@@ -192,6 +192,7 @@ namespace argos {
          /* Before any camera is created: the pool and the viewer read
           * the exposure off the engine when they build theirs */
          m_cEngine.SetExposure(m_sExposure);
+         m_cDebugDraw.Init(m_cEngine);
          /* Constant-color sky, unless an HDR environment provides
           * the skybox */
          if(!m_sEnvironment.Enabled || m_sEnvironment.Skybox.empty()) {
@@ -284,6 +285,8 @@ namespace argos {
        * only needs a fresh sync so removed/re-added entities settle,
        * plus dropping in-flight camera frames */
       if(m_cEngine.IsCreated()) {
+         m_cDebugDraw.Clear();
+         m_cDebugDraw.Commit();
          m_cCameraPool.Reset();
          m_cSceneSync.Sync(CSimulator::GetInstance().GetSpace());
          /* Draw a new random environment on reset (dataset generation
@@ -305,6 +308,7 @@ namespace argos {
          LogStats();
       }
       filament::Engine& cEngine = m_cEngine.GetEngine();
+      m_cDebugDraw.Destroy();
       m_cCameraPool.Destroy();
       if(m_pcDebugView != nullptr) {
          cEngine.destroy(m_pcDebugView);
@@ -338,6 +342,10 @@ namespace argos {
       CSpace& cSpace = CSimulator::GetInstance().GetSpace();
       m_cSceneSync.Sync(cSpace);
       double fSync = std::chrono::duration<double>(TClock::now() - tStart).count();
+      /* Before the cameras render, so geometry a loop function drew on the
+       * previous PostStep is uploaded for this frame. Costs nothing on the
+       * ticks where nothing changed. */
+      m_cDebugDraw.Commit();
       m_cCameraPool.Update(cSpace.GetSimulationClock());
       if(m_sDebugCamera.Enabled &&
          cSpace.GetSimulationClock() % m_sDebugCamera.Period == 0) {

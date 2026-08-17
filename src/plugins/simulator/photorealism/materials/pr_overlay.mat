@@ -1,0 +1,28 @@
+// Debug overlays: planner paths, graphs, frontiers.
+//
+// depthWrite and depthCulling are both off because overlays are annotation
+// rather than scenery: they have to stay readable where they pass behind a
+// wall or lie flat on the ground they describe.
+//
+// The colour comes per-vertex, so one renderable carries a whole scene's
+// worth of overlays in different colours instead of needing one draw call
+// per colour.
+//
+// (matc's parser rejects comments inside the material block, so they live
+// out here.)
+
+material {
+    name : pr_overlay,
+    shadingModel : unlit,
+    culling : none,
+    depthWrite : false,
+    depthCulling : false,
+    requires : [ color ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = getColor();
+    }
+}

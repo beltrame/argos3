@@ -7,6 +7,7 @@
 #include "pr_camera_pool.h"
 #include "pr_render_engine.h"
 #include "pr_id_scene.h"
+#include "pr_debug_draw.h"
 
 #include <argos3/core/simulator/physics_engine/physics_model.h>
 #include <argos3/core/utility/configuration/argos_exception.h>
@@ -571,6 +572,10 @@ namespace argos {
          s_camera.RGBView->setRenderTarget(s_camera.RGBTarget);
          s_camera.RGBView->setScene(&m_pcEngine->GetScene());
          s_camera.RGBView->setCamera(s_camera.Camera);
+         /* Debug overlays are annotation for a human watching the run, not
+          * part of the world. A sensor that photographed them would feed a
+          * planner its own drawing back as an observation. */
+         s_camera.RGBView->setVisibleLayers(PR_OVERLAY_LAYER, 0);
       }
       if(sConfig.RenderAux) {
          s_camera.AuxColor = filament::Texture::Builder()

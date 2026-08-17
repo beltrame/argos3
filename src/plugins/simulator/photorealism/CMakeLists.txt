@@ -11,6 +11,7 @@ set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_RENDERCORE
   render_core/pr_scene_sync.h
   render_core/pr_id_scene.h
   render_core/pr_camera_pool.h
+  render_core/pr_debug_draw.h
   render_core/pr_randomizer.h
   render_core/pr_asset_registry.h)
 # argos3/plugins/simulator/photorealism/sensors/
@@ -21,7 +22,7 @@ set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_SENSORS
 #
 # Compile the Filament materials with matc and embed them as C++ arrays
 #
-set(ARGOS3_PHOTOREALISM_MATERIALS pr_lit pr_aux pr_lit_tex pr_blit)
+set(ARGOS3_PHOTOREALISM_MATERIALS pr_lit pr_aux pr_lit_tex pr_blit pr_overlay)
 set(ARGOS3_PHOTOREALISM_MATERIAL_SOURCES "")
 foreach(_mat ${ARGOS3_PHOTOREALISM_MATERIALS})
   string(TOUPPER ${_mat} _MAT_SYMBOL)
@@ -58,6 +59,7 @@ set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_PHOTOREALISM
   render_core/pr_scene_sync.cpp
   render_core/pr_id_scene.cpp
   render_core/pr_camera_pool.cpp
+  render_core/pr_debug_draw.cpp
   render_core/pr_randomizer.cpp
   render_core/pr_asset_registry.cpp
   sensors/photorealistic_camera_default_sensor.cpp

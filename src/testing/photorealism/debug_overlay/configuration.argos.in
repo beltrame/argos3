@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<!--
+  Debug overlays must be drawn but never sensed. A wall of overlay lines is
+  drawn at 0.4 m, right across the camera's view; the real wall is at 1.05 m,
+  so the camera must keep reporting ~0.9 m. If the overlay reached the sensor
+  the depth would collapse to 0.4 and the check would fail by half a metre.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="2" ticks_per_second="10" random_seed="42" />
+  </framework>
+
+  <controllers>
+    <camera_test_controller library="@CAMERA_TEST_CONTROLLER_LIB@" id="ctc">
+      <actuators />
+      <sensors>
+        <photorealistic_camera implementation="default" medium="pr"
+                               anchor="origin" position="0.1,0,0.15"
+                               orientation="0,0,0" resolution="64,64"
+                               fov="60" near="0.05" far="20"
+                               modalities="rgb,depth,seg" />
+      </sensors>
+      <params expected_size="64,64" />
+    </camera_test_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libdebug_overlay_loop_functions"
+                  label="debug_overlay_loop_functions"
+                  medium="pr" overlay_distance="0.4"
+                  draw_at_tick="5" />
+
+  <arena size="8, 8, 3" center="0,0,1.5">
+    <foot-bot id="fb">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="ctc" />
+    </foot-bot>
+    <box id="wall" size="0.1,2,1" movable="false">
+      <body position="1.05,0,0" orientation="0,0,0" />
+    </box>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <photorealism id="pr" backend="vulkan" latency="immediate">
+      <sun direction="0.6,0.2,-1" intensity="100000" cast_shadows="true" />
+      <skybox color="0.53,0.71,0.92" />
+    </photorealism>
+  </media>
+
+</argos-configuration>

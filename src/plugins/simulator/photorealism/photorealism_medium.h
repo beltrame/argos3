@@ -24,6 +24,7 @@ namespace argos {
 #include <argos3/plugins/simulator/photorealism/render_core/pr_scene_sync.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_id_scene.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_camera_pool.h>
+#include <argos3/plugins/simulator/photorealism/render_core/pr_debug_draw.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_randomizer.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_asset_registry.h>
 
@@ -68,6 +69,15 @@ namespace argos {
 
       inline CPRCameraPool& GetCameraPool() {
          return m_cCameraPool;
+      }
+
+      /**
+       * Line overlays on the scene: planner paths, graphs, anything a
+       * loop function wants to annotate the world with. Drawn only in
+       * the interactive viewer, never in a camera or lidar reading.
+       */
+      inline CPRDebugDraw& GetDebugDraw() {
+         return m_cDebugDraw;
       }
 
       /*
@@ -177,6 +187,7 @@ namespace argos {
       CPRIdScene m_cIdScene;
       CPRAssetRegistry m_cAssetRegistry;
       CPRCameraPool m_cCameraPool;
+      CPRDebugDraw m_cDebugDraw;
       filament::Skybox* m_pcSkybox = nullptr;
       filament::View* m_pcDebugView = nullptr;
       filament::Camera* m_pcDebugCamera = nullptr;

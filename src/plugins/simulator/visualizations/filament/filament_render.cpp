@@ -10,6 +10,7 @@
 #include <argos3/core/simulator/physics_engine/physics_engine.h>
 #include <argos3/core/utility/logging/argos_log.h>
 #include <argos3/plugins/simulator/photorealism/photorealism_medium.h>
+#include <argos3/plugins/simulator/photorealism/render_core/pr_debug_draw.h>
 
 #include <filament/Engine.h>
 #include <filament/Renderer.h>
@@ -136,6 +137,10 @@ namespace argos {
       m_pcView->setViewport(filament::Viewport(0, 0, m_unWidth, m_unHeight));
       m_pcView->setScene(&cEngine.GetScene());
       m_pcView->setCamera(m_pcCamera);
+      /* This window is the one place debug overlays are meant to be seen.
+       * Filament shows only layer 0 by default, so every other view - the
+       * robot cameras, the insets below - leaves them out without asking. */
+      m_pcView->setVisibleLayers(PR_OVERLAY_LAYER, PR_OVERLAY_LAYER);
       /* Initial pose: at 'position', looking at 'look_at' */
       m_cCameraPosition = m_cCameraStart;
       CVector3 cDirection = m_cCameraLookAt - m_cCameraStart;
@@ -184,6 +189,8 @@ namespace argos {
          sInset.View = cEngine.createView();
          sInset.View->setScene(&m_pcMedium->GetRenderEngine().GetScene());
          sInset.View->setCamera(sInset.Camera);
+         /* Left on the default: an inset previews what a robot's camera
+          * sees, so it should show what the sensor shows and no more. */
          m_vecInsets.push_back(sInset);
       }
       LayOutInsets();
