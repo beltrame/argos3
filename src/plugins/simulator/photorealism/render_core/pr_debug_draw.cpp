@@ -97,12 +97,14 @@ namespace argos {
    /****************************************/
 
    void CPRDebugDraw::AddLine(const CVector3& c_from, const CVector3& c_to,
-                              const SColor& s_color) {
+                              const CColor& c_color) {
       SVertex sVertex;
-      sVertex.Color[0] = s_color.R;
-      sVertex.Color[1] = s_color.G;
-      sVertex.Color[2] = s_color.B;
-      sVertex.Color[3] = s_color.A;
+      /* CColor is 8-bit sRGB-ish; the material is unlit and writes baseColor
+       * straight out, so a plain 0-255 scale is what comes back on screen */
+      sVertex.Color[0] = float(c_color.GetRed()) / 255.0f;
+      sVertex.Color[1] = float(c_color.GetGreen()) / 255.0f;
+      sVertex.Color[2] = float(c_color.GetBlue()) / 255.0f;
+      sVertex.Color[3] = float(c_color.GetAlpha()) / 255.0f;
       sVertex.Position[0] = float(c_from.GetX());
       sVertex.Position[1] = float(c_from.GetY());
       sVertex.Position[2] = float(c_from.GetZ());
@@ -118,9 +120,9 @@ namespace argos {
    /****************************************/
 
    void CPRDebugDraw::AddPolyline(const std::vector<CVector3>& vec_points,
-                                  const SColor& s_color) {
+                                  const CColor& c_color) {
       for(size_t i = 1; i < vec_points.size(); ++i) {
-         AddLine(vec_points[i - 1], vec_points[i], s_color);
+         AddLine(vec_points[i - 1], vec_points[i], c_color);
       }
    }
 
@@ -128,14 +130,14 @@ namespace argos {
    /****************************************/
 
    void CPRDebugDraw::AddMarker(const CVector3& c_at, Real f_size,
-                                const SColor& s_color) {
+                                const CColor& c_color) {
       const Real fHalf = f_size * 0.5;
       AddLine(c_at - CVector3(fHalf, 0.0, 0.0),
-              c_at + CVector3(fHalf, 0.0, 0.0), s_color);
+              c_at + CVector3(fHalf, 0.0, 0.0), c_color);
       AddLine(c_at - CVector3(0.0, fHalf, 0.0),
-              c_at + CVector3(0.0, fHalf, 0.0), s_color);
+              c_at + CVector3(0.0, fHalf, 0.0), c_color);
       AddLine(c_at - CVector3(0.0, 0.0, fHalf),
-              c_at + CVector3(0.0, 0.0, fHalf), s_color);
+              c_at + CVector3(0.0, 0.0, fHalf), c_color);
    }
 
    /****************************************/

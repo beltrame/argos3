@@ -3,7 +3,8 @@
 #
 # argos3/plugins/simulator/photorealism/
 set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM
-  photorealism_medium.h)
+  photorealism_medium.h
+  pr_overlay.h)
 # argos3/plugins/simulator/photorealism/render_core/
 set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_RENDERCORE
   render_core/pr_render_engine.h
@@ -54,6 +55,7 @@ set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_PHOTOREALISM
   ${ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHOTOREALISM_SENSORS}
   ${ARGOS3_PHOTOREALISM_MATERIAL_SOURCES}
   photorealism_medium.cpp
+  pr_overlay.cpp
   render_core/pr_render_engine.cpp
   render_core/pr_mesh_builder.cpp
   render_core/pr_scene_sync.cpp

@@ -39,6 +39,7 @@ namespace filament {
 
 #include <argos3/core/utility/datatypes/datatypes.h>
 #include <argos3/core/utility/math/vector3.h>
+#include <argos3/plugins/simulator/photorealism/pr_overlay.h>
 
 #include <utils/Entity.h>
 
@@ -50,14 +51,9 @@ namespace argos {
     *  else; a view has to opt in to see this one. */
    inline constexpr UInt8 PR_OVERLAY_LAYER = 0x02;
 
-   class CPRDebugDraw {
+   class CPRDebugDraw : public CPROverlay {
 
    public:
-
-      /** r, g, b, a in [0, 1] */
-      struct SColor {
-         float R = 1.0f, G = 1.0f, B = 1.0f, A = 1.0f;
-      };
 
       void Init(CPRRenderEngine& c_engine);
 
@@ -65,29 +61,29 @@ namespace argos {
 
       /** Drops every overlay. Called by a loop function before it
        *  redraws, and by Reset(). */
-      void Clear();
+      virtual void Clear();
 
       /** One line segment. */
-      void AddLine(const CVector3& c_from, const CVector3& c_to,
-                   const SColor& s_color);
+      virtual void AddLine(const CVector3& c_from, const CVector3& c_to,
+                           const CColor& c_color);
 
       /** A polyline through the given points; nothing is drawn for
        *  fewer than two. */
-      void AddPolyline(const std::vector<CVector3>& vec_points,
-                       const SColor& s_color);
+      virtual void AddPolyline(const std::vector<CVector3>& vec_points,
+                               const CColor& c_color);
 
       /** An axis-aligned cross, for marking a position. Points rather
        *  than lines would need a material with point size and would
        *  not scale with the scene. */
-      void AddMarker(const CVector3& c_at, Real f_size,
-                     const SColor& s_color);
+      virtual void AddMarker(const CVector3& c_at, Real f_size,
+                             const CColor& c_color);
 
       /** Uploads whatever has been added since the last call. Must run
        *  on the render thread, before the frame. */
       void Commit();
 
       /** Number of line segments currently held. */
-      inline size_t GetNumLines() const {
+      virtual size_t GetNumLines() const {
          return m_vecVertices.size() / 2;
       }
 
