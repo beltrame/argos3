@@ -273,19 +273,35 @@ namespace argos {
       }
       m_bNewScan = true;
       m_sScan.Tick = vecOutputs.front()->Tick;
+      const UInt16 unHostEntityId =
+         (m_pcMedium != nullptr && m_pcEmbodiedEntity != nullptr)
+            ? m_pcMedium->GetSceneSync().GetEntityId(*m_pcEmbodiedEntity)
+            : 0;
       for(size_t i = 0; i < m_vecSamples.size(); ++i) {
          const SSample& sSample = m_vecSamples[i];
          SReading& sReading = m_sScan.Readings[i];
          const float* pfAux =
             &vecOutputs[sSample.Face]->Aux[size_t(sSample.Pixel) * 4];
          /* The aux buffer clears to zero and every renderable carries
-          * a nonzero entity id, so id 0 means nothing was drawn */
+          * a nonzero entity id, so id 0 means nothing was drawn.
+          * Self-hits on the host robot body are ignored so the robot
+          * does not detect itself as an obstacle. */
          auto unEntityId = UInt16(std::lround(pfAux[0]));
          const Real fRange = unEntityId != 0
             ? Real(pfAux[2]) * sSample.DepthToRange
             : m_sScan.MaxRange;
-         if(unEntityId == 0 || fRange >= m_sScan.MaxRange) {
-            /* Nothing within range along this ray. Off-axis rays can
+         if(unEntityId == unHostEntityId && unHostEntityId != 0) {
+            /* Ray struck host robot's own chassis/tracks. Ray is occluded by
+             * the robot itself and does not see free space beyond. */
+            sReading.Range = 0.0;
+            sReading.Hit = false;
+            sReading.EntityId = unHostEntityId;
+            sReading.ClassId = 0;
+            sReading.Position = CVector3::ZERO;
+         }
+
+         else if(unEntityId == 0 || fRange >= m_sScan.MaxRange) {
+            /* Open space miss: nothing within range along this ray. Off-axis rays can
              * see past the far plane, which is a planar clip, so a
              * return beyond the maximum range is possible and is
              * reported as a miss rather than clamped onto an obstacle
@@ -296,6 +312,8 @@ namespace argos {
             sReading.ClassId = 0;
             sReading.Position = sSample.Direction * m_sScan.MaxRange;
          }
+
+
          else {
             sReading.Range = fRange;
             sReading.Hit = true;
