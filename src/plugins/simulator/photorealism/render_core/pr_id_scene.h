@@ -50,8 +50,10 @@ namespace argos {
        * uses to fill background pixels with the far plane. Scenery was
        * originally registered with id 0 and was therefore invisible to
        * the depth and segmentation modalities. */
-      Scenery = 6
+      Scenery = 6,
+      BunkerMini = 7
    };
+
 
    class CPRIdScene {
 

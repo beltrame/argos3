@@ -24,10 +24,12 @@ namespace argos {
       if(str_target == "floor")    return EPRClass::Floor;
       if(str_target == "foot-bot") return EPRClass::FootBot;
       if(str_target == "drone")    return EPRClass::Drone;
+      if(str_target == "bunker_mini" || str_target == "bunker-mini") return EPRClass::BunkerMini;
       THROW_ARGOSEXCEPTION("Unknown material randomization target \""
                            << str_target << "\"; use box, cylinder, "
-                           "floor, foot-bot, or drone");
+                           "floor, foot-bot, drone, or bunker_mini");
    }
+
 
    /****************************************/
    /****************************************/

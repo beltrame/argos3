@@ -28,7 +28,13 @@ if(ARGOS_BUILD_FOR_SIMULATOR OR ARGOS_BUILD_FOR STREQUAL "spiri")
   add_subdirectory(spiri)
 endif(ARGOS_BUILD_FOR_SIMULATOR OR ARGOS_BUILD_FOR STREQUAL "spiri")
 
+if(ARGOS_BUILD_FOR_SIMULATOR OR ARGOS_BUILD_FOR STREQUAL "bunker-mini")
+  add_subdirectory(bunker-mini)
+endif(ARGOS_BUILD_FOR_SIMULATOR OR ARGOS_BUILD_FOR STREQUAL "bunker-mini")
+
+
 if(ARGOS_BUILD_FOR_SIMULATOR)
+
   add_subdirectory(prototype)
   add_subdirectory(block)
 endif(ARGOS_BUILD_FOR_SIMULATOR)

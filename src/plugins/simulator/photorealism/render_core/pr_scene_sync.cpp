@@ -476,7 +476,12 @@ namespace argos {
          sInstance.Class = EPRClass::Drone;
          BuildDrone(sInstance);
       }
+      else if(strType == "bunker_mini" || strType == "bunker-mini") {
+         sInstance.Class = EPRClass::BunkerMini;
+         BuildBunkerMini(sInstance);
+      }
       else {
+
          if(m_setWarnedTypes.insert(strType).second) {
             LOG << "[INFO] Photorealism: no visual model for entity type \""
                 << strType << "\", skipping" << std::endl;
@@ -594,7 +599,45 @@ namespace argos {
    /****************************************/
    /****************************************/
 
+   void CPRSceneSync::BuildBunkerMini(SInstance& s_instance) {
+      const UInt16 unId = s_instance.EntityId;
+      /* Main central body chassis: dark metallic finish */
+      s_instance.Parts.push_back(
+         MakePart(m_sBoxMesh,
+                  TS(0.0f, 0.0f, 0.155f, 0.58f, 0.36f, 0.18f),
+                  0.22f, 0.24f, 0.26f, 0.4f, unId, EPRClass::BunkerMini));
+      /* Top mounting plate: brushed aluminium */
+      s_instance.Parts.push_back(
+         MakePart(m_sBoxMesh,
+                  TS(0.0f, 0.0f, 0.25f, 0.52f, 0.34f, 0.01f),
+                  0.45f, 0.47f, 0.50f, 0.3f, unId, EPRClass::BunkerMini));
+      /* Left Track: black rubber */
+      s_instance.Parts.push_back(
+         MakePart(m_sBoxMesh,
+                  TS(0.0f, 0.235f, 0.11f, 0.66f, 0.10f, 0.22f),
+                  0.08f, 0.08f, 0.08f, 0.9f, unId, EPRClass::BunkerMini));
+      /* Right Track: black rubber */
+      s_instance.Parts.push_back(
+         MakePart(m_sBoxMesh,
+                  TS(0.0f, -0.235f, 0.11f, 0.66f, 0.10f, 0.22f),
+                  0.08f, 0.08f, 0.08f, 0.9f, unId, EPRClass::BunkerMini));
+      /* Front Camera housing */
+      s_instance.Parts.push_back(
+         MakePart(m_sBoxMesh,
+                  TS(0.29f, 0.0f, 0.245f, 0.035f, 0.12f, 0.03f),
+                  0.15f, 0.15f, 0.15f, 0.5f, unId, EPRClass::BunkerMini));
+      /* Top Lidar cylinder */
+      s_instance.Parts.push_back(
+         MakePart(m_sCylinderMesh,
+                  TS(0.0f, 0.0f, 0.281f + 0.045f, 0.051f, 0.051f, 0.07f),
+                  0.15f, 0.35f, 0.65f, 0.4f, unId, EPRClass::BunkerMini));
+   }
+
+   /****************************************/
+   /****************************************/
+
    void CPRSceneSync::RemoveInstance(SInstance& s_instance) {
+
       filament::Engine& cEngine = m_pcEngine->GetEngine();
       if(s_instance.Gltf.Main != nullptr) {
          m_pcAssets->ReleaseInstance(s_instance.Type, s_instance.Gltf);

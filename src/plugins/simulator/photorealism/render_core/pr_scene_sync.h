@@ -263,6 +263,8 @@ namespace argos {
        * replaced by glTF assets when the asset pipeline lands */
       void BuildFootBot(SInstance& s_instance);
       void BuildDrone(SInstance& s_instance);
+      void BuildBunkerMini(SInstance& s_instance);
+
 
       void InitFloor(CSpace& c_space,
                      const CVector3& c_arena_size,
