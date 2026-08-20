@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Runs one external_estimator test: brings up the stub estimator, runs
+# ARGoS against it, and fails if either side does.
+#
+# Usage: run_test.sh <configuration.argos> <socket-path> [stub args...]
+set -u
+
+CONFIG="$1"
+SOCKET="$2"
+shift 2
+
+STUB_LOG="$(mktemp)"
+rm -f "$SOCKET"
+
+python3 "@CMAKE_CURRENT_SOURCE_DIR@/stub_estimator.py" \
+    --socket "$SOCKET" "$@" > "$STUB_LOG" 2>&1 &
+STUB_PID=$!
+
+cleanup() {
+    kill "$STUB_PID" 2>/dev/null
+    wait "$STUB_PID" 2>/dev/null
+    rm -f "$SOCKET"
+}
+trap cleanup EXIT
+
+# ARGoS retries its connect, but do not race the bind
+for _ in $(seq 50); do
+    [ -S "$SOCKET" ] && break
+    sleep 0.1
+done
+if [ ! -S "$SOCKET" ]; then
+    echo "stub estimator never created $SOCKET:"
+    cat "$STUB_LOG"
+    exit 1
+fi
+
+"@CMAKE_BINARY_DIR@/core/argos3" -z -c "$CONFIG"
+ARGOS_STATUS=$?
+
+# Let the stub notice the closed socket and exit on its own
+wait "$STUB_PID"
+STUB_STATUS=$?
+trap - EXIT
+rm -f "$SOCKET"
+
+echo "--- stub estimator output ---"
+cat "$STUB_LOG"
+rm -f "$STUB_LOG"
+
+if [ "$ARGOS_STATUS" -ne 0 ]; then
+    echo "argos3 exited with $ARGOS_STATUS"
+    exit "$ARGOS_STATUS"
+fi
+if [ "$STUB_STATUS" -ne 0 ]; then
+    echo "stub estimator exited with $STUB_STATUS"
+    exit "$STUB_STATUS"
+fi
+exit 0

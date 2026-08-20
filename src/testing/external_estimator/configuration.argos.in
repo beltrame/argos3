@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="10" random_seed="17" />
+  </framework>
+
+  <controllers>
+    <external_estimator_test_controller
+        library="@CMAKE_CURRENT_BINARY_DIR@/libexternal_estimator_test_controller"
+        id="eetc">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors>
+        <!-- What the medium finds and streams. No camera or lidar, so
+             the test needs neither Filament nor a GPU. -->
+        <imu implementation="default" />
+        <differential_steering implementation="default" />
+        <odometry implementation="external" medium="est" />
+      </sensors>
+      <params />
+    </external_estimator_test_controller>
+  </controllers>
+
+  <loop_functions
+      library="@CMAKE_CURRENT_BINARY_DIR@/libexternal_estimator_test_loop_functions"
+      label="external_estimator_test_loop_functions"
+      mode="@TEST_MODE@"
+      valid_from="5" />
+
+  <arena size="4, 2, 1" positional_index="grid" positional_grid_size="25,25,1">
+    <foot-bot id="fb">
+      <body position="-0.5,0,0" orientation="0,0,0" />
+      <controller config="eetc" />
+    </foot-bot>
+  </arena>
+
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <media>
+    <external_estimator id="est" socket="@TEST_SOCKET@" connect_timeout="30" timeout="30"
+                        alignment="@TEST_ALIGNMENT@"
+                        fiducial_position_noise="0" fiducial_yaw_noise="0"
+                        fiducial_range="4" fiducial_fov="120">
+@TEST_FIDUCIAL@
+    </external_estimator>
+  </media>
+
+  <!-- No visualization: this test must run fully headless -->
+
+</argos-configuration>

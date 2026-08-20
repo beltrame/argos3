@@ -11,6 +11,7 @@ namespace argos {
 }
 
 #include <argos3/core/control_interface/ci_sensor.h>
+#include <argos3/core/utility/datatypes/datatypes.h>
 #include <argos3/core/utility/math/vector3.h>
 #include <argos3/core/utility/math/quaternion.h>
 
@@ -19,12 +20,18 @@ namespace argos {
    /**
     * A generic odometry sensor.
     *
-    * Unlike CCI_PositioningSensor (ground truth), this sensor models a
-    * dead-reckoning pose estimate that drifts away from ground truth
-    * over distance travelled, as a real wheel/visual odometry pipeline
-    * would. It exists to feed SLAM/localization stacks that expect a
-    * continuous but imperfect pose estimate, without requiring an
-    * actual odometry algorithm to run inside ARGoS.
+    * Unlike CCI_PositioningSensor (ground truth), this sensor reports a
+    * pose estimate that drifts away from ground truth as a real
+    * odometry pipeline would. Two implementations exist:
+    *
+    * - "drift" models the drift statistically, perturbing ground-truth
+    *   relative motion, so no odometry algorithm runs at all;
+    * - "external" carries the pose computed by a real estimator running
+    *   outside ARGoS (see the external_estimator plugin), so the drift
+    *   is whatever that estimator actually produces.
+    *
+    * Both feed SLAM/localization stacks that expect a continuous but
+    * imperfect pose estimate.
     */
    class CCI_OdometrySensor : public CCI_Sensor {
 
@@ -33,6 +40,18 @@ namespace argos {
       struct SReading {
          CVector3 Position;
          CQuaternion Orientation;
+         /** Linear velocity in the body frame, m/s. Left at zero by
+          *  implementations that do not estimate it. */
+         CVector3 LinearVelocity;
+         /** Angular velocity in the body frame, rad/s. Left at zero by
+          *  implementations that do not estimate it. */
+         CVector3 AngularVelocity;
+         /** The simulation tick this estimate refers to. */
+         UInt32 Tick = 0;
+         /** False until a pose is available. The "drift" implementation
+          *  has one from the first tick; an external estimator needs
+          *  time to initialize, and reports nothing until it has. */
+         bool Valid = false;
       };
 
    public:

@@ -7,6 +7,7 @@
 #include <argos3/core/simulator/simulator.h>
 #include <argos3/core/simulator/entity/embodied_entity.h>
 #include <argos3/core/simulator/entity/composable_entity.h>
+#include <argos3/core/simulator/physics_engine/physics_engine.h>
 
 #include "odometry_default_sensor.h"
 
@@ -60,11 +61,15 @@ namespace argos {
       }
       const CVector3& cGroundTruthPosition = m_pcEmbodiedEntity->GetOriginAnchor().Position;
       const CQuaternion& cGroundTruthOrientation = m_pcEmbodiedEntity->GetOriginAnchor().Orientation;
+      m_sReading.Tick = UInt32(CSimulator::GetInstance().GetSpace().GetSimulationClock());
+      m_sReading.Valid = true;
       if(!m_bHasPrevious) {
          /* First tick: initialize the drifted estimate at ground truth,
           * there is no relative motion yet to perturb. */
          m_sReading.Position = cGroundTruthPosition;
          m_sReading.Orientation = cGroundTruthOrientation;
+         m_sReading.LinearVelocity = CVector3::ZERO;
+         m_sReading.AngularVelocity = CVector3::ZERO;
          m_cPrevGroundTruthPosition = cGroundTruthPosition;
          m_cPrevGroundTruthOrientation = cGroundTruthOrientation;
          m_bHasPrevious = true;
@@ -96,6 +101,15 @@ namespace argos {
       cWorldRelPosition.Rotate(m_sReading.Orientation);
       m_sReading.Position += cWorldRelPosition;
       m_sReading.Orientation = m_sReading.Orientation * cRelOrientation;
+      /* Body-frame twist, from the same perturbed relative motion: this
+       * is what the pipeline measured, not the true velocity. */
+      Real fTickLength = CPhysicsEngine::GetSimulationClockTick();
+      m_sReading.LinearVelocity = cRelPositionBody / fTickLength;
+      CRadians cTwistYaw, cTwistPitch, cTwistRoll;
+      cRelOrientation.ToEulerAngles(cTwistYaw, cTwistPitch, cTwistRoll);
+      m_sReading.AngularVelocity.Set(cTwistRoll.GetValue() / fTickLength,
+                                     cTwistPitch.GetValue() / fTickLength,
+                                     cTwistYaw.GetValue() / fTickLength);
       m_cPrevGroundTruthPosition = cGroundTruthPosition;
       m_cPrevGroundTruthOrientation = cGroundTruthOrientation;
    }
@@ -106,6 +120,10 @@ namespace argos {
    void COdometryDriftSensor::Reset() {
       m_sReading.Position = m_pcEmbodiedEntity->GetOriginAnchor().Position;
       m_sReading.Orientation = m_pcEmbodiedEntity->GetOriginAnchor().Orientation;
+      m_sReading.LinearVelocity = CVector3::ZERO;
+      m_sReading.AngularVelocity = CVector3::ZERO;
+      m_sReading.Tick = 0;
+      m_sReading.Valid = false;
       m_cPrevGroundTruthPosition = m_sReading.Position;
       m_cPrevGroundTruthOrientation = m_sReading.Orientation;
       m_bHasPrevious = false;
