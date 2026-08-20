@@ -84,6 +84,9 @@ namespace argos {
       m_pcLoader = gltfio::AssetLoader::create(sAssetConfiguration);
       gltfio::ResourceConfiguration sResourceConfiguration;
       sResourceConfiguration.engine = &cEngine;
+      /* Left null here and set per model in LoadModelFile: one registry
+       * serves assets from many directories, so there is no single base
+       * path that would be correct at this point. */
       sResourceConfiguration.gltfPath = nullptr;
       sResourceConfiguration.normalizeSkinningWeights = true;
       m_pcResourceLoader = new gltfio::ResourceLoader(sResourceConfiguration);
@@ -231,6 +234,21 @@ namespace argos {
                 << str_label << std::endl;
          return;
       }
+      /* A glTF names its textures and .bin buffers by URIs relative to itself.
+       * Filament resolves them against gltfPath, and falls back to the process
+       * working directory when it is null, so a model loaded from anywhere but
+       * that directory loses every texture and renders untextured. The .argos
+       * file may name assets by any path, and ARGoS may be started from any
+       * directory, so the two coincide only by accident.
+       *
+       * Set per model rather than once at Init because the registry serves
+       * assets from many directories. Filament documents that it does not
+       * retain the string, so pointing at ModelPath's buffer is safe. */
+      gltfio::ResourceConfiguration sResourceConfiguration;
+      sResourceConfiguration.engine = &m_pcEngine->GetEngine();
+      sResourceConfiguration.gltfPath = s_asset.Descriptor.ModelPath.c_str();
+      sResourceConfiguration.normalizeSkinningWeights = true;
+      m_pcResourceLoader->setConfiguration(sResourceConfiguration);
       if(!m_pcResourceLoader->loadResources(s_asset.Asset)) {
          LOGERR << "[WARNING] Cannot load the resources of model \""
                 << s_asset.Descriptor.ModelPath << "\" for "
