@@ -42,6 +42,12 @@ namespace argos {
          UInt32 Width = 0;
          /** Image height in pixels */
          UInt32 Height = 0;
+         /** The camera's VERTICAL field of view in degrees, from the
+          *  <camera fov="..."> attribute. Consumers deriving pinhole
+          *  intrinsics must divide the HEIGHT by it, not the width:
+          *    fy = Height / (2 * tan(FieldOfView/2)), fx = fy
+          *  (the projection uses square pixels, so fx equals fy). */
+         Real FieldOfView = 0.0;
          /** The simulation tick this frame depicts */
          UInt32 Tick = 0;
          /** RGB pixels, row-major from the top-left, Width*Height*3 */

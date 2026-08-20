@@ -83,6 +83,7 @@ namespace argos {
       sMount.Frame.Id = str_id;
       sMount.Frame.Width = sConfig.Width;
       sMount.Frame.Height = sConfig.Height;
+      sMount.Frame.FieldOfView = sConfig.FieldOfView;
       m_vecMounts.push_back(std::move(sMount));
    }
 
