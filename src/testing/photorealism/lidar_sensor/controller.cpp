@@ -25,6 +25,8 @@ void CLidarTestController::Init(TConfigurationNode& t_tree) {
                              m_unExpectedAzimuths, m_unExpectedAzimuths);
    GetNodeAttributeOrDefault(t_tree, "max_error", m_fMaxError, m_fMaxError);
    GetNodeAttributeOrDefault(t_tree, "mean_error", m_fMeanError, m_fMeanError);
+   GetNodeAttributeOrDefault(t_tree, "min_mean_error",
+                             m_fMinMeanError, m_fMinMeanError);
 }
 
 /****************************************/
@@ -175,6 +177,13 @@ void CLidarTestController::ControlStep() {
    if(fMean > m_fMeanError) {
       THROW_ARGOSEXCEPTION("Mean range error " << fMean << " m exceeds "
                            << m_fMeanError << " m");
+   }
+   if(fMean < m_fMinMeanError) {
+      THROW_ARGOSEXCEPTION("Mean range error " << fMean << " m is BELOW "
+                           << m_fMinMeanError << " m, so the configured "
+                           "range noise is not reaching the readings. For "
+                           "Gaussian noise the mean absolute error should be "
+                           "about 0.8 times the standard deviation.");
    }
 }
 

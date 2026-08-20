@@ -47,6 +47,11 @@ private:
    Real m_fMaxError = 0.15;
    /** ... and the mean error must stay below this */
    Real m_fMeanError = 0.02;
+   /** Lower bound on the mean range error. Zero disables the check; a
+    *  positive value asserts that configured range noise is actually
+    *  being applied, so an implementation that silently ignores
+    *  range_noise_std_dev fails instead of passing quietly. */
+   Real m_fMinMeanError = 0.0;
 
 };
 

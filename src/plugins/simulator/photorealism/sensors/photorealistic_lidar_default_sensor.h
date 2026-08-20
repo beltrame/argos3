@@ -14,6 +14,7 @@ namespace argos {
 }
 
 #include <argos3/core/simulator/sensor.h>
+#include <argos3/core/utility/math/rng.h>
 #include <argos3/plugins/robots/generic/control_interface/ci_photorealistic_lidar_sensor.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_camera_pool.h>
 
@@ -92,6 +93,16 @@ namespace argos {
       std::vector<SSample> m_vecSamples;
       SScan m_sScan;
       bool m_bNewScan = false;
+
+      /** Standard deviation of the Gaussian noise added to the range of
+       *  every return, in metres. Zero (the default) leaves ranges
+       *  geometrically exact, which no real lidar is: a VLP-16 is
+       *  specified at about +/-3 cm. */
+      Real m_fRangeNoiseStdDev = 0.0;
+      /** Only created when noise is actually configured */
+      CRandom::CRNG* m_pcRNG = nullptr;
+      /** Closest range the optics can report; noise is clamped to it */
+      Real m_fNearPlane = 0.0;
 
    };
 

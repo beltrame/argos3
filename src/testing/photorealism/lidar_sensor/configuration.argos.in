@@ -15,14 +15,16 @@
              azimuth steps, 20 m range. Mounted well above the foot-bot so
              the robot's own body does not occlude the downward rays. -->
         <photorealistic_lidar implementation="default" medium="pr"
-                              anchor="origin" position="0,0,0.6" />
+                              anchor="origin" position="0,0,0.6"
+                              range_noise_std_dev="@TEST_RANGE_NOISE@" />
       </sensors>
       <!-- The room the walls below enclose: x in [-4,2], y in [-5,3],
            floor at 0, walls 3 m tall. Deliberately asymmetric, so a
            face pointing the wrong way cannot pass by coincidence. -->
       <params room="-4,2,-5,3,3" sensor_position="0,0,0.6"
               expected_rings="16" expected_azimuths="1800"
-              max_error="@TEST_MAX_ERROR@" mean_error="@TEST_MEAN_ERROR@" />
+              max_error="@TEST_MAX_ERROR@" mean_error="@TEST_MEAN_ERROR@"
+              min_mean_error="@TEST_MIN_MEAN_ERROR@" />
     </lidar_test_controller>
   </controllers>
 

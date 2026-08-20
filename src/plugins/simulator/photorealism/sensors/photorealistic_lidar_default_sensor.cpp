@@ -218,6 +218,19 @@ namespace argos {
             THROW_ARGOSEXCEPTION("max_range must be positive");
          }
          GetNodeAttributeOrDefault(t_tree, "near", sBase.NearPlane, sBase.NearPlane);
+         m_fNearPlane = sBase.NearPlane;
+         /* Range noise. Off by default so existing experiments are
+          * unchanged, but a real lidar is never exact and an estimator
+          * fed noiseless ranges is being handed an advantage it will
+          * not have on hardware. */
+         GetNodeAttributeOrDefault(t_tree, "range_noise_std_dev",
+                                   m_fRangeNoiseStdDev, m_fRangeNoiseStdDev);
+         if(m_fRangeNoiseStdDev < 0.0) {
+            THROW_ARGOSEXCEPTION("range_noise_std_dev cannot be negative");
+         }
+         if(m_fRangeNoiseStdDev > 0.0) {
+            m_pcRNG = CRandom::CreateRNG("argos");
+         }
          GetNodeAttributeOrDefault(t_tree, "framerate_divider",
                                    sBase.FramerateDivider, sBase.FramerateDivider);
          if(sBase.FramerateDivider == 0) {
@@ -315,11 +328,23 @@ namespace argos {
 
 
          else {
-            sReading.Range = fRange;
+            Real fMeasured = fRange;
+            if(m_pcRNG != nullptr) {
+               /* Range noise is roughly constant with distance on a
+                * time-of-flight lidar, so one standard deviation for
+                * every return. Kept strictly inside the valid interval:
+                * noise blurs a range, it does not turn a return into a
+                * dropout, and a consumer distinguishes a miss by Hit
+                * and by the range sitting at MaxRange. */
+               fMeasured += m_pcRNG->Gaussian(m_fRangeNoiseStdDev);
+               fMeasured = Max(m_fNearPlane,
+                               Min(fMeasured, m_sScan.MaxRange - 1e-4));
+            }
+            sReading.Range = fMeasured;
             sReading.Hit = true;
             sReading.EntityId = unEntityId;
             sReading.ClassId = UInt8(std::lround(pfAux[1]));
-            sReading.Position = sSample.Direction * fRange;
+            sReading.Position = sSample.Direction * fMeasured;
          }
       }
    }
@@ -399,8 +424,18 @@ namespace argos {
                    "                        vertical_fov=\"-15,15\"\n"
                    "                        horizontal_resolution=\"0.2\"\n"
                    "                        max_range=\"20\" near=\"0.05\"\n"
+                   "                        range_noise_std_dev=\"0\"\n"
                    "                        faces=\"4\" face_resolution=\"512,192\"\n"
                    "                        framerate_divider=\"1\" />\n\n"
+                   "'range_noise_std_dev' (default 0, metres) adds Gaussian noise to the range\n"
+                   "of every return, which is what a real time-of-flight lidar reports: a\n"
+                   "VLP-16 is specified at roughly +/-3 cm, so 0.03 models one. The default of\n"
+                   "zero gives geometrically exact ranges, which is convenient for tests and\n"
+                   "planners but hands a scan matcher an accuracy it will never have on\n"
+                   "hardware; set it before drawing conclusions about SLAM accuracy. Noise\n"
+                   "never turns a return into a miss: the range stays inside 'near' and\n"
+                   "'max_range', and misses remain identifiable through Hit.\n\n"
+
                    "'anchor' selects the mount anchor of the robot body. 'position' and\n"
                    "'orientation' (Euler z,y,x in degrees) offset the sensor in the anchor\n"
                    "frame. 'rings' is the number of laser channels, spread evenly over\n"
