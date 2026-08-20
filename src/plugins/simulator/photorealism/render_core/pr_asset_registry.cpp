@@ -125,10 +125,10 @@ namespace argos {
       m_pcStbProvider = nullptr;
       delete m_pcKtx2Provider;
       m_pcKtx2Provider = nullptr;
+      gltfio::AssetLoader::destroy(&m_pcLoader);
       m_pcMaterials->destroyMaterials();
       delete m_pcMaterials;
       m_pcMaterials = nullptr;
-      gltfio::AssetLoader::destroy(&m_pcLoader);
       m_pcEngine = nullptr;
    }
 

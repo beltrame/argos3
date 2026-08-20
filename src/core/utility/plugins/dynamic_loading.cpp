@@ -30,16 +30,20 @@ namespace argos {
     * In case of success, it sets t_handle to the handle of the load library, and fixes str_lib to
     * match the extension of the loaded library.
     */
+#ifndef RTLD_NODELETE
+#define RTLD_NODELETE 0
+#endif
+
    static CDynamicLoading::TDLHandle LoadLibraryTryingExtensions(std::string& str_lib,
                                                                  std::string& str_msg) {
       /* Try loading without changes to the given path */
-      CDynamicLoading::TDLHandle tHandle = ::dlopen(str_lib.c_str(), RTLD_GLOBAL | RTLD_LAZY);
+      CDynamicLoading::TDLHandle tHandle = ::dlopen(str_lib.c_str(), RTLD_GLOBAL | RTLD_LAZY | RTLD_NODELETE);
       str_msg += "\n  " + str_lib + ": ";
       if(tHandle == nullptr) {
          str_msg += dlerror();
          /* Try adding the shared lib extension to the path */
          std::string strLibWExt = str_lib + "." + ARGOS_SHARED_LIBRARY_EXTENSION;
-         tHandle = ::dlopen(strLibWExt.c_str(), RTLD_GLOBAL | RTLD_LAZY);
+         tHandle = ::dlopen(strLibWExt.c_str(), RTLD_GLOBAL | RTLD_LAZY | RTLD_NODELETE);
          str_msg += "\n\n  " + strLibWExt + ": ";
          if(tHandle != nullptr) {
             /* Success */
@@ -49,7 +53,7 @@ namespace argos {
             str_msg += dlerror();
             /* Try adding the module lib extension to the path */
             strLibWExt = str_lib + "." + ARGOS_MODULE_LIBRARY_EXTENSION;
-            tHandle = ::dlopen(strLibWExt.c_str(), RTLD_GLOBAL | RTLD_LAZY);
+            tHandle = ::dlopen(strLibWExt.c_str(), RTLD_GLOBAL | RTLD_LAZY | RTLD_NODELETE);
             str_msg += "\n\n  " + strLibWExt + ": ";
             if(tHandle != nullptr) {
                /* Success */

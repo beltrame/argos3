@@ -65,9 +65,14 @@ set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_PHYSICS_ENGINES_JOLT
 add_library(argos3plugin_${ARGOS_BUILD_FOR}_jolt SHARED
   ${ARGOS3_SOURCES_PLUGINS_SIMULATOR_PHYSICS_ENGINES_JOLT})
 target_link_libraries(argos3plugin_${ARGOS_BUILD_FOR}_jolt
-  argos3core_${ARGOS_BUILD_FOR}
-  argos3plugin_${ARGOS_BUILD_FOR}_entities
-  Jolt)
+  PUBLIC
+    argos3core_${ARGOS_BUILD_FOR}
+    argos3plugin_${ARGOS_BUILD_FOR}_entities
+  PRIVATE
+    Jolt)
+target_include_directories(argos3plugin_${ARGOS_BUILD_FOR}_jolt
+  PUBLIC
+    $<TARGET_PROPERTY:Jolt,INTERFACE_INCLUDE_DIRECTORIES>)
 
 install(FILES ${ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHYSICS_ENGINES_JOLT}
   DESTINATION include/argos3/plugins/simulator/physics_engines/jolt)

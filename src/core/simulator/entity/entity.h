@@ -362,14 +362,7 @@ namespace argos {
    template <typename LABEL, typename PLUGIN, typename RETURN_TYPE>
    class CEntityOperationInstanceHolder {
    public:
-      ~CEntityOperationInstanceHolder() {
-         while(!m_vecOperationInstances.empty()) {
-            if(m_vecOperationInstances.back() != NULL) {
-               delete m_vecOperationInstances.back();
-            }
-            m_vecOperationInstances.pop_back();
-         }
-      }
+      ~CEntityOperationInstanceHolder() {}
       template <typename DERIVED>
       void Add(CEntityOperation<LABEL, PLUGIN, RETURN_TYPE>* pc_operation) {
          /* Find the slot */
