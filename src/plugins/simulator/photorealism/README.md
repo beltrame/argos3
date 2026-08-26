@@ -222,7 +222,12 @@ speed.
 
 Robot visuals are data-driven: an entity type renders from a glTF
 model when a `<type>.visual.xml` descriptor is found in the asset
-search path (the medium's `asset_path` attribute, then the
+search path. `<type>` is the string the entity returns from
+`GetTypeDescription()`, matched exactly, so a `scout_mini` entity
+needs `scout_mini.visual.xml` and not `scout-mini.visual.xml`; the
+only sign of a mismatch is one `[INFO] Photorealism: no visual model
+for entity type` line, after which that robot is invisible to the
+cameras and to the photorealistic lidar (the medium's `asset_path` attribute, then the
 `ARGOS_PHOTOREALISM_ASSET_PATH` environment variable, then the
 installed assets in `share/argos3/photorealism`):
 
@@ -255,7 +260,8 @@ functions) are sampled into a texture and refreshed whenever the
 floor reports a change.
 
 Segmentation class ids: 0 none, 1 floor, 2 box, 3 cylinder,
-4 foot-bot, 5 drone (see `EPRClass` in `render_core/pr_id_scene.h`);
+4 foot-bot, 5 drone, 6 scenery, 7 bunker-mini, 8 scout-mini,
+9 spot, 10 bunker (see `EPRClass` in `render_core/pr_id_scene.h`);
 glTF visuals take their class id from the descriptor.
 
 ## Status

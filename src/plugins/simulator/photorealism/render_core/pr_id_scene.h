@@ -51,7 +51,10 @@ namespace argos {
        * originally registered with id 0 and was therefore invisible to
        * the depth and segmentation modalities. */
       Scenery = 6,
-      BunkerMini = 7
+      BunkerMini = 7,
+      ScoutMini = 8,
+      Spot = 9,
+      Bunker = 10
    };
 
 

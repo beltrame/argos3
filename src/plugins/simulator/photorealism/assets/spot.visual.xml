@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<!-- Boston Dynamics Spot visual for the photorealism plugin. Procedural, from
+     generate_assets.py. This is the geometry the cameras and the
+     photorealistic lidar raytrace, so unlike the entity's collision box it
+     shows the four legs with daylight between them: that is what a
+     neighbouring robot's range sensor actually sees. The model is glTF y-up;
+     the orientation makes it z-up. -->
+<visual>
+  <model path="spot.glb" scale="1" position="0,0,0" orientation="0,0,90" />
+  <segmentation class="9" />
+</visual>

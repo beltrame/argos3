@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<!-- AgileX Bunker (full size) visual for the photorealism plugin. Procedural,
+     from generate_assets.py. This is NOT bunker-mini: the two are different
+     machines and have separate entities, models and segmentation classes.
+     The model is glTF y-up; the orientation makes it z-up, and the origin
+     sits on the floor as the entity's origin anchor does. -->
+<visual>
+  <model path="bunker.glb" scale="1" position="0,0,0" orientation="0,0,90" />
+  <segmentation class="10" />
+</visual>
