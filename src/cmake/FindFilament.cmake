@@ -72,23 +72,36 @@ if(FILAMENT_DIR)
     endif()
   endforeach()
 
-  # libc++ runtime archives (Linux only; on macOS libc++ is the system default)
+  # libc++ runtime archives (Linux only; on macOS libc++ is the system default).
+  # We search exclusively for static archives (.a). Bare names like "c++" or
+  # "c++abi" allow find_library to match shared objects (.so), which causes
+  # relocatable pre-linking (ld -r) to fail later with "attempted static link
+  # of dynamic object".
   set(FILAMENT_LIBCXX_LIBRARIES "")
   set(_FILAMENT_LIBCXX_OK ON)
   if(UNIX AND NOT APPLE)
     set(_FILAMENT_LIBCXX_OK OFF)
     file(GLOB _libcxx_glob "${FILAMENT_DIR}/../libcxx/root/usr/lib/llvm-*/lib")
     find_library(FILAMENT_LIBCXX_LIBRARY
-      NAMES libc++.a c++
+      NAMES libc++.a
       PATHS ${FILAMENT_LIBCXX_DIR} ${_libcxx_glob}
       NO_DEFAULT_PATH)
     find_library(FILAMENT_LIBCXXABI_LIBRARY
-      NAMES libc++abi.a c++abi
+      NAMES libc++abi.a
       PATHS ${FILAMENT_LIBCXX_DIR} ${_libcxx_glob}
       NO_DEFAULT_PATH)
-    if(NOT FILAMENT_LIBCXX_LIBRARY)
-      find_library(FILAMENT_LIBCXX_LIBRARY NAMES libc++.a c++)
-      find_library(FILAMENT_LIBCXXABI_LIBRARY NAMES libc++abi.a c++abi)
+    if(NOT FILAMENT_LIBCXX_LIBRARY OR NOT FILAMENT_LIBCXXABI_LIBRARY)
+      # On distributions such as Ubuntu, libc++abi.a resides under
+      # /usr/lib/llvm-*/lib rather than standard system library directories.
+      # Default find_library paths will not inspect these directories, so
+      # glob and add them explicitly.
+      file(GLOB _sys_libcxx_glob "/usr/lib/llvm-*/lib")
+      find_library(FILAMENT_LIBCXX_LIBRARY
+        NAMES libc++.a
+        PATHS ${_sys_libcxx_glob})
+      find_library(FILAMENT_LIBCXXABI_LIBRARY
+        NAMES libc++abi.a
+        PATHS ${_sys_libcxx_glob})
     endif()
     mark_as_advanced(FILAMENT_LIBCXX_LIBRARY FILAMENT_LIBCXXABI_LIBRARY)
     if(FILAMENT_LIBCXX_LIBRARY AND FILAMENT_LIBCXXABI_LIBRARY)
