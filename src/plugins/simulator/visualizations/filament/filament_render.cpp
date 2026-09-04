@@ -118,29 +118,31 @@ namespace argos {
          THROW_ARGOSEXCEPTION("Cannot obtain the X11 window handle: "
                               << SDL_GetError());
       }
-      m_pcSwapChain = cEngine.GetEngine().createSwapChain(
-         reinterpret_cast<void*>(sWMInfo.info.x11.window));
-      m_pcRenderer = cEngine.GetEngine().createRenderer();
-      /* The window camera and view. Every Filament entity this class
-       * creates must be minted by the photorealism plugin, which owns
-       * the engine: see CPRRenderEngine::CreateEntity() */
-      m_cCameraEntity = cEngine.CreateEntity();
-      m_pcCamera = cEngine.GetEngine().createCamera(m_cCameraEntity);
-      m_pcCamera->setProjection(double(m_fFieldOfView),
-                                double(m_unWidth) / double(m_unHeight),
-                                0.05, 250.0,
-                                filament::Camera::Fov::VERTICAL);
-      /* The same exposure as the robot cameras, so the window shows
-       * the world at the brightness the sensors see */
-      cEngine.ApplyExposure(*m_pcCamera);
-      m_pcView = cEngine.GetEngine().createView();
-      m_pcView->setViewport(filament::Viewport(0, 0, m_unWidth, m_unHeight));
-      m_pcView->setScene(&cEngine.GetScene());
-      m_pcView->setCamera(m_pcCamera);
-      /* This window is the one place debug overlays are meant to be seen.
-       * Filament shows only layer 0 by default, so every other view - the
-       * robot cameras, the insets below - leaves them out without asking. */
-      m_pcView->setVisibleLayers(PR_OVERLAY_LAYER, PR_OVERLAY_LAYER);
+      cEngine.Execute([this, &cEngine, &sWMInfo]() {
+         m_pcSwapChain = cEngine.GetEngine().createSwapChain(
+            reinterpret_cast<void*>(sWMInfo.info.x11.window));
+         m_pcRenderer = cEngine.GetEngine().createRenderer();
+         /* The window camera and view. Every Filament entity this class
+          * creates must be minted by the photorealism plugin, which owns
+          * the engine: see CPRRenderEngine::CreateEntity() */
+         m_cCameraEntity = cEngine.CreateEntity();
+         m_pcCamera = cEngine.GetEngine().createCamera(m_cCameraEntity);
+         m_pcCamera->setProjection(double(m_fFieldOfView),
+                                   double(m_unWidth) / double(m_unHeight),
+                                   0.05, 250.0,
+                                   filament::Camera::Fov::VERTICAL);
+         /* The same exposure as the robot cameras, so the window shows
+          * the world at the brightness the sensors see */
+         cEngine.ApplyExposure(*m_pcCamera);
+         m_pcView = cEngine.GetEngine().createView();
+         m_pcView->setViewport(filament::Viewport(0, 0, m_unWidth, m_unHeight));
+         m_pcView->setScene(&cEngine.GetScene());
+         m_pcView->setCamera(m_pcCamera);
+         /* This window is the one place debug overlays are meant to be seen.
+          * Filament shows only layer 0 by default, so every other view - the
+          * robot cameras, the insets below - leaves them out without asking. */
+         m_pcView->setVisibleLayers(PR_OVERLAY_LAYER, PR_OVERLAY_LAYER);
+      });
       /* Initial pose: at 'position', looking at 'look_at' */
       m_cCameraPosition = m_cCameraStart;
       CVector3 cDirection = m_cCameraLookAt - m_cCameraStart;
@@ -161,89 +163,93 @@ namespace argos {
    /****************************************/
 
    void CFilamentRender::CreateInsets() {
-      CPRCameraPool& cPool = m_pcMedium->GetCameraPool();
-      filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
-      for(const std::string& str_robot : m_vecInsetRobots) {
-         /* Find the first photorealistic camera mounted on the robot */
-         bool bFound = false;
-         SInset sInset;
-         sInset.Robot = str_robot;
-         for(UInt32 unHandle : cPool.GetHandles()) {
-            const SPRCameraConfig& sConfig = cPool.GetConfig(unHandle);
-            if(sConfig.Anchor != nullptr &&
-               sConfig.Anchor->Body.GetRootEntity().GetId() == str_robot) {
-               sInset.CameraHandle = unHandle;
-               bFound = true;
-               break;
+      m_pcMedium->GetRenderEngine().Execute([this]() {
+         CPRCameraPool& cPool = m_pcMedium->GetCameraPool();
+         filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
+         for(const std::string& str_robot : m_vecInsetRobots) {
+            /* Find the first photorealistic camera mounted on the robot */
+            bool bFound = false;
+            SInset sInset;
+            sInset.Robot = str_robot;
+            for(UInt32 unHandle : cPool.GetHandles()) {
+               const SPRCameraConfig& sConfig = cPool.GetConfig(unHandle);
+               if(sConfig.Anchor != nullptr &&
+                  sConfig.Anchor->Body.GetRootEntity().GetId() == str_robot) {
+                  sInset.CameraHandle = unHandle;
+                  bFound = true;
+                  break;
+               }
             }
+            if(!bFound) {
+               LOGERR << "[WARNING] Filament visualization: robot \""
+                      << str_robot << "\" has no photorealistic camera; "
+                      "its inset is disabled" << std::endl;
+               continue;
+            }
+            sInset.CameraEntity = m_pcMedium->GetRenderEngine().CreateEntity();
+            sInset.Camera = cEngine.createCamera(sInset.CameraEntity);
+            m_pcMedium->GetRenderEngine().ApplyExposure(*sInset.Camera);
+            sInset.View = cEngine.createView();
+            sInset.View->setScene(&m_pcMedium->GetRenderEngine().GetScene());
+            sInset.View->setCamera(sInset.Camera);
+            /* Left on the default: an inset previews what a robot's camera
+             * sees, so it should show what the sensor shows and no more. */
+            m_vecInsets.push_back(sInset);
          }
-         if(!bFound) {
-            LOGERR << "[WARNING] Filament visualization: robot \""
-                   << str_robot << "\" has no photorealistic camera; "
-                   "its inset is disabled" << std::endl;
-            continue;
-         }
-         sInset.CameraEntity = m_pcMedium->GetRenderEngine().CreateEntity();
-         sInset.Camera = cEngine.createCamera(sInset.CameraEntity);
-         m_pcMedium->GetRenderEngine().ApplyExposure(*sInset.Camera);
-         sInset.View = cEngine.createView();
-         sInset.View->setScene(&m_pcMedium->GetRenderEngine().GetScene());
-         sInset.View->setCamera(sInset.Camera);
-         /* Left on the default: an inset previews what a robot's camera
-          * sees, so it should show what the sensor shows and no more. */
-         m_vecInsets.push_back(sInset);
-      }
-      LayOutInsets();
+         LayOutInsets();
+      });
    }
 
    /****************************************/
    /****************************************/
 
    void CFilamentRender::LayOutInsets() {
-      const UInt32 unMargin = 12;
-      /* With more than one inset the corners share the window, so an
-       * inset may take at most half of it minus the margins */
-      UInt32 unMaxWidth = (m_vecInsets.size() > 1) ?
-         (m_unWidth - 3 * unMargin) / 2 : (m_unWidth - 2 * unMargin);
-      UInt32 unMaxHeight = (m_vecInsets.size() > 2) ?
-         (m_unHeight - 3 * unMargin) / 2 : (m_unHeight - 2 * unMargin);
-      for(size_t i = 0; i < m_vecInsets.size(); ++i) {
-         SInset& sInset = m_vecInsets[i];
-         const SPRCameraConfig& sConfig =
-            m_pcMedium->GetCameraPool().GetConfig(sInset.CameraHandle);
-         /* Each inset keeps its own sensor's aspect ratio and field
-          * of view, shrunk to fit its half of the window */
-         UInt32 unHeight = UInt32(m_unHeight * m_fInsetSize);
-         UInt32 unWidth =
-            UInt32(Real(unHeight) * sConfig.Width / sConfig.Height);
-         if(unWidth > unMaxWidth) {
-            unWidth = unMaxWidth;
-            unHeight =
-               UInt32(Real(unWidth) * sConfig.Height / sConfig.Width);
-         }
-         if(unHeight > unMaxHeight) {
-            unHeight = unMaxHeight;
-            unWidth =
+      m_pcMedium->GetRenderEngine().Execute([this]() {
+         const UInt32 unMargin = 12;
+         /* With more than one inset the corners share the window, so an
+          * inset may take at most half of it minus the margins */
+         UInt32 unMaxWidth = (m_vecInsets.size() > 1) ?
+            (m_unWidth - 3 * unMargin) / 2 : (m_unWidth - 2 * unMargin);
+         UInt32 unMaxHeight = (m_vecInsets.size() > 2) ?
+            (m_unHeight - 3 * unMargin) / 2 : (m_unHeight - 2 * unMargin);
+         for(size_t i = 0; i < m_vecInsets.size(); ++i) {
+            SInset& sInset = m_vecInsets[i];
+            const SPRCameraConfig& sConfig =
+               m_pcMedium->GetCameraPool().GetConfig(sInset.CameraHandle);
+            /* Each inset keeps its own sensor's aspect ratio and field
+             * of view, shrunk to fit its half of the window */
+            UInt32 unHeight = UInt32(m_unHeight * m_fInsetSize);
+            UInt32 unWidth =
                UInt32(Real(unHeight) * sConfig.Width / sConfig.Height);
+            if(unWidth > unMaxWidth) {
+               unWidth = unMaxWidth;
+               unHeight =
+                  UInt32(Real(unWidth) * sConfig.Height / sConfig.Width);
+            }
+            if(unHeight > unMaxHeight) {
+               unHeight = unMaxHeight;
+               unWidth =
+                  UInt32(Real(unHeight) * sConfig.Width / sConfig.Height);
+            }
+            /* Corners are filled bottom-right, bottom-left, top-left,
+             * top-right, so a lone inset keeps its usual place. The
+             * Filament viewport origin is the bottom-left corner */
+            bool bRight = (i == 0 || i == 3);
+            bool bTop = (i == 2 || i == 3);
+            sInset.View->setViewport(
+               filament::Viewport(
+                  bRight ? SInt32(m_unWidth - unWidth - unMargin)
+                         : SInt32(unMargin),
+                  bTop ? SInt32(m_unHeight - unHeight - unMargin)
+                       : SInt32(unMargin),
+                  unWidth, unHeight));
+            sInset.Camera->setProjection(
+               double(sConfig.FieldOfView),
+               double(unWidth) / double(unHeight),
+               double(sConfig.NearPlane), double(sConfig.FarPlane),
+               filament::Camera::Fov::VERTICAL);
          }
-         /* Corners are filled bottom-right, bottom-left, top-left,
-          * top-right, so a lone inset keeps its usual place. The
-          * Filament viewport origin is the bottom-left corner */
-         bool bRight = (i == 0 || i == 3);
-         bool bTop = (i == 2 || i == 3);
-         sInset.View->setViewport(
-            filament::Viewport(
-               bRight ? SInt32(m_unWidth - unWidth - unMargin)
-                      : SInt32(unMargin),
-               bTop ? SInt32(m_unHeight - unHeight - unMargin)
-                    : SInt32(unMargin),
-               unWidth, unHeight));
-         sInset.Camera->setProjection(
-            double(sConfig.FieldOfView),
-            double(unWidth) / double(unHeight),
-            double(sConfig.NearPlane), double(sConfig.FarPlane),
-            filament::Camera::Fov::VERTICAL);
-      }
+      });
    }
 
    /****************************************/
@@ -253,23 +259,25 @@ namespace argos {
       if(m_pcMedium == nullptr) {
          return;
       }
-      filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
-      cEngine.flushAndWait();
-      for(SInset& s_inset : m_vecInsets) {
-         cEngine.destroy(s_inset.View);
-         cEngine.destroyCameraComponent(s_inset.CameraEntity);
-         m_pcMedium->GetRenderEngine().DestroyEntity(s_inset.CameraEntity);
-      }
-      m_vecInsets.clear();
-      cEngine.destroy(m_pcView);
-      cEngine.destroyCameraComponent(m_cCameraEntity);
-      m_pcMedium->GetRenderEngine().DestroyEntity(m_cCameraEntity);
-      cEngine.destroy(m_pcRenderer);
-      cEngine.destroy(m_pcSwapChain);
-      m_pcView = nullptr;
-      m_pcCamera = nullptr;
-      m_pcRenderer = nullptr;
-      m_pcSwapChain = nullptr;
+      m_pcMedium->GetRenderEngine().Execute([this]() {
+         filament::Engine& cEngine = m_pcMedium->GetRenderEngine().GetEngine();
+         cEngine.flushAndWait();
+         for(SInset& s_inset : m_vecInsets) {
+            cEngine.destroy(s_inset.View);
+            cEngine.destroyCameraComponent(s_inset.CameraEntity);
+            m_pcMedium->GetRenderEngine().DestroyEntity(s_inset.CameraEntity);
+         }
+         m_vecInsets.clear();
+         cEngine.destroy(m_pcView);
+         cEngine.destroyCameraComponent(m_cCameraEntity);
+         m_pcMedium->GetRenderEngine().DestroyEntity(m_cCameraEntity);
+         cEngine.destroy(m_pcRenderer);
+         cEngine.destroy(m_pcSwapChain);
+         m_pcView = nullptr;
+         m_pcCamera = nullptr;
+         m_pcRenderer = nullptr;
+         m_pcSwapChain = nullptr;
+      });
       SDL_DestroyWindow(m_ptWindow);
       m_ptWindow = nullptr;
       SDL_QuitSubSystem(SDL_INIT_VIDEO);
@@ -349,14 +357,16 @@ namespace argos {
                   SDL_GetWindowSize(m_ptWindow, &nWidth, &nHeight);
                   m_unWidth = UInt32(nWidth);
                   m_unHeight = UInt32(nHeight);
-                  m_pcView->setViewport(
-                     filament::Viewport(0, 0, m_unWidth, m_unHeight));
-                  m_pcCamera->setProjection(
-                     double(m_fFieldOfView),
-                     double(m_unWidth) / double(m_unHeight),
-                     0.05, 250.0,
-                     filament::Camera::Fov::VERTICAL);
-                  LayOutInsets();
+                  m_pcMedium->GetRenderEngine().Execute([this]() {
+                     m_pcView->setViewport(
+                        filament::Viewport(0, 0, m_unWidth, m_unHeight));
+                     m_pcCamera->setProjection(
+                        double(m_fFieldOfView),
+                        double(m_unWidth) / double(m_unHeight),
+                        0.05, 250.0,
+                        filament::Camera::Fov::VERTICAL);
+                     LayOutInsets();
+                  });
                }
                break;
             default:
@@ -384,75 +394,84 @@ namespace argos {
    /****************************************/
 
    void CFilamentRender::UpdateCamera() {
-      CVector3 cForward(std::cos(m_fYaw) * std::cos(m_fPitch),
-                        std::sin(m_fYaw) * std::cos(m_fPitch),
-                        std::sin(m_fPitch));
-      CVector3 cCenter = m_cCameraPosition + cForward;
-      m_pcCamera->lookAt({float(m_cCameraPosition.GetX()),
-                          float(m_cCameraPosition.GetY()),
-                          float(m_cCameraPosition.GetZ())},
-                         {float(cCenter.GetX()),
-                          float(cCenter.GetY()),
-                          float(cCenter.GetZ())},
-                         {0.0f, 0.0f, 1.0f});
+      m_pcMedium->GetRenderEngine().Execute([this]() {
+         CVector3 cForward(std::cos(m_fYaw) * std::cos(m_fPitch),
+                           std::sin(m_fYaw) * std::cos(m_fPitch),
+                           std::sin(m_fPitch));
+         CVector3 cCenter = m_cCameraPosition + cForward;
+         m_pcCamera->lookAt({float(m_cCameraPosition.GetX()),
+                             float(m_cCameraPosition.GetY()),
+                             float(m_cCameraPosition.GetZ())},
+                            {float(cCenter.GetX()),
+                             float(cCenter.GetY()),
+                             float(cCenter.GetZ())},
+                            {0.0f, 0.0f, 1.0f});
+      });
    }
 
    /****************************************/
    /****************************************/
 
    void CFilamentRender::RenderFrame() {
-      if(!m_pcRenderer->beginFrame(m_pcSwapChain)) {
-         return;
-      }
-      m_pcRenderer->render(m_pcView);
-      for(SInset& s_inset : m_vecInsets) {
-         /* Live view from the robot camera's pose */
-         s_inset.Camera->setModelMatrix(
-            CPRCameraPool::ComputeViewTransform(
-               m_pcMedium->GetCameraPool().GetConfig(s_inset.CameraHandle)));
-         m_pcRenderer->render(s_inset.View);
-      }
-      /* Periodic window screenshots */
-      bool bShotDone = false;
-      std::vector<UInt8> vecPixels;
-      UInt32 unClock = m_cSpace.GetSimulationClock();
-      bool bShotDue =
-         !m_strScreenshotPrefix.empty() &&
-         unClock >= m_unLastScreenshotTick + m_unScreenshotPeriod;
-      if(bShotDue) {
-         m_unLastScreenshotTick = unClock;
-         vecPixels.resize(size_t(m_unWidth) * m_unHeight * 4);
-         filament::backend::PixelBufferDescriptor cDescriptor(
-            vecPixels.data(), vecPixels.size(),
-            filament::backend::PixelDataFormat::RGBA,
-            filament::backend::PixelDataType::UBYTE,
-            [](void*, size_t, void* pt_user) {
-               *static_cast<bool*>(pt_user) = true;
-            },
-            &bShotDone);
-         m_pcRenderer->readPixels(0, 0, m_unWidth, m_unHeight,
-                                  std::move(cDescriptor));
-      }
-      m_pcRenderer->endFrame();
-      if(bShotDue) {
-         m_pcMedium->GetRenderEngine().GetEngine().flushAndWait();
-         if(bShotDone) {
-            char pchName[256];
-            ::snprintf(pchName, sizeof(pchName), "%s_%010u.png",
-                       m_strScreenshotPrefix.c_str(), unClock);
-            /* Vulkan readPixels rows are already top-to-bottom */
-            size_t unStride = size_t(m_unWidth) * 4;
-            if(stbi_write_png(pchName, int(m_unWidth), int(m_unHeight), 4,
-                              vecPixels.data(), int(unStride)) == 0) {
-               LOGERR << "[WARNING] Cannot write screenshot \""
-                      << pchName << "\"" << std::endl;
+      m_pcMedium->GetRenderEngine().Execute([this]() {
+         if(!m_pcRenderer->beginFrame(m_pcSwapChain)) {
+            return;
+         }
+         m_pcRenderer->render(m_pcView);
+         for(SInset& s_inset : m_vecInsets) {
+            /* Live view from the robot camera's pose */
+            s_inset.Camera->setModelMatrix(
+               CPRCameraPool::ComputeViewTransform(
+                  m_pcMedium->GetCameraPool().GetConfig(s_inset.CameraHandle)));
+            m_pcRenderer->render(s_inset.View);
+         }
+         /* Periodic window screenshots */
+         bool bShotDone = false;
+         std::vector<UInt8> vecPixels;
+         UInt32 unClock = m_cSpace.GetSimulationClock();
+         bool bShotDue =
+            !m_strScreenshotPrefix.empty() &&
+            unClock >= m_unLastScreenshotTick + m_unScreenshotPeriod;
+         if(bShotDue) {
+            m_unLastScreenshotTick = unClock;
+            vecPixels.resize(size_t(m_unWidth) * m_unHeight * 4);
+            filament::backend::PixelBufferDescriptor cDescriptor(
+               vecPixels.data(), vecPixels.size(),
+               filament::backend::PixelDataFormat::RGBA,
+               filament::backend::PixelDataType::UBYTE,
+               [](void*, size_t, void* pt_user) {
+                  *static_cast<bool*>(pt_user) = true;
+               },
+               &bShotDone);
+            m_pcRenderer->readPixels(0, 0, m_unWidth, m_unHeight,
+                                     std::move(cDescriptor));
+         }
+         m_pcRenderer->endFrame();
+         if(bShotDue) {
+            m_pcMedium->GetRenderEngine().GetEngine().flushAndWait();
+            if(bShotDone) {
+               char pchName[256];
+               ::snprintf(pchName, sizeof(pchName), "%s_%010u.png",
+                          m_strScreenshotPrefix.c_str(), unClock);
+               /* Vulkan readPixels rows are already top-to-bottom */
+               size_t unStride = size_t(m_unWidth) * 4;
+               if(stbi_write_png(pchName, int(m_unWidth), int(m_unHeight), 4,
+                                 vecPixels.data(), int(unStride)) == 0) {
+                  LOGERR << "[WARNING] Cannot write screenshot \""
+                         << pchName << "\"" << std::endl;
+               }
             }
          }
-      }
+      });
    }
 
    /****************************************/
    /****************************************/
+
+   /* Wall-clock a single frame may spend stepping the simulation before
+    * it must go back and serve the window. A frame budget, not a
+    * simulation parameter: 25 ms leaves a redraw inside ~30 fps. */
+   static const Real STEP_BUDGET_SECONDS = 0.025;
 
    void CFilamentRender::Execute() {
       CreateWindow();
@@ -479,18 +498,45 @@ namespace argos {
             }
             else if(!m_bPaused) {
                if(m_fSpeed > 0.0) {
-                  /* Real-time pacing: accumulate wall time, step when
-                   * a tick's worth has passed (at most a few per
-                   * frame, so the UI stays responsive) */
+                  /*
+                   * Real-time pacing: accumulate wall time and step when
+                   * a tick's worth has passed. The burst has to be
+                   * bounded or the window stops answering, because
+                   * nothing between here and RenderFrame() polls input.
+                   *
+                   * Bound it by TIME, not by a step count. A step count
+                   * only keeps the UI responsive while a step is cheap,
+                   * and how cheap a step is has nothing to do with the
+                   * viewer: a tick that blocks on an external estimator
+                   * and a planner costs tens of milliseconds, and a
+                   * ten-step burst then freezes the window for half a
+                   * second at a time. Raising ticks_per_second makes it
+                   * worse twice over, since the debt is measured in
+                   * ticks and each tick buys less simulated time.
+                   *
+                   * With a time budget the window keeps its frame rate
+                   * whatever a tick costs; the simulation simply falls
+                   * behind real time, which it already does and which
+                   * the clock display reports honestly.
+                   */
                   fStepDebt += fFrameSeconds * m_fSpeed;
-                  UInt32 unSteps = 0;
-                  while(fStepDebt >= fTickSeconds && unSteps < 10 &&
+                  const TClock::time_point tStepDeadline =
+                     TClock::now() +
+                     std::chrono::duration_cast<TClock::duration>(
+                        std::chrono::duration<Real>(STEP_BUDGET_SECONDS));
+                  bool bBudgetSpent = false;
+                  while(fStepDebt >= fTickSeconds &&
                         !m_cSimulator.IsExperimentFinished()) {
                      m_cSimulator.UpdateSpace();
                      fStepDebt -= fTickSeconds;
-                     ++unSteps;
+                     if(TClock::now() >= tStepDeadline) {
+                        bBudgetSpent = true;
+                        break;
+                     }
                   }
-                  if(unSteps == 10) {
+                  if(bBudgetSpent) {
+                     /* Real time is getting away from us; drop the
+                      * arrears rather than trying to catch up for ever */
                      fStepDebt = 0.0;
                   }
                }

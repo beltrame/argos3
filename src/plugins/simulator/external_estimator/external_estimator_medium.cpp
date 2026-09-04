@@ -18,6 +18,7 @@
 #include <argos3/plugins/robots/generic/control_interface/ci_photorealistic_lidar_sensor.h>
 #include <argos3/plugins/robots/generic/control_interface/ci_differential_steering_sensor.h>
 
+#include <chrono>
 #include <cerrno>
 #include <cmath>
 #include <cstring>
@@ -323,6 +324,13 @@ namespace argos {
    /****************************************/
 
    void CExternalEstimatorMedium::Destroy() {
+      if(m_unExchanges > 0) {
+         LOG << "[EXTERNAL_ESTIMATOR] " << GetId() << ": blocked "
+             << m_fBlockedSeconds << " s over " << m_unExchanges
+             << " exchanges (" << m_fBlockedSeconds / double(m_unExchanges) * 1e3
+             << " ms per tick waiting for the estimator)" << std::endl;
+         LOG.Flush();
+      }
       Disconnect();
    }
 
@@ -663,7 +671,11 @@ namespace argos {
       SendAll(m_vecOut.data(), m_vecOut.size());
       /* Blocks here: this is what keeps the simulation from running
        * ahead of the estimator and dropping data on the floor */
+      const auto tRoundTrip = std::chrono::steady_clock::now();
       ReceiveEstimates();
+      m_fBlockedSeconds += std::chrono::duration<double>(
+         std::chrono::steady_clock::now() - tRoundTrip).count();
+      ++m_unExchanges;
    }
 
    /****************************************/

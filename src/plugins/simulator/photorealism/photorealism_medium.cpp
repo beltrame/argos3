@@ -188,89 +188,91 @@ namespace argos {
 
    void CPhotorealismMedium::PostSpaceInit() {
       try {
-         m_cEngine.Create(m_strBackend);
-         /* Before any camera is created: the pool and the viewer read
-          * the exposure off the engine when they build theirs */
-         m_cEngine.SetExposure(m_sExposure);
-         m_cDebugDraw.Init(m_cEngine);
-         /* Constant-color sky, unless an HDR environment provides
-          * the skybox */
-         if(!m_sEnvironment.Enabled || m_sEnvironment.Skybox.empty()) {
-            m_pcSkybox = filament::Skybox::Builder()
-               .color({float(m_cSkyColor.GetX()),
-                       float(m_cSkyColor.GetY()),
-                       float(m_cSkyColor.GetZ()),
-                       1.0f})
-               .build(m_cEngine.GetEngine());
-            m_cEngine.GetScene().setSkybox(m_pcSkybox);
-         }
-         CSpace& cSpace = CSimulator::GetInstance().GetSpace();
-         m_cIdScene.Init(m_cEngine);
-         m_cAssetRegistry.Init(m_cEngine, m_cIdScene, m_strAssetPath);
-         m_cSceneSync.Init(m_cEngine, m_cIdScene, m_cAssetRegistry,
-                           m_sSunlight,
-                           cSpace.GetArenaSize(),
-                           cSpace.GetArenaCenter());
-         m_cSceneSync.SetHiddenIdPrefixes(m_vecHiddenIdPrefixes);
-         m_cSceneSync.SetDrawFloor(m_bDrawFloor);
-         if(m_sEnvironment.Enabled) {
-            m_cSceneSync.LoadEnvironment(m_sEnvironment.Ibl,
-                                         m_sEnvironment.Skybox,
-                                         m_sEnvironment.Intensity);
-         }
-         for(const CPRSceneSync::SLight& s_light : m_vecLights) {
-            m_cSceneSync.AddLight(s_light);
-         }
-         /* Static scenery props */
-         filament::TransformManager& cTransforms =
-            m_cEngine.GetEngine().getTransformManager();
-         for(SProp& s_prop : m_vecProps) {
-            /* Scenery needs a real identity like any other renderable:
-             * the camera sensor reads entity id 0 as "no geometry" and
-             * substitutes the far plane, so a prop registered with id 0
-             * is rendered into the aux buffer and then discarded,
-             * leaving depth and segmentation blank wherever the scenery
-             * is visible. Ids come from the scene sync allocator so
-             * they cannot collide with the ones given to entities. */
-            s_prop.EntityId = m_cSceneSync.AllocateEntityId();
-            s_prop.Instance =
-               m_cAssetRegistry.CreateModelInstance(s_prop.Model,
-                                                    s_prop.EntityId,
-                                                    UInt8(EPRClass::Scenery));
-            if(s_prop.Instance.Main == nullptr) {
-               THROW_ARGOSEXCEPTION("Cannot load scenery model \""
-                                    << s_prop.Model << "\"");
+         m_cEngine.Execute([this]() {
+            m_cEngine.Create(m_strBackend);
+            /* Before any camera is created: the pool and the viewer read
+             * the exposure off the engine when they build theirs */
+            m_cEngine.SetExposure(m_sExposure);
+            m_cDebugDraw.Init(m_cEngine);
+            /* Constant-color sky, unless an HDR environment provides
+             * the skybox */
+            if(!m_sEnvironment.Enabled || m_sEnvironment.Skybox.empty()) {
+               m_pcSkybox = filament::Skybox::Builder()
+                  .color({float(m_cSkyColor.GetX()),
+                          float(m_cSkyColor.GetY()),
+                          float(m_cSkyColor.GetZ()),
+                          1.0f})
+                  .build(m_cEngine.GetEngine());
+               m_cEngine.GetScene().setSkybox(m_pcSkybox);
             }
-            CQuaternion cOrientation;
-            cOrientation.FromEulerAngles(
-               ToRadians(CDegrees(s_prop.OrientationEuler.GetX())),
-               ToRadians(CDegrees(s_prop.OrientationEuler.GetY())),
-               ToRadians(CDegrees(s_prop.OrientationEuler.GetZ())));
-            cTransforms.setTransform(
-               cTransforms.getInstance(s_prop.Instance.Main->getRoot()),
-               filament::math::mat4f::translation(
-                  filament::math::float3{float(s_prop.Position.GetX()),
-                                         float(s_prop.Position.GetY()),
-                                         float(s_prop.Position.GetZ())}) *
-               filament::math::mat4f(
-                  filament::math::quatf(float(cOrientation.GetW()),
-                                        float(cOrientation.GetX()),
-                                        float(cOrientation.GetY()),
-                                        float(cOrientation.GetZ()))) *
-               filament::math::mat4f::scaling(
-                  filament::math::float3{float(s_prop.Scale)}));
-         }
-         m_cCameraPool.Init(m_cEngine, m_cIdScene, m_bImmediate);
-         if(m_sDebugCamera.Enabled) {
-            CreateDebugCamera();
-            std::filesystem::create_directories(m_sDebugCamera.Directory);
-         }
-         /* Initial sync so the scene is complete before the first tick */
-         m_cSceneSync.Sync(cSpace);
-         /* Draw the initial random environment */
-         if(m_cRandomizer.IsEnabled()) {
-            m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
-         }
+            CSpace& cSpace = CSimulator::GetInstance().GetSpace();
+            m_cIdScene.Init(m_cEngine);
+            m_cAssetRegistry.Init(m_cEngine, m_cIdScene, m_strAssetPath);
+            m_cSceneSync.Init(m_cEngine, m_cIdScene, m_cAssetRegistry,
+                              m_sSunlight,
+                              cSpace.GetArenaSize(),
+                              cSpace.GetArenaCenter());
+            m_cSceneSync.SetHiddenIdPrefixes(m_vecHiddenIdPrefixes);
+            m_cSceneSync.SetDrawFloor(m_bDrawFloor);
+            if(m_sEnvironment.Enabled) {
+               m_cSceneSync.LoadEnvironment(m_sEnvironment.Ibl,
+                                            m_sEnvironment.Skybox,
+                                            m_sEnvironment.Intensity);
+            }
+            for(const CPRSceneSync::SLight& s_light : m_vecLights) {
+               m_cSceneSync.AddLight(s_light);
+            }
+            /* Static scenery props */
+            filament::TransformManager& cTransforms =
+               m_cEngine.GetEngine().getTransformManager();
+            for(SProp& s_prop : m_vecProps) {
+               /* Scenery needs a real identity like any other renderable:
+                * the camera sensor reads entity id 0 as "no geometry" and
+                * substitutes the far plane, so a prop registered with id 0
+                * is rendered into the aux buffer and then discarded,
+                * leaving depth and segmentation blank wherever the scenery
+                * is visible. Ids come from the scene sync allocator so
+                * they cannot collide with the ones given to entities. */
+               s_prop.EntityId = m_cSceneSync.AllocateEntityId();
+               s_prop.Instance =
+                  m_cAssetRegistry.CreateModelInstance(s_prop.Model,
+                                                       s_prop.EntityId,
+                                                       UInt8(EPRClass::Scenery));
+               if(s_prop.Instance.Main == nullptr) {
+                  THROW_ARGOSEXCEPTION("Cannot load scenery model \""
+                                       << s_prop.Model << "\"");
+               }
+               CQuaternion cOrientation;
+               cOrientation.FromEulerAngles(
+                  ToRadians(CDegrees(s_prop.OrientationEuler.GetX())),
+                  ToRadians(CDegrees(s_prop.OrientationEuler.GetY())),
+                  ToRadians(CDegrees(s_prop.OrientationEuler.GetZ())));
+               cTransforms.setTransform(
+                  cTransforms.getInstance(s_prop.Instance.Main->getRoot()),
+                  filament::math::mat4f::translation(
+                     filament::math::float3{float(s_prop.Position.GetX()),
+                                            float(s_prop.Position.GetY()),
+                                            float(s_prop.Position.GetZ())}) *
+                  filament::math::mat4f(
+                     filament::math::quatf(float(cOrientation.GetW()),
+                                           float(cOrientation.GetX()),
+                                           float(cOrientation.GetY()),
+                                           float(cOrientation.GetZ()))) *
+                  filament::math::mat4f::scaling(
+                     filament::math::float3{float(s_prop.Scale)}));
+            }
+            m_cCameraPool.Init(m_cEngine, m_cIdScene, m_bImmediate);
+            if(m_sDebugCamera.Enabled) {
+               CreateDebugCamera();
+               std::filesystem::create_directories(m_sDebugCamera.Directory);
+            }
+            /* Initial sync so the scene is complete before the first tick */
+            m_cSceneSync.Sync(cSpace);
+            /* Draw the initial random environment */
+            if(m_cRandomizer.IsEnabled()) {
+               m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
+            }
+         });
       }
       catch(CARGoSException& ex) {
          THROW_ARGOSEXCEPTION_NESTED("Error creating the photorealism render engine", ex);
@@ -285,15 +287,17 @@ namespace argos {
        * only needs a fresh sync so removed/re-added entities settle,
        * plus dropping in-flight camera frames */
       if(m_cEngine.IsCreated()) {
-         m_cDebugDraw.Clear();
-         m_cDebugDraw.Commit();
-         m_cCameraPool.Reset();
-         m_cSceneSync.Sync(CSimulator::GetInstance().GetSpace());
-         /* Draw a new random environment on reset (dataset generation
-          * restarts the experiment with a randomized scene) */
-         if(m_cRandomizer.IsEnabled() && m_cRandomizer.AppliesOnReset()) {
-            m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
-         }
+         m_cEngine.Execute([this]() {
+            m_cDebugDraw.Clear();
+            m_cDebugDraw.Commit();
+            m_cCameraPool.Reset();
+            m_cSceneSync.Sync(CSimulator::GetInstance().GetSpace());
+            /* Draw a new random environment on reset (dataset generation
+             * restarts the experiment with a randomized scene) */
+            if(m_cRandomizer.IsEnabled() && m_cRandomizer.AppliesOnReset()) {
+               m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
+            }
+         });
       }
    }
 
@@ -307,56 +311,60 @@ namespace argos {
       if(m_bStats) {
          LogStats();
       }
-      filament::Engine& cEngine = m_cEngine.GetEngine();
-      m_cDebugDraw.Destroy();
-      m_cCameraPool.Destroy();
-      if(m_pcDebugView != nullptr) {
-         cEngine.destroy(m_pcDebugView);
-         cEngine.destroy(m_pcDebugTarget);
-         cEngine.destroy(m_pcDebugColor);
-         cEngine.destroy(m_pcDebugDepth);
-         cEngine.destroyCameraComponent(*m_pcDebugCameraEntity);
-         utils::EntityManager::get().destroy(*m_pcDebugCameraEntity);
-         delete m_pcDebugCameraEntity;
-         m_pcDebugView = nullptr;
-      }
-      m_cSceneSync.Destroy();
-      for(SProp& s_prop : m_vecProps) {
-         m_cAssetRegistry.ReleaseModelInstance(s_prop.Model, s_prop.Instance);
-      }
-      m_cAssetRegistry.Destroy();
-      m_cIdScene.Destroy();
-      if(m_pcSkybox != nullptr) {
-         cEngine.destroy(m_pcSkybox);
-         m_pcSkybox = nullptr;
-      }
-      m_cEngine.Destroy();
+      m_cEngine.Execute([this]() {
+         filament::Engine& cEngine = m_cEngine.GetEngine();
+         m_cDebugDraw.Destroy();
+         m_cCameraPool.Destroy();
+         if(m_pcDebugView != nullptr) {
+            cEngine.destroy(m_pcDebugView);
+            cEngine.destroy(m_pcDebugTarget);
+            cEngine.destroy(m_pcDebugColor);
+            cEngine.destroy(m_pcDebugDepth);
+            cEngine.destroyCameraComponent(*m_pcDebugCameraEntity);
+            m_cEngine.DestroyEntity(*m_pcDebugCameraEntity);
+            delete m_pcDebugCameraEntity;
+            m_pcDebugView = nullptr;
+         }
+         m_cSceneSync.Destroy();
+         for(SProp& s_prop : m_vecProps) {
+            m_cAssetRegistry.ReleaseModelInstance(s_prop.Model, s_prop.Instance);
+         }
+         m_cAssetRegistry.Destroy();
+         m_cIdScene.Destroy();
+         if(m_pcSkybox != nullptr) {
+            cEngine.destroy(m_pcSkybox);
+            m_pcSkybox = nullptr;
+         }
+         m_cEngine.Destroy();
+      });
    }
 
    /****************************************/
    /****************************************/
 
    void CPhotorealismMedium::Update() {
-      using TClock = std::chrono::steady_clock;
-      TClock::time_point tStart = TClock::now();
-      CSpace& cSpace = CSimulator::GetInstance().GetSpace();
-      m_cSceneSync.Sync(cSpace);
-      double fSync = std::chrono::duration<double>(TClock::now() - tStart).count();
-      /* Before the cameras render, so geometry a loop function drew on the
-       * previous PostStep is uploaded for this frame. Costs nothing on the
-       * ticks where nothing changed. */
-      m_cDebugDraw.Commit();
-      m_cCameraPool.Update(cSpace.GetSimulationClock());
-      if(m_sDebugCamera.Enabled &&
-         cSpace.GetSimulationClock() % m_sDebugCamera.Period == 0) {
-         RenderDebugFrame();
-      }
-      double fTotal = std::chrono::duration<double>(TClock::now() - tStart).count();
-      ++m_unStatTicks;
-      m_fStatSync += fSync;
-      m_fStatSyncMax = std::max(m_fStatSyncMax, fSync);
-      m_fStatTotal += fTotal;
-      m_fStatTotalMax = std::max(m_fStatTotalMax, fTotal);
+      m_cEngine.Execute([this]() {
+         using TClock = std::chrono::steady_clock;
+         TClock::time_point tStart = TClock::now();
+         CSpace& cSpace = CSimulator::GetInstance().GetSpace();
+         m_cSceneSync.Sync(cSpace);
+         double fSync = std::chrono::duration<double>(TClock::now() - tStart).count();
+         /* Before the cameras render, so geometry a loop function drew on the
+          * previous PostStep is uploaded for this frame. Costs nothing on the
+          * ticks where nothing changed. */
+         m_cDebugDraw.Commit();
+         m_cCameraPool.Update(cSpace.GetSimulationClock());
+         if(m_sDebugCamera.Enabled &&
+            cSpace.GetSimulationClock() % m_sDebugCamera.Period == 0) {
+            RenderDebugFrame();
+         }
+         double fTotal = std::chrono::duration<double>(TClock::now() - tStart).count();
+         ++m_unStatTicks;
+         m_fStatSync += fSync;
+         m_fStatSyncMax = std::max(m_fStatSyncMax, fSync);
+         m_fStatTotal += fTotal;
+         m_fStatTotalMax = std::max(m_fStatTotalMax, fTotal);
+      });
    }
 
    /****************************************/
@@ -384,7 +392,7 @@ namespace argos {
          .texture(filament::RenderTarget::AttachmentPoint::COLOR, m_pcDebugColor)
          .texture(filament::RenderTarget::AttachmentPoint::DEPTH, m_pcDebugDepth)
          .build(cEngine);
-      m_pcDebugCameraEntity = new utils::Entity(utils::EntityManager::get().create());
+      m_pcDebugCameraEntity = new utils::Entity(m_cEngine.CreateEntity());
       m_pcDebugCamera = cEngine.createCamera(*m_pcDebugCameraEntity);
       m_pcDebugCamera->setProjection(
          double(m_sDebugCamera.FieldOfView),
@@ -413,19 +421,23 @@ namespace argos {
 
    void CPhotorealismMedium::SetSunlight(const CVector3& c_direction,
                                          Real f_intensity) {
-      m_cSceneSync.SetSunlight(c_direction, f_intensity);
+      m_cEngine.Execute([this, &c_direction, f_intensity]() {
+         m_cSceneSync.SetSunlight(c_direction, f_intensity);
+      });
    }
 
    /****************************************/
    /****************************************/
 
    void CPhotorealismMedium::SetSkyColor(const CVector3& c_color) {
-      if(m_pcSkybox != nullptr) {
-         m_pcSkybox->setColor({float(c_color.GetX()),
-                               float(c_color.GetY()),
-                               float(c_color.GetZ()),
-                               1.0f});
-      }
+      m_cEngine.Execute([this, &c_color]() {
+         if(m_pcSkybox != nullptr) {
+            m_pcSkybox->setColor({float(c_color.GetX()),
+                                  float(c_color.GetY()),
+                                  float(c_color.GetZ()),
+                                  1.0f});
+         }
+      });
    }
 
    /****************************************/
@@ -434,7 +446,9 @@ namespace argos {
    void CPhotorealismMedium::SetMaterialParam(const CEmbodiedEntity& c_entity,
                                               const std::string& str_name,
                                               Real f_value) {
-      m_cSceneSync.SetMaterialParam(c_entity, str_name, f_value);
+      m_cEngine.Execute([this, &c_entity, &str_name, f_value]() {
+         m_cSceneSync.SetMaterialParam(c_entity, str_name, f_value);
+      });
    }
 
    /****************************************/
@@ -442,7 +456,9 @@ namespace argos {
 
    void CPhotorealismMedium::SetMaterialColor(const CEmbodiedEntity& c_entity,
                                               const CVector3& c_color) {
-      m_cSceneSync.SetMaterialColor(c_entity, c_color);
+      m_cEngine.Execute([this, &c_entity, &c_color]() {
+         m_cSceneSync.SetMaterialColor(c_entity, c_color);
+      });
    }
 
    /****************************************/
@@ -454,7 +470,9 @@ namespace argos {
                               "medium \"" << GetId() << "\" has no "
                               "<randomization> configuration");
       }
-      m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
+      m_cEngine.Execute([this]() {
+         m_cRandomizer.Apply(*m_pcRNG, m_cSceneSync, m_pcSkybox);
+      });
    }
 
    /****************************************/
@@ -487,6 +505,15 @@ namespace argos {
                  << (sPool.CollectWait + sPool.Submit + sPool.ImmediateWait) /
                     double(sPool.CamerasRendered) * 1e3
                  << " ms/render (CPU-side)";
+      }
+      if(sPool.FrameRetries > 0 || sPool.FramesLost > 0) {
+         cReport << "\n[INFO]   gpu contention: " << sPool.FrameRetries
+                 << " frame retries, " << sPool.FramesLost << " frames LOST";
+         if(sPool.FramesLost > 0) {
+            cReport << " (those ticks produced no scans or images for any "
+                       "robot; an interactive viewer sharing the GPU is the "
+                       "usual cause)";
+         }
       }
       LOG << cReport.str() << std::endl;
    }

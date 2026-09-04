@@ -43,6 +43,7 @@ namespace filament {
 
 #include <utils/Entity.h>
 
+#include <mutex>
 #include <vector>
 
 namespace argos {
@@ -91,6 +92,7 @@ namespace argos {
       /** Number of line segments currently held. Thick segments are made of
        *  triangles and are not counted here. */
       virtual size_t GetNumLines() const {
+         std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
          return m_vecVertices.size() / 2;
       }
 
@@ -155,6 +157,7 @@ namespace argos {
       filament::VertexBuffer* m_pcTriangleVertices = nullptr;
       filament::IndexBuffer* m_pcTriangleIndices = nullptr;
       bool m_bHasTriangles = false;
+      mutable std::recursive_mutex m_cMutex;
 
    };
 

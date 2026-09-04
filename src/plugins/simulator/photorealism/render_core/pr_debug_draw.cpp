@@ -49,7 +49,7 @@ namespace argos {
       if(m_bHasGeometry) {
          m_pcEngine->GetScene().remove(m_cRenderable);
          cEngine.getRenderableManager().destroy(m_cRenderable);
-         utils::EntityManager::get().destroy(m_cRenderable);
+         m_pcEngine->DestroyEntity(m_cRenderable);
          m_cRenderable = utils::Entity();
          m_bHasGeometry = false;
       }
@@ -74,7 +74,7 @@ namespace argos {
       if(m_bHasTriangles) {
          m_pcEngine->GetScene().remove(m_cTriangleRenderable);
          cEngine.getRenderableManager().destroy(m_cTriangleRenderable);
-         utils::EntityManager::get().destroy(m_cTriangleRenderable);
+         m_pcEngine->DestroyEntity(m_cTriangleRenderable);
          m_cTriangleRenderable = utils::Entity();
          m_bHasTriangles = false;
       }
@@ -97,6 +97,7 @@ namespace argos {
    /****************************************/
 
    void CPRDebugDraw::Destroy() {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       ReleaseGeometry();
       if(m_pcEngine != nullptr) {
          filament::Engine& cEngine = m_pcEngine->GetEngine();
@@ -120,6 +121,7 @@ namespace argos {
    /****************************************/
 
    void CPRDebugDraw::Clear() {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       if(!m_vecVertices.empty() || !m_vecTriangles.empty()) {
          m_vecVertices.clear();
          m_vecTriangles.clear();
@@ -132,6 +134,7 @@ namespace argos {
 
    void CPRDebugDraw::AddLine(const CVector3& c_from, const CVector3& c_to,
                               const CColor& c_color) {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       SVertex sVertex;
       /* CColor is 8-bit sRGB-ish; the material is unlit and writes baseColor
        * straight out, so a plain 0-255 scale is what comes back on screen */
@@ -155,6 +158,7 @@ namespace argos {
 
    void CPRDebugDraw::AddPolyline(const std::vector<CVector3>& vec_points,
                                   const CColor& c_color) {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       for(size_t i = 1; i < vec_points.size(); ++i) {
          AddLine(vec_points[i - 1], vec_points[i], c_color);
       }
@@ -165,6 +169,7 @@ namespace argos {
 
    void CPRDebugDraw::AddTriangle(const CVector3& c_a, const CVector3& c_b,
                                   const CVector3& c_c, const CColor& c_color) {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       SVertex sVertex;
       sVertex.Color[0] = float(c_color.GetRed()) / 255.0f;
       sVertex.Color[1] = float(c_color.GetGreen()) / 255.0f;
@@ -185,6 +190,7 @@ namespace argos {
 
    void CPRDebugDraw::AddThickLine(const CVector3& c_from, const CVector3& c_to,
                                    Real f_width, const CColor& c_color) {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       CVector3 cAlong = c_to - c_from;
       const Real fLength = cAlong.Length();
       if(fLength < 1e-9) {
@@ -224,6 +230,7 @@ namespace argos {
 
    void CPRDebugDraw::AddThickPolyline(const std::vector<CVector3>& vec_points,
                                        Real f_width, const CColor& c_color) {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       for(size_t i = 1; i < vec_points.size(); ++i) {
          AddThickLine(vec_points[i - 1], vec_points[i], f_width, c_color);
       }
@@ -234,6 +241,7 @@ namespace argos {
 
    void CPRDebugDraw::AddMarker(const CVector3& c_at, Real f_size,
                                 const CColor& c_color) {
+      std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
       const Real fHalf = f_size * 0.5;
       AddLine(c_at - CVector3(fHalf, 0.0, 0.0),
               c_at + CVector3(fHalf, 0.0, 0.0), c_color);
@@ -312,7 +320,7 @@ namespace argos {
                delete[] static_cast<UInt32*>(pt_buffer);
             }));
 
-      utils::Entity cRenderable = utils::EntityManager::get().create();
+      utils::Entity cRenderable = m_pcEngine->CreateEntity();
       filament::RenderableManager::Builder(1)
          .boundingBox({{fMin[0], fMin[1], fMin[2]}, {fMax[0], fMax[1], fMax[2]}})
          .material(0, m_pcMaterialInstance)
@@ -358,10 +366,17 @@ namespace argos {
    /****************************************/
 
    void CPRDebugDraw::Commit() {
-      if(m_pcEngine == nullptr || !m_bDirty) {
-         return;
+      std::vector<SVertex> vecVertices;
+      std::vector<SVertex> vecTriangles;
+      {
+         std::lock_guard<std::recursive_mutex> cLock(m_cMutex);
+         if(m_pcEngine == nullptr || !m_bDirty) {
+            return;
+         }
+         m_bDirty = false;
+         vecVertices = m_vecVertices;
+         vecTriangles = m_vecTriangles;
       }
-      m_bDirty = false;
       /* Nothing actually changed: keep the buffers that are already on the
        * GPU. The usual case by far, because a caller redraws the same overlay
        * every tick so that stale geometry disappears on its own, and tearing
@@ -369,20 +384,20 @@ namespace argos {
        * as flicker while the asynchronous uploads catch up. The two lists are
        * compared separately so a moving path does not force the graph, which
        * is far larger and changes far less often, to be re-uploaded with it. */
-      const bool bLinesSame = m_vecVertices == m_vecCommitted;
-      const bool bTrianglesSame = m_vecTriangles == m_vecTrianglesCommitted;
+      const bool bLinesSame = (vecVertices == m_vecCommitted);
+      const bool bTrianglesSame = (vecTriangles == m_vecTrianglesCommitted);
       if(bLinesSame && bTrianglesSame) {
          return;
       }
       if(!bLinesSame) {
          ReleaseLines();
-         if(!m_vecVertices.empty()) Upload(m_vecVertices, false);
-         m_vecCommitted = m_vecVertices;
+         if(!vecVertices.empty()) Upload(vecVertices, false);
+         m_vecCommitted = std::move(vecVertices);
       }
       if(!bTrianglesSame) {
          ReleaseTriangles();
-         if(!m_vecTriangles.empty()) Upload(m_vecTriangles, true);
-         m_vecTrianglesCommitted = m_vecTriangles;
+         if(!vecTriangles.empty()) Upload(vecTriangles, true);
+         m_vecTrianglesCommitted = std::move(vecTriangles);
       }
    }
 

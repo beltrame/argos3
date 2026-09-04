@@ -13,7 +13,15 @@
 #define PR_RENDER_ENGINE_H
 
 #include <argos3/core/utility/datatypes/datatypes.h>
+#include <argos3/core/utility/configuration/argos_exception.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <future>
+#include <memory>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <thread>
 #include <vector>
@@ -55,8 +63,66 @@ namespace argos {
 
    public:
 
-      CPRRenderEngine() {}
+      /**
+       * RAII helper that acquires the render lock on construction
+       * and releases it on destruction.
+       */
+      class CLock {
+      public:
+         explicit CLock(const CPRRenderEngine& c_engine) : m_cEngine(c_engine) {
+            m_cEngine.Lock();
+         }
+         ~CLock() {
+            m_cEngine.Unlock();
+         }
+         CLock(const CLock&) = delete;
+         CLock& operator=(const CLock&) = delete;
+      private:
+         const CPRRenderEngine& m_cEngine;
+      };
+
+      CPRRenderEngine();
       ~CPRRenderEngine();
+      CPRRenderEngine(const CPRRenderEngine&) = delete;
+      CPRRenderEngine& operator=(const CPRRenderEngine&) = delete;
+
+      /**
+       * Executes a callable on the dedicated Filament render thread.
+       * If called from the render thread itself, executes synchronously inline.
+       * If called from another thread, blocks until the render thread executes
+       * the callable and returns its result or propagates any thrown exception.
+       */
+      template <typename F>
+      auto Execute(F&& fn) const -> decltype(fn()) {
+         if(std::this_thread::get_id() == m_cWorkerThreadId) {
+            return fn();
+         }
+         using ReturnType = decltype(fn());
+         auto task = std::make_shared<std::packaged_task<ReturnType()>>(std::forward<F>(fn));
+         std::future<ReturnType> future = task->get_future();
+         {
+            std::lock_guard<std::mutex> lock(m_cTaskMutex);
+            if(!m_bWorkerRunning) {
+               THROW_ARGOSEXCEPTION("CPRRenderEngine::Execute called while render worker thread is not running");
+            }
+            m_qTasks.emplace([task]() { (*task)(); });
+         }
+         m_cTaskCv.notify_one();
+         return future.get();
+      }
+
+      /**
+       * Compatibility methods.
+       */
+      void Lock() const;
+      void Unlock() const;
+
+      /**
+       * Returns true if the calling thread currently is the dedicated render thread.
+       */
+      inline bool IsLockedByCurrentThread() const {
+         return std::this_thread::get_id() == m_cWorkerThreadId;
+      }
 
       /**
        * Creates the Filament engine with a headless swapchain.
@@ -67,12 +133,12 @@ namespace argos {
       void Destroy();
 
       inline bool IsCreated() const {
-         return m_pcEngine != nullptr;
+         return m_pcEngine.load() != nullptr;
       }
 
       inline filament::Engine& GetEngine() {
          AssertRenderThread();
-         return *m_pcEngine;
+         return *m_pcEngine.load();
       }
 
       inline filament::Renderer& GetRenderer() {
@@ -172,20 +238,30 @@ namespace argos {
       const void* GetEntityManagerAddress() const;
 
       /**
-       * Asserts that the caller runs on the thread that created the
-       * Filament engine. No-op in release builds.
+       * Asserts that the caller currently holds the render lock.
+       * No-op in release builds.
        */
       void AssertRenderThread() const;
 
    private:
 
-      filament::Engine*    m_pcEngine      = nullptr;
+      void StartWorker();
+      void StopWorker();
+      void WorkerLoop();
+
+      std::atomic<filament::Engine*> m_pcEngine{nullptr};
       filament::Renderer*  m_pcRenderer    = nullptr;
       filament::SwapChain* m_pcSwapChain   = nullptr;
       filament::Scene*     m_pcScene       = nullptr;
       filament::Material*  m_pcLitMaterial = nullptr;
       SPRExposure          m_sExposure;
-      std::thread::id      m_cRenderThreadId;
+
+      mutable std::thread m_cWorkerThread;
+      mutable std::thread::id m_cWorkerThreadId{};
+      mutable std::mutex m_cTaskMutex;
+      mutable std::condition_variable m_cTaskCv;
+      mutable std::queue<std::function<void()>> m_qTasks;
+      mutable std::atomic<bool> m_bWorkerRunning{false};
 
    };
 

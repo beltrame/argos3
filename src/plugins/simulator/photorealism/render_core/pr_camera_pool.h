@@ -58,6 +58,7 @@ namespace filament {
 #include <chrono>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace argos {
@@ -125,6 +126,13 @@ namespace argos {
          double ImmediateWait = 0.0;
          /** Longest single Update() call */
          double MaxUpdate = 0.0;
+         /** beginFrame() refusals waited out before a sensor frame went
+          *  through. Nonzero means the GPU is the bottleneck, typically
+          *  an interactive viewer sharing the engine. */
+         UInt64 FrameRetries = 0;
+         /** Ticks where the retry budget ran out and the sensor frame was
+          *  submitted into a cancelled frame anyway, i.e. lost. */
+         UInt64 FramesLost = 0;
       };
 
    public:
@@ -167,11 +175,13 @@ namespace argos {
       static filament::math::mat4f
       ComputeViewTransform(const SPRCameraConfig& s_config);
 
-      inline const SStats& GetStats() const {
+      inline SStats GetStats() const {
+         std::lock_guard<std::mutex> cLock(m_cMutex);
          return m_sStats;
       }
 
       inline size_t GetNumCameras() const {
+         std::lock_guard<std::mutex> cLock(m_cMutex);
          return m_mapCameras.size();
       }
 
@@ -257,6 +267,7 @@ namespace argos {
       filament::Material* m_pcBlitMaterial = nullptr;
       SPRMesh m_sQuadMesh;
       SStats m_sStats;
+      mutable std::mutex m_cMutex;
 
    };
 

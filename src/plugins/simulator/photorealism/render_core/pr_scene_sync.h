@@ -47,6 +47,7 @@ namespace filament {
 #include <utils/Entity.h>
 #include <math/mat4.h>
 
+#include <atomic>
 #include <map>
 #include <set>
 #include <string>
@@ -281,7 +282,7 @@ namespace argos {
       /* When false, the arena floor plane is not rendered */
       bool m_bDrawFloor = true;
       /* Next numeric entity id to assign (0 = none, 1 = floor) */
-      UInt16 m_unNextEntityId = 2;
+      std::atomic<UInt16> m_unNextEntityId{2};
       /* Emissive luminance of a fully lit LED, in nits, resolved from
        * the engine exposure at Init() so LEDs read the same whatever
        * the camera is set to */

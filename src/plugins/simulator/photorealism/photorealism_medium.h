@@ -63,6 +63,10 @@ namespace argos {
          return m_cEngine;
       }
 
+      inline const CPRRenderEngine& GetRenderEngine() const {
+         return m_cEngine;
+      }
+
       inline CPRSceneSync& GetSceneSync() {
          return m_cSceneSync;
       }

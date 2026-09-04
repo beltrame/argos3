@@ -11,6 +11,7 @@
 
 #include <argos3/core/simulator/physics_engine/physics_model.h>
 #include <argos3/core/utility/configuration/argos_exception.h>
+#include <argos3/core/utility/logging/argos_log.h>
 
 #include <filament/Engine.h>
 #include <filament/Renderer.h>
@@ -28,12 +29,19 @@
 #include <backend/PixelBufferDescriptor.h>
 #include <utils/EntityManager.h>
 #include <math/mat4.h>
+
+#include <chrono>
+#include <thread>
 #include <math/quat.h>
 
 #include <algorithm>
 #include <cstring>
 
 namespace argos {
+
+   /* How long a sensor frame may wait for the GPU before it is given up
+    * on. Generous next to a sensor tick, short next to a hung driver. */
+   static const long RENDER_BEGIN_TIMEOUT_MS = 250;
 
    using filament::math::float3;
    using filament::math::mat3f;
@@ -53,6 +61,7 @@ namespace argos {
    void CPRCameraPool::Init(CPRRenderEngine& c_engine,
                             CPRIdScene& c_id_scene,
                             bool b_immediate) {
+      std::lock_guard<std::mutex> cLock(m_cMutex);
       m_pcEngine = &c_engine;
       m_pcIdScene = &c_id_scene;
       m_bImmediate = b_immediate;
@@ -78,16 +87,19 @@ namespace argos {
       if(m_pcEngine == nullptr || !m_pcEngine->IsCreated()) {
          return;
       }
-      filament::Engine& cEngine = m_pcEngine->GetEngine();
-      cEngine.flushAndWait();
-      DestroyPages();
-      for(auto& tCamera : m_mapCameras) {
-         ReleaseResources(tCamera.second);
-      }
-      m_mapCameras.clear();
-      cEngine.destroy(m_pcBlitMaterial);
-      m_pcBlitMaterial = nullptr;
-      m_sQuadMesh.Release(cEngine);
+      m_pcEngine->Execute([this]() {
+         std::lock_guard<std::mutex> cLock(m_cMutex);
+         filament::Engine& cEngine = m_pcEngine->GetEngine();
+         cEngine.flushAndWait();
+         DestroyPages();
+         for(auto& tCamera : m_mapCameras) {
+            ReleaseResources(tCamera.second);
+         }
+         m_mapCameras.clear();
+         cEngine.destroy(m_pcBlitMaterial);
+         m_pcBlitMaterial = nullptr;
+         m_sQuadMesh.Release(cEngine);
+      });
       m_pcEngine = nullptr;
    }
 
@@ -96,18 +108,35 @@ namespace argos {
 
    void CPRCameraPool::Reset() {
       if(m_pcEngine != nullptr && m_pcEngine->IsCreated()) {
-         m_pcEngine->GetEngine().flushAndWait();
+         m_pcEngine->Execute([this]() {
+            std::lock_guard<std::mutex> cLock(m_cMutex);
+            m_pcEngine->GetEngine().flushAndWait();
+            for(auto& tCamera : m_mapCameras) {
+               SCamera& sCamera = tCamera.second;
+               sCamera.Pending = false;
+               sCamera.Front.Fresh = false;
+               sCamera.Front.Valid = false;
+               sCamera.Front.Tick = 0;
+            }
+            for(auto& psPage : m_vecPages) {
+               psPage->Pending = false;
+               psPage->Done = true;
+            }
+         });
       }
-      for(auto& tCamera : m_mapCameras) {
-         SCamera& sCamera = tCamera.second;
-         sCamera.Pending = false;
-         sCamera.Front.Fresh = false;
-         sCamera.Front.Valid = false;
-         sCamera.Front.Tick = 0;
-      }
-      for(auto& psPage : m_vecPages) {
-         psPage->Pending = false;
-         psPage->Done = true;
+      else {
+         std::lock_guard<std::mutex> cLock(m_cMutex);
+         for(auto& tCamera : m_mapCameras) {
+            SCamera& sCamera = tCamera.second;
+            sCamera.Pending = false;
+            sCamera.Front.Fresh = false;
+            sCamera.Front.Valid = false;
+            sCamera.Front.Tick = 0;
+         }
+         for(auto& psPage : m_vecPages) {
+            psPage->Pending = false;
+            psPage->Done = true;
+         }
       }
    }
 
@@ -122,6 +151,7 @@ namespace argos {
          THROW_ARGOSEXCEPTION("Photorealistic camera resolution exceeds "
                               << PAGE_MAX_SIDE << " pixels per side");
       }
+      std::lock_guard<std::mutex> cLock(m_cMutex);
       UInt32 unHandle = m_unNextHandle++;
       SCamera& sCamera = m_mapCameras[unHandle];
       sCamera.Config = s_config;
@@ -137,19 +167,31 @@ namespace argos {
    /****************************************/
 
    void CPRCameraPool::UnregisterCamera(UInt32 un_handle) {
-      auto itCamera = m_mapCameras.find(un_handle);
-      if(itCamera == m_mapCameras.end()) {
-         return;
-      }
       if(m_pcEngine != nullptr && m_pcEngine->IsCreated()) {
-         m_pcEngine->GetEngine().flushAndWait();
-         /* The pages hold material instances sampling this camera's
-          * textures; drop them before the textures go away */
-         DestroyPages();
-         ReleaseResources(itCamera->second);
+         m_pcEngine->Execute([this, un_handle]() {
+            std::lock_guard<std::mutex> cLock(m_cMutex);
+            auto itCamera = m_mapCameras.find(un_handle);
+            if(itCamera == m_mapCameras.end()) {
+               return;
+            }
+            m_pcEngine->GetEngine().flushAndWait();
+            /* The pages hold material instances sampling this camera's
+             * textures; drop them before the textures go away */
+            DestroyPages();
+            ReleaseResources(itCamera->second);
+            m_mapCameras.erase(itCamera);
+            m_bPagesDirty = true;
+         });
       }
-      m_mapCameras.erase(itCamera);
-      m_bPagesDirty = true;
+      else {
+         std::lock_guard<std::mutex> cLock(m_cMutex);
+         auto itCamera = m_mapCameras.find(un_handle);
+         if(itCamera == m_mapCameras.end()) {
+            return;
+         }
+         m_mapCameras.erase(itCamera);
+         m_bPagesDirty = true;
+      }
    }
 
    /****************************************/
@@ -157,6 +199,7 @@ namespace argos {
 
    void CPRCameraPool::Update(UInt32 un_tick) {
       m_pcEngine->AssertRenderThread();
+      std::lock_guard<std::mutex> cLock(m_cMutex);
       using TClock = std::chrono::steady_clock;
       TClock::time_point tStart = TClock::now();
       ++m_sStats.Updates;
@@ -201,10 +244,48 @@ namespace argos {
          RebuildPages();
       }
       filament::Renderer& cRenderer = m_pcEngine->GetRenderer();
-      /* beginFrame() returning false is only a frame-skipping HINT
-       * (e.g. when a window renderer shares the engine and the GPU
-       * lags); sensor frames are not optional, so it is ignored */
-      cRenderer.beginFrame(&m_pcEngine->GetSwapChain());
+      /*
+       * beginFrame() returning false means Filament has CANCELLED the
+       * frame, not that skipping it is optional: the render commands
+       * that follow are dropped, readPixels never completes, and the
+       * page never goes Done. A sensor whose readback never lands
+       * reports no new frame at all, so ignoring the result does not
+       * force the frame through -- it loses it silently, and the
+       * consumer sees a lidar that stops scanning.
+       *
+       * That matters because the refusal is driven by GPU backpressure,
+       * and an interactive viewer sharing this engine is exactly what
+       * creates it: moving the observer camera would stall the sensors
+       * of every robot in the arena.
+       *
+       * Sensor frames really are not optional, so wait for one instead
+       * of dropping it. The wait is bounded: if the GPU stays behind for
+       * longer than a sensor tick is worth, submit anyway (the old
+       * behaviour) and count it, so a pathological case degrades into
+       * dropped frames rather than a hung simulation.
+       */
+      bool bFrameBegun = cRenderer.beginFrame(&m_pcEngine->GetSwapChain());
+      if(!bFrameBegun) {
+         const TClock::time_point tDeadline =
+            TClock::now() + std::chrono::milliseconds(RENDER_BEGIN_TIMEOUT_MS);
+         while(!bFrameBegun && TClock::now() < tDeadline) {
+            ++m_sStats.FrameRetries;
+            std::this_thread::sleep_for(std::chrono::microseconds(200));
+            bFrameBegun = cRenderer.beginFrame(&m_pcEngine->GetSwapChain());
+         }
+         if(!bFrameBegun) {
+            ++m_sStats.FramesLost;
+            if(m_sStats.FramesLost == 1 || m_sStats.FramesLost % 100 == 0) {
+               LOGERR << "[PHOTOREALISM] the GPU did not accept a sensor "
+                         "frame within " << RENDER_BEGIN_TIMEOUT_MS
+                      << " ms; this tick's scans and images are lost. If an "
+                         "interactive viewer is running, the sensors are "
+                         "competing with it for the GPU: run headless, or "
+                         "lower the viewer resolution. ("
+                      << m_sStats.FramesLost << " so far)" << std::endl;
+            }
+         }
+      }
       for(SCamera* psCamera : vecDue) {
          UpdateCameraTransform(*psCamera);
          if(psCamera->Config.RenderRGB) {
@@ -271,6 +352,7 @@ namespace argos {
 
    const CPRCameraPool::SOutput&
    CPRCameraPool::GetOutput(UInt32 un_handle) const {
+      std::lock_guard<std::mutex> cLock(m_cMutex);
       auto itCamera = m_mapCameras.find(un_handle);
       if(itCamera == m_mapCameras.end()) {
          THROW_ARGOSEXCEPTION("Unknown photorealistic camera handle " << un_handle);
@@ -283,6 +365,7 @@ namespace argos {
 
    const SPRCameraConfig&
    CPRCameraPool::GetConfig(UInt32 un_handle) const {
+      std::lock_guard<std::mutex> cLock(m_cMutex);
       auto itCamera = m_mapCameras.find(un_handle);
       if(itCamera == m_mapCameras.end()) {
          THROW_ARGOSEXCEPTION("Unknown photorealistic camera handle " << un_handle);
@@ -665,6 +748,7 @@ namespace argos {
    /****************************************/
 
    std::vector<UInt32> CPRCameraPool::GetHandles() const {
+      std::lock_guard<std::mutex> cLock(m_cMutex);
       std::vector<UInt32> vecHandles;
       vecHandles.reserve(m_mapCameras.size());
       for(const auto& tCamera : m_mapCameras) {

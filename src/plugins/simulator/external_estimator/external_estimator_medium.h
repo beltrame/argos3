@@ -92,6 +92,12 @@ namespace argos {
 
       virtual void Destroy();
 
+      /** Wall-clock blocked waiting for the estimator's reply, and the
+       *  number of exchanges, so a run can say how much of its time went
+       *  into the round-trip rather than into simulating. */
+      double m_fBlockedSeconds = 0.0;
+      UInt64 m_unExchanges = 0;
+
       /**
        * Copies the newest estimate for a robot into s_estimate. Returns
        * false when the estimator has never reported one, in which case
