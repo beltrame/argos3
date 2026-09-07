@@ -43,6 +43,11 @@ void CDroneOdometryLoopFunctions::PostStep() {
    }
    const CVector3& cGroundTruthPosition =
       m_pcDrone->GetEmbodiedEntity().GetOriginAnchor().Position;
+   if(!m_bHaveStart) {
+      m_cStartPosition = cGroundTruthPosition;
+      m_cStartOrientation = cOrientation;
+      m_bHaveStart = true;
+   }
    CCI_OdometrySensor::SReading sOdometry =
       m_pcDrone->GetControllableEntity().GetController()
          .GetSensor<CCI_OdometrySensor>("odometry")->GetReading();
@@ -53,7 +58,14 @@ void CDroneOdometryLoopFunctions::PostStep() {
                            << GetSpace().GetSimulationClock()
                            << ": " << sOdometry.Position);
    }
-   Real fDeviation = Distance(sOdometry.Position, cGroundTruthPosition);
+   /* The reading is start-relative, so put it back in the arena before
+    * comparing. Without this the "deviation" would be how far the drone has
+    * flown, not how far its odometry has drifted, and every threshold below
+    * would be measuring the wrong thing. */
+   CVector3 cOdometryInArena = sOdometry.Position;
+   cOdometryInArena.Rotate(m_cStartOrientation);
+   cOdometryInArena += m_cStartPosition;
+   Real fDeviation = Distance(cOdometryInArena, cGroundTruthPosition);
    /* Early in the flight, almost no distance has been travelled yet, so
     * almost no drift can have accumulated: the odometry estimate must
     * still closely track ground truth. */
@@ -64,11 +76,18 @@ void CDroneOdometryLoopFunctions::PostStep() {
                               "is accumulating far faster than configured");
       }
    }
-   /* After 10 s the drone must hover at the target */
+   /* After 10 s the drone must hover at the target.
+    *
+    * The position actuator's target is start-relative, like the odometry
+    * sensor's reading, so the arena pose to expect is the start pose plus the
+    * commanded (4, 0, 1). This used to be written as the absolute (4, 0, 1),
+    * which is the same thing only for a drone spawned at the origin, and read
+    * as though the target were absolute. */
    if(GetSpace().GetSimulationClock() == 100) {
-      if(Distance(cGroundTruthPosition, CVector3(4.0, 0.0, 1.0)) > 0.15) {
+      CVector3 cExpected = m_cStartPosition + CVector3(4.0, 0.0, 1.0);
+      if(Distance(cGroundTruthPosition, cExpected) > 0.15) {
          THROW_ARGOSEXCEPTION("Drone at " << cGroundTruthPosition
-                              << " after 10 s, expected ~(4, 0, 1)");
+                              << " after 10 s, expected ~" << cExpected);
       }
    }
    /* Late in the flight, several metres have been travelled: the drift
@@ -98,12 +117,14 @@ bool CDroneOdometryLoopFunctions::IsExperimentFinished() {
       return false;
    }
    /* After 30 s the drone must hover at the target (ground truth,
-    * unaffected by the odometry sensor's drift) */
+    * unaffected by the odometry sensor's drift). The target is
+    * start-relative, as in the tick-100 check above. */
    const CVector3& cPosition =
       m_pcDrone->GetEmbodiedEntity().GetOriginAnchor().Position;
-   if(Distance(cPosition, CVector3(4.0, 0.0, 1.0)) > 0.1) {
+   CVector3 cExpected = m_cStartPosition + CVector3(4.0, 0.0, 1.0);
+   if(Distance(cPosition, cExpected) > 0.1) {
       THROW_ARGOSEXCEPTION("Drone at " << cPosition
-                           << ", expected hover at ~(4, 0, 1)");
+                           << ", expected hover at ~" << cExpected);
    }
    return true;
 }

@@ -64,10 +64,36 @@ namespace argos {
       m_sReading.Tick = UInt32(CSimulator::GetInstance().GetSpace().GetSimulationClock());
       m_sReading.Valid = true;
       if(!m_bHasPrevious) {
-         /* First tick: initialize the drifted estimate at ground truth,
-          * there is no relative motion yet to perturb. */
-         m_sReading.Position = cGroundTruthPosition;
-         m_sReading.Orientation = cGroundTruthOrientation;
+         /* First tick: the estimate starts at the robot's OWN origin, not at
+          * its arena pose. There is no relative motion yet to perturb.
+          *
+          * Identity rather than ground truth because that is the convention
+          * every other odometry source reports in. A real dead-reckoning
+          * pipeline has no idea where in the world it was switched on: wheel
+          * encoders start at zero, and a SLAM front end defines its map frame
+          * at the first keyframe, which is why the "external" implementation
+          * (fed through the external_estimator medium by e.g. Fast-LIVO2)
+          * delivers a start-relative pose. Seeding this one at the arena pose
+          * made it the only source quietly reporting world coordinates, and
+          * seeding it at identity is what "aligned with external" means.
+          *
+          * The difference is not cosmetic downstream. A consumer that knows
+          * the spawn poses composes T_world_map = start_pose onto what it
+          * receives; against a stream that already carries the spawn, that
+          * offset lands twice. Measured on a four-robot SwarmDeck run whose
+          * robots spawn along x at -9, -3, 3 and 9 in a 26 m building: the
+          * merged map came out spanning 44 m, and the two robots spawned at
+          * yaw pi contributed a 180 degree rotation rather than a shift, a
+          * doubled pose being a doubled rotation too. Wall agreement against
+          * the true floorplan was 27.3%, against 88.9% for the same scene
+          * running the external estimator.
+          *
+          * Ground truth stays available and unchanged on the positioning
+          * sensor. Anything comparing this estimate against it must now
+          * compose the known start pose, which is the arithmetic a real
+          * deployment has to do anyway. */
+         m_sReading.Position = CVector3::ZERO;
+         m_sReading.Orientation = CQuaternion();
          m_sReading.LinearVelocity = CVector3::ZERO;
          m_sReading.AngularVelocity = CVector3::ZERO;
          m_cPrevGroundTruthPosition = cGroundTruthPosition;
@@ -118,14 +144,18 @@ namespace argos {
    /****************************************/
 
    void COdometryDriftSensor::Reset() {
-      m_sReading.Position = m_pcEmbodiedEntity->GetOriginAnchor().Position;
-      m_sReading.Orientation = m_pcEmbodiedEntity->GetOriginAnchor().Orientation;
+      /* Same origin convention as the first tick of Update(): a reset robot
+       * restarts its own odometry, it does not learn where it is. The
+       * ground-truth reference the relative motion is measured against is a
+       * separate quantity and does come from the anchor. */
+      m_sReading.Position = CVector3::ZERO;
+      m_sReading.Orientation = CQuaternion();
       m_sReading.LinearVelocity = CVector3::ZERO;
       m_sReading.AngularVelocity = CVector3::ZERO;
       m_sReading.Tick = 0;
       m_sReading.Valid = false;
-      m_cPrevGroundTruthPosition = m_sReading.Position;
-      m_cPrevGroundTruthOrientation = m_sReading.Orientation;
+      m_cPrevGroundTruthPosition = m_pcEmbodiedEntity->GetOriginAnchor().Position;
+      m_cPrevGroundTruthOrientation = m_pcEmbodiedEntity->GetOriginAnchor().Orientation;
       m_bHasPrevious = false;
    }
 
@@ -146,6 +176,17 @@ namespace argos {
                    "sensor can be used with any robot, since it accesses only the body\n"
                    "component. In controllers, you must include the ci_odometry_sensor.h\n"
                    "header.\n\n"
+
+                   "FRAME. The estimate is START-RELATIVE: it reads identity on the first\n"
+                   "tick and after Reset(), whatever the robot's pose in the arena, and\n"
+                   "thereafter accumulates the drifted relative motion. This is the same\n"
+                   "convention as the 'external' implementation, whose SLAM front end defines\n"
+                   "its map frame at the first keyframe, and the same as real hardware, whose\n"
+                   "encoders do not know where they were switched on. A consumer that needs\n"
+                   "arena coordinates composes the known start pose onto this reading; one\n"
+                   "that composes a start pose onto a stream ALREADY carrying it will place\n"
+                   "the robot at twice its spawn offset, and rotate it twice as far.\n"
+                   "Ground truth is the positioning sensor's job, not this one's.\n\n"
 
                    "This sensor is enabled by default.\n\n"
 

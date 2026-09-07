@@ -2,6 +2,8 @@
 #define JOLT_DRONE_ODOMETRY_LOOP_FUNCTIONS_H
 
 #include <argos3/core/simulator/loop_functions.h>
+#include <argos3/core/utility/math/quaternion.h>
+#include <argos3/core/utility/math/vector3.h>
 
 namespace argos {
    class CDroneEntity;
@@ -19,6 +21,12 @@ using namespace argos;
  * while late in the flight it must have measurably, but boundedly,
  * diverged from ground truth, proving the per-tick drift both
  * accumulates and does not blow up or produce non-finite values.
+ *
+ * The odometry reading is START-RELATIVE, so comparing it against ground
+ * truth means composing the drone's start pose onto it first. That is the
+ * arithmetic every real consumer of this sensor has to do, and doing it here
+ * keeps the test honest about the frame rather than measuring the spawn
+ * offset and calling it drift.
  */
 class CDroneOdometryLoopFunctions : public CLoopFunctions {
 
@@ -31,6 +39,13 @@ public:
 private:
 
    CDroneEntity* m_pcDrone = nullptr;
+
+   /* Where the drone started, captured on the first PostStep. The odometry
+    * frame is pinned there, so this is what turns a reading into an arena
+    * pose. */
+   CVector3 m_cStartPosition;
+   CQuaternion m_cStartOrientation;
+   bool m_bHaveStart = false;
 
 };
 

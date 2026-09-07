@@ -32,6 +32,21 @@ namespace argos {
     *
     * Both feed SLAM/localization stacks that expect a continuous but
     * imperfect pose estimate.
+    *
+    * FRAME. Both report START-RELATIVE poses: identity on the first tick,
+    * whatever the robot's pose in the arena, and relative motion accumulated
+    * from there. That is what real hardware does, since neither an encoder
+    * nor a SLAM front end knows where in the world it was switched on, and it
+    * is the premise a collaborative stack is written against: recovering the
+    * transform between robots is the job, not an input to it. The one
+    * exception is deliberate and explicit, the external_estimator medium's
+    * alignment="ground_truth", which hands out the world frame for tests that
+    * need a known answer.
+    *
+    * A consumer wanting arena coordinates composes the robot's known start
+    * pose onto the reading. Composing it onto a reading that already carries
+    * the start pose places the robot at twice its spawn offset and rotates it
+    * twice as far, which is a wrong answer that looks plausible.
     */
    class CCI_OdometrySensor : public CCI_Sensor {
 

@@ -28,6 +28,11 @@ namespace argos {
     * as a real wheel/visual odometry pipeline would drift. The reading
     * therefore diverges from ground truth over time even though each
     * individual step is only lightly perturbed.
+    *
+    * The integration starts at IDENTITY, not at the robot's arena pose, so
+    * the estimate is start-relative and matches what the "external"
+    * implementation delivers. Only the relative motion is read from ground
+    * truth; where the robot happens to be in the arena is never disclosed.
     */
    class COdometryDriftSensor : public CSimulatedSensor,
                                 public CCI_OdometrySensor {

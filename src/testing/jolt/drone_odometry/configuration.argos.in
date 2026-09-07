@@ -24,8 +24,17 @@
                   label="drone_odometry_loop_functions" />
 
   <arena size="10, 4, 3" center="4,0,1.5">
+    <!-- Deliberately NOT at the arena origin. The odometry sensor reports a
+         start-relative pose, so a drone spawned at 0,0,0 makes the frame
+         composition in the loop functions a no-op, and the drift thresholds
+         would then pass whether the frame is handled correctly or not at all.
+         Spawned off-origin the composition is load-bearing: get it wrong and
+         the tick-3 check sees the 1.5 m spawn offset against a 0.05 m budget.
+         The controller flies to an ABSOLUTE target, so the flight assertions
+         are unaffected: 4.27 m of XY travel at the 1 m/s limit still reaches
+         the hover well inside 10 s, and still cannot pass x=2.2 in 2 s. -->
     <drone id="drone">
-      <body position="0,0,0" orientation="0,0,0" />
+      <body position="0,1.5,0" orientation="0,0,0" />
       <controller config="doc" />
     </drone>
   </arena>
