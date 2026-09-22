@@ -9,6 +9,7 @@
 #include <argos3/core/simulator/loop_functions.h>
 #include <argos3/core/simulator/physics_engine/physics_engine.h>
 #include <argos3/core/utility/logging/argos_log.h>
+#include <argos3/core/utility/math/angles.h>
 #include <argos3/plugins/simulator/photorealism/photorealism_medium.h>
 #include <argos3/plugins/simulator/photorealism/render_core/pr_debug_draw.h>
 
@@ -18,6 +19,7 @@
 #include <filament/View.h>
 #include <filament/Viewport.h>
 #include <filament/Camera.h>
+#include <filament/LightManager.h>
 #include <filament/SwapChain.h>
 /* No <utils/EntityManager.h>: this plugin has its own copy of that
  * singleton and must not mint Filament entities with it. They all come
@@ -85,6 +87,15 @@ namespace argos {
          GetNodeAttributeOrDefault(t_tree, "inset_size", m_fInsetSize, m_fInsetSize);
          GetNodeAttributeOrDefault(t_tree, "screenshot", m_strScreenshotPrefix, m_strScreenshotPrefix);
          GetNodeAttributeOrDefault(t_tree, "screenshot_period", m_unScreenshotPeriod, m_unScreenshotPeriod);
+         GetNodeAttributeOrDefault(t_tree, "flashlight", m_bFlashlight, m_bFlashlight);
+         GetNodeAttributeOrDefault(t_tree, "flashlight_intensity",
+                                   m_fFlashlightIntensity, m_fFlashlightIntensity);
+         GetNodeAttributeOrDefault(t_tree, "flashlight_falloff",
+                                   m_fFlashlightFalloff, m_fFlashlightFalloff);
+         if(m_fFlashlightIntensity <= 0.0 || m_fFlashlightFalloff <= 0.0) {
+            THROW_ARGOSEXCEPTION("flashlight_intensity (lumens) and "
+                                 "flashlight_falloff (metres) must be positive");
+         }
       }
       catch(CARGoSException& ex) {
          THROW_ARGOSEXCEPTION_NESTED("Error initializing the Filament visualization", ex);
@@ -142,6 +153,18 @@ namespace argos {
           * Filament shows only layer 0 by default, so every other view - the
           * robot cameras, the insets below - leaves them out without asking. */
          m_pcView->setVisibleLayers(PR_OVERLAY_LAYER, PR_OVERLAY_LAYER);
+         /* The flashlight is built now and posed with the camera, but
+          * joins the scene only around the window's own render */
+         m_cFlashlight = cEngine.CreateEntity();
+         filament::LightManager::Builder(
+            filament::LightManager::Type::FOCUSED_SPOT)
+            .color({1.0f, 0.96f, 0.9f})
+            .intensity(float(m_fFlashlightIntensity))
+            .falloff(float(m_fFlashlightFalloff))
+            .spotLightCone(float(ToRadians(CDegrees(18.0)).GetValue()),
+                           float(ToRadians(CDegrees(30.0)).GetValue()))
+            .castShadows(false)
+            .build(cEngine.GetEngine(), m_cFlashlight);
       });
       /* Initial pose: at 'position', looking at 'look_at' */
       m_cCameraPosition = m_cCameraStart;
@@ -156,7 +179,8 @@ namespace argos {
       m_bPaused = m_bStartPaused;
       LOG << "[INFO] Filament visualization: SPACE pauses, N steps once, "
              "WASD/QE move (SHIFT: faster), left-drag looks, "
-             "right-drag pans, wheel dollies, ESC quits" << std::endl;
+             "right-drag pans, wheel dollies, F toggles the flashlight"
+          << (m_bFlashlight ? " (on)" : "") << ", ESC quits" << std::endl;
    }
 
    /****************************************/
@@ -271,6 +295,8 @@ namespace argos {
          cEngine.destroy(m_pcView);
          cEngine.destroyCameraComponent(m_cCameraEntity);
          m_pcMedium->GetRenderEngine().DestroyEntity(m_cCameraEntity);
+         cEngine.destroy(m_cFlashlight);
+         m_pcMedium->GetRenderEngine().DestroyEntity(m_cFlashlight);
          cEngine.destroy(m_pcRenderer);
          cEngine.destroy(m_pcSwapChain);
          m_pcView = nullptr;
@@ -301,6 +327,9 @@ namespace argos {
                      break;
                   case SDLK_n:
                      m_bSingleStep = true;
+                     break;
+                  case SDLK_f:
+                     m_bFlashlight = !m_bFlashlight;
                      break;
                   default:
                      break;
@@ -406,6 +435,17 @@ namespace argos {
                              float(cCenter.GetY()),
                              float(cCenter.GetZ())},
                             {0.0f, 0.0f, 1.0f});
+         /* The flashlight rides on the camera: same place, same aim */
+         filament::LightManager& cLights =
+            m_pcMedium->GetRenderEngine().GetEngine().getLightManager();
+         filament::LightManager::Instance cFlashlight =
+            cLights.getInstance(m_cFlashlight);
+         cLights.setPosition(cFlashlight, {float(m_cCameraPosition.GetX()),
+                                           float(m_cCameraPosition.GetY()),
+                                           float(m_cCameraPosition.GetZ())});
+         cLights.setDirection(cFlashlight, {float(cForward.GetX()),
+                                            float(cForward.GetY()),
+                                            float(cForward.GetZ())});
       });
    }
 
@@ -417,7 +457,18 @@ namespace argos {
          if(!m_pcRenderer->beginFrame(m_pcSwapChain)) {
             return;
          }
+         /* The flashlight is in the scene for this one render call only.
+          * Filament consumes the light list synchronously inside render(),
+          * and every other render (robot sensors, insets) is a separate,
+          * serialized job on this thread, so none of them can see it. */
+         filament::Scene& cScene = m_pcMedium->GetRenderEngine().GetScene();
+         if(m_bFlashlight) {
+            cScene.addEntity(m_cFlashlight);
+         }
          m_pcRenderer->render(m_pcView);
+         if(m_bFlashlight) {
+            cScene.remove(m_cFlashlight);
+         }
          for(SInset& s_inset : m_vecInsets) {
             /* Live view from the robot camera's pose */
             s_inset.Camera->setModelMatrix(
@@ -611,12 +662,22 @@ namespace argos {
                           "  <filament medium=\"pr\" inset_camera=\"drone0,drone1,drone2,drone3\"\n"
                           "            inset_size=\"0.3\" />\n\n"
 
+                          "The camera carries a flashlight for looking around unlit scenes (the\n"
+                          "SubT environments away from their few lamps, night scenes). It is a\n"
+                          "spot light aimed where the camera looks, visible in this window only:\n"
+                          "robot cameras, lidars and the insets never see it, so an experiment's\n"
+                          "data does not depend on where the viewer wandered. flashlight=\"true\"\n"
+                          "starts with it on; 'flashlight_intensity' (lumens, default 5000) and\n"
+                          "'flashlight_falloff' (metres, default 40) size it:\n\n"
+                          "  <filament medium=\"pr\" flashlight=\"true\" flashlight_intensity=\"8000\" />\n\n"
+
                           "INTERACTION\n\n"
                           "SPACE pauses and resumes; N steps one tick. W/A/S/D fly forward/left/\n"
                           "back/right, Q/E down/up (SHIFT accelerates). Dragging with the left\n"
                           "mouse button looks around, dragging with the right or middle button\n"
                           "pans in the view plane, and the scroll wheel dollies forward and\n"
-                          "backward. ESC or closing the window ends the run.\n\n"
+                          "backward. F toggles the flashlight. ESC or closing the window ends\n"
+                          "the run.\n\n"
 
                           "The window is an X11 window (through XWayland on Wayland desktops),\n"
                           "matching the surface types supported by the prebuilt Filament Vulkan\n"

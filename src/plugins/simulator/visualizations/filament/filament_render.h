@@ -91,6 +91,13 @@ namespace argos {
       std::string m_strScreenshotPrefix;
       UInt32 m_unScreenshotPeriod = 100;
       UInt32 m_unLastScreenshotTick = 0;
+      /* Flashlight: a spot light carried by the free-fly camera, for
+       * looking around unlit scenes. It is in the scene only while the
+       * window's own view renders, so robot cameras and the insets
+       * never see it. F toggles it. */
+      bool m_bFlashlight = false;
+      Real m_fFlashlightIntensity = 5000.0; /* lumens */
+      Real m_fFlashlightFalloff = 40.0;     /* m */
 
       /* Runtime state */
       CPhotorealismMedium* m_pcMedium = nullptr;
@@ -102,6 +109,7 @@ namespace argos {
       filament::View* m_pcView = nullptr;
       filament::Camera* m_pcCamera = nullptr;
       utils::Entity m_cCameraEntity;
+      utils::Entity m_cFlashlight;
       /* Camera-view insets, one per window corner */
       struct SInset {
          std::string Robot;
