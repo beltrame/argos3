@@ -32,6 +32,7 @@ set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_PHYSICS_ENGINES_JOLT
   jolt_engine.h
   jolt_model.h
   jolt_single_body_object_model.h
+  jolt_ground_robot_model.h
   jolt_shape_manager.h
   jolt_plugin.h
   jolt_floor_plugin.h

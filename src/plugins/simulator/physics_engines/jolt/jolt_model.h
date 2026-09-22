@@ -42,6 +42,12 @@ namespace argos {
          JPH::Quat StartRotation = JPH::Quat::sIdentity();
       };
 
+      /** Surface motion relative to the body's center of mass, in world axes. */
+      struct SContactSurfaceVelocity {
+         JPH::Vec3 Linear = JPH::Vec3::sZero();
+         JPH::Vec3 Angular = JPH::Vec3::sZero();
+      };
+
    public:
 
       CJoltModel(CJoltEngine& c_engine,
@@ -58,6 +64,16 @@ namespace argos {
       virtual void CalculateBoundingBox();
 
       virtual bool IsCollidingWithSomething() const;
+
+      /**
+       * Called with bodies locked by Jolt; implementations must only read state.
+       * The normal points from the other body towards this body.
+       */
+      virtual SContactSurfaceVelocity GetContactSurfaceVelocity(
+         const JPH::Body&,
+         JPH::Vec3Arg) const {
+         return {};
+      }
 
       inline CJoltEngine& GetJoltEngine() {
          return m_cJoltEngine;

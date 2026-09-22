@@ -30,6 +30,27 @@ add_library(mesh_jolt_loop_functions MODULE
   loop_functions.cpp)
 target_link_libraries(mesh_jolt_loop_functions
     argos3core_${ARGOS_BUILD_FOR})
+foreach(ATTITUDE_PLUGIN bunker scoutmini spot)
+  if(TARGET argos3plugin_${ARGOS_BUILD_FOR}_${ATTITUDE_PLUGIN})
+    add_dependencies(mesh_jolt_loop_functions
+      argos3plugin_${ARGOS_BUILD_FOR}_${ATTITUDE_PLUGIN})
+  endif()
+endforeach()
+set(ATTITUDE_ROBOT bunker)
+set(ATTITUDE_ID bunker_attitude)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/attitude.argos.in
+  ${CMAKE_CURRENT_BINARY_DIR}/bunker_attitude.argos)
+set(ATTITUDE_ROBOT scout_mini)
+set(ATTITUDE_ID scout_mini_attitude)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/attitude.argos.in
+  ${CMAKE_CURRENT_BINARY_DIR}/scout_mini_attitude.argos)
+set(ATTITUDE_ROBOT spot)
+set(ATTITUDE_ID spot_attitude)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/attitude.argos.in
+  ${CMAKE_CURRENT_BINARY_DIR}/spot_attitude.argos)
 # configure experiments
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/rays.argos.in
@@ -40,6 +61,9 @@ configure_file(
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/ramp.argos.in
   ${CMAKE_CURRENT_BINARY_DIR}/ramp.argos)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/traction.argos.in
+  ${CMAKE_CURRENT_BINARY_DIR}/traction.argos)
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/slide.argos.in
   ${CMAKE_CURRENT_BINARY_DIR}/slide.argos)
@@ -92,6 +116,25 @@ add_test(
    NAME jolt_mesh_ramp
    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
    COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc ramp.argos)
+# real Bunker, Scout Mini and Spot bodies drive uphill over the ramp while
+# their body attitude and differential yaw response are checked
+add_test(
+   NAME jolt_mesh_bunker_attitude
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc bunker_attitude.argos)
+add_test(
+   NAME jolt_mesh_scout_mini_attitude
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc scout_mini_attitude.argos)
+add_test(
+   NAME jolt_mesh_spot_attitude
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc spot_attitude.argos)
+# Without ground contact, wheel commands cannot supply chassis propulsion.
+add_test(
+   NAME jolt_mesh_traction
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc traction.argos)
 # a wrongly wound wall stops the robot with double-sided loading on and lets
 # it through with double-sided loading off, while rays hit it either way
 add_test(
@@ -110,6 +153,7 @@ add_test(
    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
    COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc bench.argos)
 set_tests_properties(jolt_mesh_rays jolt_mesh_cache jolt_mesh_collision
-  jolt_mesh_slide jolt_mesh_ramp jolt_mesh_winding jolt_mesh_determinism
-  jolt_mesh_bench
+  jolt_mesh_slide jolt_mesh_ramp jolt_mesh_bunker_attitude
+  jolt_mesh_scout_mini_attitude jolt_mesh_spot_attitude jolt_mesh_traction
+  jolt_mesh_winding jolt_mesh_determinism jolt_mesh_bench
   PROPERTIES ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")

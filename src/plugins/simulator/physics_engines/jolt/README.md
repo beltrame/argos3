@@ -43,6 +43,13 @@ served by Jolt's narrow-phase query, so ray-based sensors work.
 
 - **box**, **cylinder**: static or dynamic bodies (`movable`, `mass`
   attributes), shapes shared through `CJoltShapeManager`.
+- **Bunker, Bunker Mini, Scout Mini, Spot**: dynamic single-body approximations
+  with contact-driven roll and pitch. Differential commands set linear and
+  angular contact-surface velocities; Jolt supplies traction bounded by friction
+  and normal load. The motor does not overwrite chassis velocities or propel
+  an airborne robot. Bodies inherit `default_friction` and enable enhanced
+  internal-edge removal for triangle-mesh terrain. These are not articulated
+  wheel, suspension, or leg models.
 - **foot-bot**: a dynamic cylinder with differential-drive kinematics.
   Wheel velocities are applied as body velocities like dynamics2d, so
   existing controllers behave the same; rotation is locked to the
@@ -59,8 +66,9 @@ served by Jolt's narrow-phase query, so ray-based sensors work.
   effectively halves accelerations, while Jolt integrates the same
   commands exactly.
 
-New robot models subclass `CJoltSingleBodyObjectModel` (or
-`CJoltModel` for multi-body robots) and register with
+Ground-robot models can subclass `CJoltGroundRobotModel` for contact traction.
+Other single-body models subclass `CJoltSingleBodyObjectModel`, and multi-body
+models subclass `CJoltModel`. Register them with
 `REGISTER_STANDARD_JOLT_OPERATIONS_ON_ENTITY`.
 
 ## Implementation notes
@@ -78,6 +86,6 @@ New robot models subclass `CJoltSingleBodyObjectModel` (or
   the number of simultaneous contacts, not the number of bodies
   (`max_bodies`, default 16384).
 
-Tests live in `src/testing/jolt/`: box-stack settling, bitwise
-determinism, foot-bot differential drive + ray casts, and drone
-takeoff/velocity-limit/hover.
+Tests live in `src/testing/jolt/`: box-stack settling, bitwise determinism,
+foot-bot differential drive and ray casts, drone takeoff/velocity-limit/hover,
+ground-robot incline attitude and steering, and absence of airborne propulsion.

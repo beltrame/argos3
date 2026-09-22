@@ -1,0 +1,51 @@
+<?xml version="1.0" ?>
+<!--
+  A real Jolt robot drives uphill over the generated corridor ramp while
+  applying a small differential (yaw) command.  The loop function checks the
+  body attitude against the ramp normal, supported rise, and yaw response.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="8" ticks_per_second="10" random_seed="1" />
+  </framework>
+
+  <controllers>
+    <mesh_drive_controller id="attitude_drive"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors />
+      <!-- A modest forward command with a persistent differential yaw. -->
+      <params left="36" right="32" />
+    </mesh_drive_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions"
+                  robot="@ATTITUDE_ID@"
+                  attitude_slope="0.25"
+                  attitude_tolerance="0.08"
+                  minimum_rise="0.15"
+                  minimum_yaw="0.1"
+                  attitude_warmup="10" />
+
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" />
+    <@ATTITUDE_ROBOT@ id="@ATTITUDE_ID@">
+      <body position="11,0,0.8" orientation="0,0,0" />
+      <controller config="attitude_drive" />
+    </@ATTITUDE_ROBOT@>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+</argos-configuration>

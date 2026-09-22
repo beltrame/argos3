@@ -71,6 +71,20 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
       }
       GetNodeAttributeOrDefault(t_tree, "poses_file", m_strPosesFile,
                                 m_strPosesFile);
+      m_bCheckAttitude = NodeAttributeExists(t_tree, "attitude_slope");
+      if(m_bCheckAttitude) {
+         GetNodeAttribute(t_tree, "attitude_slope", m_fAttitudeSlope);
+         GetNodeAttributeOrDefault(t_tree, "attitude_tolerance",
+                                   m_fAttitudeTolerance,
+                                   m_fAttitudeTolerance);
+         GetNodeAttributeOrDefault(t_tree, "minimum_rise", m_fMinimumRise,
+                                   m_fMinimumRise);
+         GetNodeAttributeOrDefault(t_tree, "minimum_yaw", m_fMinimumYaw,
+                                   m_fMinimumYaw);
+         GetNodeAttributeOrDefault(t_tree, "attitude_warmup",
+                                   m_unAttitudeWarmup,
+                                   m_unAttitudeWarmup);
+      }
    }
    /* Ray throughput measurement */
    GetNodeAttributeOrDefault(t_tree, "scan", m_bScan, m_bScan);
@@ -241,6 +255,56 @@ void CMeshLoopFunctions::CheckRobot() {
    }
 }
 
+void CMeshLoopFunctions::CheckAttitude() {
+   const CVector3& cPosition = m_pcRobot->GetOriginAnchor().Position;
+   const CQuaternion& cOrientation =
+      m_pcRobot->GetOriginAnchor().Orientation;
+   CRadians cYaw, cPitch, cRoll;
+   cOrientation.ToEulerAngles(cYaw, cPitch, cRoll);
+   /* Compare the body's world-up vector with the known ramp normal rather
+    * than a single Euler component: after yawing, the same physical tilt can
+    * be represented partly as roll and partly as pitch. */
+   CVector3 cUp(0.0, 0.0, 1.0);
+   cUp.Rotate(cOrientation);
+   CVector3 cNormal(-m_fAttitudeSlope, 0.0, 1.0);
+   cUp.Normalize();
+   cNormal.Normalize();
+   Real fNormalDot = cUp.DotProduct(cNormal);
+   fNormalDot = std::max(Real(-1.0), std::min(Real(1.0), fNormalDot));
+   const Real fNormalError = std::acos(fNormalDot);
+   const Real fRise = cPosition.GetZ() - m_cAttitudeStartPosition.GetZ();
+   const Real fAdvance = cPosition.GetX() - m_cAttitudeStartPosition.GetX();
+   LOG << "[mesh] terrain attitude " << m_strRobot
+       << " roll " << cRoll.GetValue()
+       << " pitch " << cPitch.GetValue()
+       << " yaw " << cYaw.GetValue()
+       << " ramp-normal error " << fNormalError
+       << " supported rise " << fRise
+       << " advance " << fAdvance << std::endl;
+   if(fNormalError > m_fAttitudeTolerance) {
+      THROW_ARGOSEXCEPTION("Robot \"" << m_strRobot
+                           << "\" body up direction misses the ramp normal "
+                           << "by " << fNormalError << " rad");
+   }
+   if(fRise < m_fMinimumRise) {
+      THROW_ARGOSEXCEPTION("Robot \"" << m_strRobot
+                           << "\" did not receive supported terrain rise: "
+                           << fRise << " m, expected at least "
+                           << m_fMinimumRise << " m");
+   }
+   if(std::fabs(m_fAttitudeSlope) > 1.0e-6 &&
+      fAdvance < 0.5 * m_fMinimumRise / std::fabs(m_fAttitudeSlope)) {
+      THROW_ARGOSEXCEPTION("Robot \"" << m_strRobot
+                           << "\" did not advance over the ramp: "
+                           << fAdvance << " m");
+   }
+   if(std::fabs(cYaw.GetValue()) < m_fMinimumYaw) {
+      THROW_ARGOSEXCEPTION("Robot \"" << m_strRobot
+                           << "\" did not respond to the differential yaw "
+                           << "command (yaw " << cYaw.GetValue() << " rad)");
+   }
+}
+
 /****************************************/
 /****************************************/
 
@@ -318,10 +382,17 @@ void CMeshLoopFunctions::PostStep() {
    }
    if(m_pcRobot != nullptr) {
       /* Every scenario starts the robot on the X axis and drives it along
-       * it, so |Y| is its lateral deviation */
+       * it, so |Y| is its lateral deviation. */
       m_fMaxLateral = std::max(
          m_fMaxLateral,
          Real(std::fabs(m_pcRobot->GetOriginAnchor().Position.GetY())));
+      if(m_bCheckAttitude &&
+         !m_bHaveAttitudeStart &&
+         GetSpace().GetSimulationClock() >= m_unAttitudeWarmup) {
+         m_cAttitudeStartPosition =
+            m_pcRobot->GetOriginAnchor().Position;
+         m_bHaveAttitudeStart = true;
+      }
    }
    if(m_bScan) {
       RunScan();
@@ -337,6 +408,13 @@ void CMeshLoopFunctions::PostExperiment() {
          WritePoses();
       }
       CheckRobot();
+      if(m_bCheckAttitude) {
+         if(!m_bHaveAttitudeStart) {
+            THROW_ARGOSEXCEPTION("Terrain attitude check did not reach its "
+                                 "warm-up step");
+         }
+         CheckAttitude();
+      }
    }
    if(m_bScan) {
       ReportScan();

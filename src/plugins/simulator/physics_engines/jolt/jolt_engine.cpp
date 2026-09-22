@@ -60,11 +60,51 @@ namespace argos {
       }
    };
 
+   class CJoltContactListener final : public JPH::ContactListener {
+   public:
+      void OnContactAdded(const JPH::Body& c_body1,
+                          const JPH::Body& c_body2,
+                          const JPH::ContactManifold& c_manifold,
+                          JPH::ContactSettings& c_settings) override {
+         UpdateSurfaceVelocity(c_body1, c_body2, c_manifold, c_settings);
+      }
+
+      void OnContactPersisted(const JPH::Body& c_body1,
+                              const JPH::Body& c_body2,
+                              const JPH::ContactManifold& c_manifold,
+                              JPH::ContactSettings& c_settings) override {
+         UpdateSurfaceVelocity(c_body1, c_body2, c_manifold, c_settings);
+      }
+
+   private:
+      static void UpdateSurfaceVelocity(const JPH::Body& c_body1,
+                                        const JPH::Body& c_body2,
+                                        const JPH::ContactManifold& c_manifold,
+                                        JPH::ContactSettings& c_settings) {
+         const auto* pcModel1 = reinterpret_cast<const CJoltModel*>(c_body1.GetUserData());
+         const auto* pcModel2 = reinterpret_cast<const CJoltModel*>(c_body2.GetUserData());
+         const auto sVelocity1 = pcModel1 ?
+            pcModel1->GetContactSurfaceVelocity(c_body1, -c_manifold.mWorldSpaceNormal) :
+            CJoltModel::SContactSurfaceVelocity{};
+         const auto sVelocity2 = pcModel2 ?
+            pcModel2->GetContactSurfaceVelocity(c_body2, c_manifold.mWorldSpaceNormal) :
+            CJoltModel::SContactSurfaceVelocity{};
+         /* Jolt expresses relative angular surface motion about body 1's COM. */
+         c_settings.mRelativeLinearSurfaceVelocity +=
+            sVelocity2.Linear - sVelocity1.Linear +
+            sVelocity2.Angular.Cross(JPH::Vec3(
+               c_body1.GetCenterOfMassPosition() - c_body2.GetCenterOfMassPosition()));
+         c_settings.mRelativeAngularSurfaceVelocity +=
+            sVelocity2.Angular - sVelocity1.Angular;
+      }
+   };
+
    /* The physics system keeps references to these; they are stateless
     * and shared by all engine instances */
    static CJoltBPLayerInterface m_cBPLayerInterface;
    static CJoltObjectVsBroadPhaseLayerFilter m_cObjectVsBroadPhaseLayerFilter;
    static CJoltObjectLayerPairFilter m_cObjectLayerPairFilter;
+   static CJoltContactListener m_cContactListener;
 
    /****************************************/
    /****************************************/
@@ -112,6 +152,7 @@ namespace argos {
                         m_cBPLayerInterface,
                         m_cObjectVsBroadPhaseLayerFilter,
                         m_cObjectLayerPairFilter);
+      m_ptrSystem->SetContactListener(&m_cContactListener);
       /* No gravity by default; add the <gravity> plugin to enable it */
       m_ptrSystem->SetGravity(JPH::Vec3::sZero());
       /* Load the plugins */

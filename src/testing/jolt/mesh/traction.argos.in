@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+<!-- Wheel commands cannot propel an airborne chassis without contact traction. -->
+<argos-configuration>
+  <framework>
+    <system threads="0" />
+    <experiment length="1" ticks_per_second="10" random_seed="1" />
+  </framework>
+  <controllers>
+    <mesh_drive_controller id="drive"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators>
+        <differential_steering implementation="default" />
+      </actuators>
+      <sensors />
+      <params left="65" right="65" />
+    </mesh_drive_controller>
+  </controllers>
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions" robot="test"
+                  expect_x="0" position_tolerance="0.001" />
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/corridor.glb" />
+    <bunker id="test">
+      <body position="0,0,12" orientation="0,0,0" />
+      <controller config="drive" />
+    </bunker>
+  </arena>
+  <physics_engines>
+    <jolt id="jolt" threads="1" default_friction="1.0">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+  <media />
+</argos-configuration>

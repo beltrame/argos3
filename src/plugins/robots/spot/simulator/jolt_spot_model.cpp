@@ -26,7 +26,7 @@ namespace argos {
 
    CJoltSpotModel::CJoltSpotModel(CJoltEngine& c_engine,
                                               CSpotEntity& c_entity) :
-      CJoltSingleBodyObjectModel(c_engine, c_entity),
+      CJoltGroundRobotModel(c_engine, c_entity),
       m_cSpotEntity(c_entity),
       m_cWheeledEntity(c_entity.GetWheeledEntity()) {
       /* Register auxiliary anchors */
@@ -61,13 +61,17 @@ namespace argos {
          cPosition, cRotation,
          JPH::EMotionType::Dynamic,
          JoltLayers::MOVING);
-      cSettings.mFriction = 0.0f;
+      cSettings.mFriction = c_engine.GetDefaultFriction();
+      cSettings.mEnhancedInternalEdgeRemoval = true;
       cSettings.mLinearDamping = 0.0f;
       cSettings.mAngularDamping = 0.0f;
-      /* Planar differential/skid drive: translates in X/Y/Z and yaws */
+      /* Differential/skid drive: translate in world X/Y/Z while retaining
+       * contact-driven roll and pitch. */
       cSettings.mAllowedDOFs = JPH::EAllowedDOFs::TranslationX |
                                JPH::EAllowedDOFs::TranslationY |
                                JPH::EAllowedDOFs::TranslationZ |
+                               JPH::EAllowedDOFs::RotationX |
+                               JPH::EAllowedDOFs::RotationY |
                                JPH::EAllowedDOFs::RotationZ;
       cSettings.mMotionQuality = JPH::EMotionQuality::LinearCast;
       cSettings.mAllowSleeping = false;
@@ -86,21 +90,7 @@ namespace argos {
       Real fLinear = (pfWheelVelocities[0] + pfWheelVelocities[1]) * 0.5f;
       Real fAngular = (pfWheelVelocities[1] - pfWheelVelocities[0]) / SPOT_TRACK_GAUGE;
 
-      JPH::BodyInterface& cInterface = GetJoltEngine().GetBodyInterface();
-      const JPH::BodyID& cId = m_vecBodies[0].Id;
-      JPH::RVec3 cPosition;
-      JPH::Quat cRotation;
-      cInterface.GetPositionAndRotation(cId, cPosition, cRotation);
-      JPH::Vec3 cForward = cRotation * JPH::Vec3::sAxisX();
-
-      /* Maintain vertical velocity from gravity */
-      float fVerticalVelocity = cInterface.GetLinearVelocity(cId).GetZ();
-      cInterface.SetLinearAndAngularVelocity(
-         cId,
-         JPH::Vec3(cForward.GetX() * float(fLinear),
-                   cForward.GetY() * float(fLinear),
-                   fVerticalVelocity),
-         JPH::Vec3(0.0f, 0.0f, float(fAngular)));
+      SetDriveVelocity(fLinear, fAngular);
    }
 
    /****************************************/

@@ -13,11 +13,11 @@ namespace argos {
    class CWheeledEntity;
 }
 
-#include <argos3/plugins/simulator/physics_engines/jolt/jolt_single_body_object_model.h>
+#include <argos3/plugins/simulator/physics_engines/jolt/jolt_ground_robot_model.h>
 
 namespace argos {
 
-   class CJoltScoutMiniModel : public CJoltSingleBodyObjectModel {
+   class CJoltScoutMiniModel : public CJoltGroundRobotModel {
 
    public:
 
@@ -26,7 +26,8 @@ namespace argos {
 
       virtual ~CJoltScoutMiniModel() {}
 
-      virtual void UpdateFromEntityStatus();
+      /* Set contact-surface drive targets without overriding chassis motion. */
+      virtual void UpdateFromEntityStatus() override;
 
       void UpdateAuxiliaryAnchor(SAnchor& s_anchor);
 
