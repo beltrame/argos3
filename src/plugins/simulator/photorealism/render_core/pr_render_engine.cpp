@@ -129,10 +129,13 @@ namespace argos {
             THROW_ARGOSEXCEPTION("Unknown render backend \"" << str_backend << "\"; use \"vulkan\" or \"opengl\"");
          }
          /* The driver handle arena must fit the render targets and
-          * textures of many cameras (50+ robots); the default runs out
-          * and falls back to a slow heap path with a warning */
+          * textures of many cameras (50+ robots) and the buffers of large
+          * imported worlds; 16 MiB overflowed on the SubT Finals world
+          * (401 tile placements, 3.7 M triangles) as soon as the cameras
+          * were created. Running out falls back to a slow heap path with
+          * a warning. */
          filament::Engine::Config sConfig;
-         sConfig.driverHandleArenaSizeMB = 16;
+         sConfig.driverHandleArenaSizeMB = 64;
          filament::Engine* pcEngine = filament::Engine::Builder()
             .backend(eBackend)
             .config(&sConfig)
