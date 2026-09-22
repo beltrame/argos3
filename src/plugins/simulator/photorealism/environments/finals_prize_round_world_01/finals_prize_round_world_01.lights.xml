@@ -1,0 +1,178 @@
+<lights>
+  <!-- staging_area/base_link/Omni005 -->
+  <point position="-13,0,3.279" intensity="7624" falloff="8.7" color="1,1,1" />
+  <!-- staging_area/base_link/Omni011 -->
+  <point position="-14.829,0,1.005" intensity="2581" falloff="5.1" color="1,1,1" />
+  <!-- staging_area/base_link/Omni016 -->
+  <point position="-18.486,4.877,2.073" intensity="1371" falloff="3.7" color="0,0.612,1" />
+  <!-- staging_area/base_link/Omni017 -->
+  <point position="-14.829,4.877,2.073" intensity="1371" falloff="3.7" color="0,0.612,1" />
+  <!-- staging_area/base_link/Omni018 -->
+  <point position="-11.171,4.877,2.073" intensity="1371" falloff="3.7" color="0,0.612,1" />
+  <!-- staging_area/base_link/Omni027 -->
+  <point position="-19.482,0,1.971" intensity="1371" falloff="3.7" color="0,0.612,1" />
+  <!-- staging_area/base_link/Omni021 -->
+  <point position="-9.792,-0,2.218" intensity="1371" falloff="3.7" color="1,0.447,0" />
+  <!-- staging_area/base_link/Omni028 -->
+  <point position="-18.486,-4.877,2.073" intensity="1371" falloff="3.7" color="0,0.612,1" />
+  <!-- staging_area/base_link/Omni029 -->
+  <point position="-14.829,-4.877,2.073" intensity="1371" falloff="3.7" color="0,0.612,1" />
+  <!-- staging_area/base_link/Omni030 -->
+  <point position="-11.171,-4.877,2.073" intensity="1371" falloff="3.7" color="0,0.612,1" />
+  <!-- cube_2/base_link/orange -->
+  <point position="407.914,58.602,-10.774" intensity="4" falloff="0.2" color="1,0.212,0" />
+  <!-- cube_2/base_link/blue -->
+  <point position="407.891,58.606,-10.676" intensity="4" falloff="0.2" color="0,0.682,1" />
+  <!-- tile_185/lights/spot1 -->
+  <spot position="-3.577,-0,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_185/lights/spot2 -->
+  <spot position="7.423,0,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_186/lights/spot1 -->
+  <spot position="19.423,-2.5,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- cube_1/base_link/orange -->
+  <point position="37.923,1.5,-9.95" intensity="4" falloff="0.2" color="1,0.212,0" />
+  <!-- cube_1/base_link/blue -->
+  <point position="37.923,1.5,-9.85" intensity="4" falloff="0.2" color="0,0.682,1" />
+  <!-- tile_222/lights/spot1 -->
+  <spot position="-15.577,-22.5,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_223/lights/spot1 -->
+  <spot position="8.923,-20,2.5" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_223/lights/spot2 -->
+  <spot position="-5.077,-20,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_224/lights/spot1 -->
+  <spot position="26.923,-20,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_224/lights/spot2 -->
+  <spot position="16.923,-20,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_224/lights/spot3 -->
+  <spot position="21.923,-25,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_224/lights/spot4 -->
+  <spot position="21.923,-15,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_225/lights/spot1 -->
+  <spot position="36.423,-20,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_225/lights/spot2 -->
+  <spot position="47.423,-20,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_226/lights/spot1 -->
+  <spot position="59.423,-22.5,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_227/lights/spot1 -->
+  <spot position="86.923,-20,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_227/lights/spot2 -->
+  <spot position="76.923,-20,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_227/lights/spot3 -->
+  <spot position="81.923,-25,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_227/lights/spot4 -->
+  <spot position="81.923,-15,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_229/lights/spot1 -->
+  <spot position="96.423,-20,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_229/lights/spot2 -->
+  <spot position="107.423,-20,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_235/lights/spot1 -->
+  <spot position="226.923,-20,-6.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_235/lights/spot2 -->
+  <spot position="216.923,-20,-6.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_235/lights/spot3 -->
+  <spot position="221.923,-25,-6.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_235/lights/spot4 -->
+  <spot position="221.923,-15,-6.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_255/lights/spot1 -->
+  <spot position="-15.577,-37.5,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_256/lights/spot1 -->
+  <spot position="6.923,-40,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_256/lights/spot2 -->
+  <spot position="-3.077,-40,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_256/lights/spot3 -->
+  <spot position="1.923,-45,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_256/lights/spot4 -->
+  <spot position="1.923,-35,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_260/lights/spot1 -->
+  <spot position="21.923,-34.5,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_260/lights/spot2 -->
+  <spot position="21.923,-45.5,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_265/lights/spot1 -->
+  <spot position="101.923,-40,3.2" direction="0,0,-1" intensity="9025" falloff="9.5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_265/lights/spot2 -->
+  <spot position="101.923,-46.25,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_265/lights/spot3 -->
+  <spot position="101.923,-33.75,-2.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_275/lights/spot1 -->
+  <spot position="186.923,-40,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_275/lights/spot2 -->
+  <spot position="176.923,-40,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_275/lights/spot3 -->
+  <spot position="181.923,-45,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_275/lights/spot4 -->
+  <spot position="181.923,-35,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_302/lights/spot1 -->
+  <spot position="46.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_302/lights/spot2 -->
+  <spot position="36.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_302/lights/spot3 -->
+  <spot position="41.923,-65,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_302/lights/spot4 -->
+  <spot position="41.923,-55,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_303/lights/spot1 -->
+  <spot position="66.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_303/lights/spot2 -->
+  <spot position="56.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_303/lights/spot3 -->
+  <spot position="61.923,-65,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_303/lights/spot4 -->
+  <spot position="61.923,-55,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_304/lights/spot1 -->
+  <spot position="86.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_304/lights/spot2 -->
+  <spot position="76.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_304/lights/spot3 -->
+  <spot position="81.923,-65,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_304/lights/spot4 -->
+  <spot position="81.923,-55,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_305/lights/spot1 -->
+  <spot position="106.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_305/lights/spot2 -->
+  <spot position="96.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_305/lights/spot3 -->
+  <spot position="101.923,-65,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_305/lights/spot4 -->
+  <spot position="101.923,-55,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_306/lights/spot1 -->
+  <spot position="126.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_306/lights/spot2 -->
+  <spot position="116.923,-60,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_306/lights/spot3 -->
+  <spot position="121.923,-65,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_306/lights/spot4 -->
+  <spot position="121.923,-55,3.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_307/lights/spot1 -->
+  <spot position="134.923,-60,2.5" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_307/lights/spot2 -->
+  <spot position="148.923,-60,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_308/lights/spot1 -->
+  <spot position="166.923,-60,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_308/lights/spot2 -->
+  <spot position="156.923,-60,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_308/lights/spot3 -->
+  <spot position="161.923,-65,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_308/lights/spot4 -->
+  <spot position="161.923,-55,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_309/lights/spot1 -->
+  <spot position="186.923,-60,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_309/lights/spot2 -->
+  <spot position="176.923,-60,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_309/lights/spot3 -->
+  <spot position="181.923,-65,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_309/lights/spot4 -->
+  <spot position="181.923,-55,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_310/lights/spot1 -->
+  <spot position="196.423,-60,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_310/lights/spot2 -->
+  <spot position="207.423,-60,-1.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_328/lights/spot1 -->
+  <spot position="21.923,-80,8.2" direction="0,0,-1" intensity="9025" falloff="9.5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_328/lights/spot2 -->
+  <spot position="21.923,-86.25,8.2" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_328/lights/spot3 -->
+  <spot position="21.923,-73.75,2.8" direction="0,0,-1" intensity="2500" falloff="5" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- cube_3/base_link/orange -->
+  <point position="121.923,-86,-4.95" intensity="4" falloff="0.2" color="1,0.212,0" />
+  <!-- cube_3/base_link/blue -->
+  <point position="121.923,-86,-4.85" intensity="4" falloff="0.2" color="0,0.682,1" />
+</lights>

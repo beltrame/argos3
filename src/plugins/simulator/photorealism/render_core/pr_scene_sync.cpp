@@ -299,6 +299,7 @@ namespace argos {
          utils::EntityManager::get().destroy(c_light);
       }
       m_vecLights.clear();
+      m_vecMountedLights.clear();
       m_sBoxMesh.Release(cEngine);
       m_sCylinderMesh.Release(cEngine);
       m_sPlaneMesh.Release(cEngine);
@@ -353,6 +354,28 @@ namespace argos {
       /* Update all transforms and LED emissives */
       for(auto& tPair : m_mapInstances) {
          UpdateInstance(*tPair.first, tPair.second);
+      }
+      /* Headlights follow their anchors */
+      if(!m_vecMountedLights.empty()) {
+         filament::LightManager& cLights =
+            m_pcEngine->GetEngine().getLightManager();
+         for(const SMountedLight& s_mounted : m_vecMountedLights) {
+            CVector3 cPosition(s_mounted.Position);
+            cPosition.Rotate(s_mounted.Anchor->Orientation);
+            cPosition += s_mounted.Anchor->Position;
+            filament::LightManager::Instance cInstance =
+               cLights.getInstance(s_mounted.Light);
+            cLights.setPosition(cInstance, {float(cPosition.GetX()),
+                                            float(cPosition.GetY()),
+                                            float(cPosition.GetZ())});
+            if(s_mounted.Spot) {
+               CVector3 cDirection(s_mounted.Direction);
+               cDirection.Rotate(s_mounted.Anchor->Orientation);
+               cLights.setDirection(cInstance, {float(cDirection.GetX()),
+                                                float(cDirection.GetY()),
+                                                float(cDirection.GetZ())});
+            }
+         }
       }
    }
 
@@ -823,6 +846,17 @@ namespace argos {
       cBuilder.build(cEngine, cLight);
       m_pcEngine->GetScene().addEntity(cLight);
       m_vecLights.push_back(cLight);
+      if(s_light.Anchor != nullptr) {
+         /* The builder pose is in the anchor frame; the first Sync()
+          * moves the light where the anchor is */
+         CVector3 cDirection(s_light.Direction);
+         if(s_light.Spot) {
+            cDirection.Normalize();
+         }
+         m_vecMountedLights.push_back({cLight, s_light.Anchor,
+                                       s_light.Position, cDirection,
+                                       s_light.Spot});
+      }
       return m_vecLights.size() - 1;
    }
 

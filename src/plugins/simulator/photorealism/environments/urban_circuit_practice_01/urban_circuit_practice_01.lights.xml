@@ -1,0 +1,72 @@
+<lights>
+  <!-- tile_1/light1/spot_light1 -->
+  <spot position="-94,-18.5,5.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_1/light2/spot_light2 -->
+  <spot position="-95,-5.5,5.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_3/lights/spot_light1 -->
+  <spot position="-23.2,-31.4,8.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_3/lights/spot_light2 -->
+  <spot position="-8.8,-31.4,8.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_3/lights/spot_light3 -->
+  <spot position="-23.2,-18.4,8.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_4/light1/spot_light1 -->
+  <spot position="26.5,-14,5.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_4/light2/spot_light2 -->
+  <spot position="13.5,-15,5.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_5/light1/downstairs_1 -->
+  <spot position="64,-16,8.4" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_5/light1/upstairs_1 -->
+  <spot position="61.4,-23.2,18.4" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_5/light1/upstairs_2 -->
+  <spot position="74.7,-16,18.4" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_5/light1/upstairs_3 -->
+  <spot position="74.7,-1.2,18.4" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_8/light1/downstairs_1 -->
+  <spot position="-96,-56,-1.6" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_8/light1/upstairs_1 -->
+  <spot position="-98.6,-63.2,8.4" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_8/light1/upstairs_2 -->
+  <spot position="-85.3,-56,8.4" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_8/light1/upstairs_3 -->
+  <spot position="-85.3,-41.2,8.4" direction="0,-1,0" intensity="250000" falloff="50" color="0.5,0.5,0.5" inner_angle="57.3" outer_angle="85.9" />
+  <!-- tile_11/lights/spot_light1 -->
+  <spot position="-8.8,-40.6,8.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_11/lights/spot_light2 -->
+  <spot position="-23.2,-40.6,8.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_11/lights/spot_light3 -->
+  <spot position="-8.8,-53.6,8.8" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_14/light/stairwell_1 -->
+  <spot position="-18.1,-91.1,2.4" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_14/light/stairwell_2 -->
+  <spot position="-17.5,-110.1,-2.6" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_14/light/spot_1 -->
+  <spot position="-35.1,-91.6,3" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_14/light/spot_2 -->
+  <spot position="-47.7,-112.5,0" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_15/light1/downstairs1 -->
+  <spot position="71.3,-80.9,9.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_15/light1/downstairs2 -->
+  <spot position="49.7,-93.9,9.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_15/light1/upstairs1 -->
+  <spot position="71.3,-93.9,19.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_15/light1/upstairs2 -->
+  <spot position="49.7,-80.9,19.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_21/lights/tunnel1 -->
+  <spot position="61.4,-137.6,15.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_21/lights/tunnel2 -->
+  <spot position="76.5,-137.6,15.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_21/lights/door1 -->
+  <spot position="64,-125.1,16" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_28/lights/tunnel1 -->
+  <spot position="2.2,-176,-3.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_28/lights/tunnel2 -->
+  <spot position="-10.5,-176,-3.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_28/lights/tunnel3 -->
+  <spot position="-28.4,-177.38,-4.9" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" />
+  <!-- tile_29/lights/spot_light1 -->
+  <spot position="-5.72,-204.5,-4.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" cast_shadows="true" />
+  <!-- tile_29/lights/spot_light2 -->
+  <spot position="8.9,-194.8,-4.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" cast_shadows="true" />
+  <!-- tile_29/lights/spot_light3 -->
+  <spot position="8,-208.3,-4.2" direction="0,0,-1" intensity="40000" falloff="20" color="0.8,0.8,0.8" inner_angle="57.3" outer_angle="88.8" cast_shadows="true" />
+</lights>

@@ -120,9 +120,15 @@ namespace argos {
       CPRSceneSync::SSunlight m_sSunlight;
       CVector3 m_cSkyColor = CVector3(0.53, 0.71, 0.92);
 
-      /* Local lights (street lamps, headlights, windows), placed once
-       * at PostSpaceInit() and never moved */
-      std::vector<CPRSceneSync::SLight> m_vecLights;
+      /* Local lights (street lamps, headlights, windows). A light with
+       * an Entity is mounted on that entity's anchor and follows it;
+       * the others are placed once at PostSpaceInit() and never moved */
+      struct SConfiguredLight {
+         CPRSceneSync::SLight Light;
+         std::string Entity;
+         std::string Anchor = "origin";
+      };
+      std::vector<SConfiguredLight> m_vecLights;
 
       /* Camera exposure, shared by the sensors, the debug camera and
        * the interactive viewer */

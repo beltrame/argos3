@@ -93,6 +93,63 @@ On a machine without a GPU, select the software Vulkan driver:
 
     VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.json argos3 -c experiment.argos
 
+## Environments
+
+A complete environment is a glTF prop for the cameras, a glTF
+collision mesh for the Jolt `<mesh>` entity, and the lights that make
+it readable. `environments/import_fuel_world.py` builds all three from
+any [Gazebo Fuel](https://app.gazebosim.org) world: it downloads the
+world SDF and every model it includes (nested includes, remote PBR
+textures, COLLADA submeshes, unit and up-axis conversion), composes
+the SDF pose chain into world coordinates, converts every `<light>`
+into a `<lights>` entry and writes a runnable `.argos` next to the
+assets. Prop and environment paths in the medium resolve relative to
+the experiment file when they are not found from the working
+directory, so an environment directory is self-contained.
+
+```sh
+python3 -m venv /tmp/fuel-venv
+/tmp/fuel-venv/bin/pip install trimesh pycollada numpy pillow
+cd environments
+/tmp/fuel-venv/bin/python import_fuel_world.py \
+    "OpenRobotics/worlds/Urban Circuit Practice 01" --out .
+argos3 -c urban_circuit_practice_01/urban_circuit_practice_01.argos
+```
+
+Shipped imports (generated experiment and notes committed, glTF files
+regenerated locally):
+
+- `environments/urban_circuit_practice_01/`: the DARPA Subterranean
+  Challenge Urban Circuit Practice 01 world by Open Robotics (CC-BY
+  4.0): 33 urban tiles on three levels, staging area, artifacts,
+  35 ceiling lamps, 1.8 M triangles.
+- `environments/finals_prize_round_world_01/`: the SubT Finals Prize
+  Round World 01 (CC-BY 4.0): 401 tunnel-circuit placements from the
+  Finals staging area, 88 lamps on the lit tiles only, 3.7 M
+  triangles. Any of the 62 `subt`-tagged Fuel worlds imports the same
+  way.
+
+### Headlights
+
+These worlds are dark away from the lit tiles; in the competition the
+robots carried their own lamps. A `<lights>` entry with
+`entity="<robot id>"` (and optionally `anchor`, default `origin`) is
+mounted on that robot and re-posed from its anchor every tick, with
+`position` and `direction` in the anchor frame (+x forward, +z up for
+the shipped robots):
+
+```xml
+<lights>
+  <spot entity="sp0" position="0.5,0,0.25" direction="1,0,-0.15"
+        intensity="3000" falloff="25" inner_angle="20" outer_angle="35"
+        color="1.0,0.95,0.85" />
+</lights>
+```
+
+Loop functions can dim or switch any light through
+`GetSceneSync().SetLightIntensity(index, lumens)`, indices in
+declaration order.
+
 ## Camera sensor
 
 Robots obtain images through the generic `photorealistic_camera`
@@ -138,13 +195,20 @@ the renderer, the scene, and the robot cameras; the window uses its
 own Filament renderer, so its vsync never interferes with the sensor
 pipeline). SPACE pauses, N single-steps; W/A/S/D/Q/E fly the camera
 (SHIFT accelerates), left-drag looks around, right- or middle-drag
-pans, and the scroll wheel dollies; ESC quits. `speed` scales real
-time (0 = as fast as possible). With `inset_camera="<robot id>"` the
-window shows what that robot's photorealistic camera sees as a
-bottom-right inset, rendered live at the window frame rate from the
-sensor's pose, field of view, and aspect ratio (`inset_size` sets its
-height as a window fraction). With `screenshot="<prefix>"` the window
-is saved to `<prefix>_<clock>.png` every `screenshot_period` ticks. Building the viewer needs the SDL2 headers
+pans, and the scroll wheel dollies; F toggles a flashlight; ESC
+quits. `speed` scales real time (0 = as fast as possible). The
+flashlight is a spot light carried by the camera for looking around
+unlit scenes; it joins the scene only for the window's own render, so
+robot cameras, lidars and the insets never see it and the recorded
+data does not depend on where the viewer wandered (`flashlight="true"`
+starts with it on, `flashlight_intensity` in lumens and
+`flashlight_falloff` in metres size it). With
+`inset_camera="<robot id>"` the window shows what that robot's
+photorealistic camera sees as a bottom-right inset, rendered live at
+the window frame rate from the sensor's pose, field of view, and
+aspect ratio (`inset_size` sets its height as a window fraction). With
+`screenshot="<prefix>"` the window is saved to `<prefix>_<clock>.png`
+every `screenshot_period` ticks. Building the viewer needs the SDL2 headers
 (`apt install libsdl2-dev`, or extract them next to the SDK like the
 libc++ runtime; see `FindARGoSSDL2.cmake`). The window is X11 (via
 XWayland on Wayland desktops), matching the surface support of the

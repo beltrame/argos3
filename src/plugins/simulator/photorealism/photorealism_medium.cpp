@@ -8,6 +8,8 @@
 
 #include <argos3/core/simulator/simulator.h>
 #include <argos3/core/simulator/space/space.h>
+#include <argos3/core/simulator/entity/composable_entity.h>
+#include <argos3/core/simulator/entity/embodied_entity.h>
 #include <argos3/core/utility/logging/argos_log.h>
 
 #include <filament/Engine.h>
@@ -37,6 +39,48 @@ namespace argos {
 
    /****************************************/
    /****************************************/
+
+   /* Resolves an asset path relative to the working directory first,
+    * then to the directory of the .argos experiment file, like the Jolt
+    * <mesh> entity does, so that an environment directory (glTF props,
+    * collision mesh, experiment) works from any working directory. */
+   static std::string ResolveAssetPath(const std::string& str_file) {
+      if(str_file.empty() || std::filesystem::exists(str_file)) {
+         return str_file;
+      }
+      std::filesystem::path cExperiment(
+         CSimulator::GetInstance().GetExperimentFileName());
+      if(cExperiment.has_parent_path()) {
+         std::filesystem::path cCandidate = cExperiment.parent_path() / str_file;
+         if(std::filesystem::exists(cCandidate)) {
+            return cCandidate.string();
+         }
+      }
+      return str_file;
+   }
+
+   /* Finds the anchor a headlight is mounted on: the entity's body (or
+    * the entity itself when it is embodied) and one of its anchors,
+    * enabled so that the physics engine keeps it updated. */
+   static const SAnchor& ResolveAnchor(CSpace& c_space,
+                                       const std::string& str_entity,
+                                       const std::string& str_anchor) {
+      CEntity& cEntity = c_space.GetEntity(str_entity);
+      CEmbodiedEntity* pcEmbodied = dynamic_cast<CEmbodiedEntity*>(&cEntity);
+      if(pcEmbodied == nullptr) {
+         auto* pcComposable = dynamic_cast<CComposableEntity*>(&cEntity);
+         if(pcComposable == nullptr || !pcComposable->HasComponent("body")) {
+            THROW_ARGOSEXCEPTION("Cannot mount a light on entity \""
+                                 << str_entity << "\": it has no body");
+         }
+         pcEmbodied = &pcComposable->GetComponent<CEmbodiedEntity>("body");
+      }
+      if(str_anchor == "origin") {
+         return pcEmbodied->GetOriginAnchor();
+      }
+      pcEmbodied->EnableAnchor(str_anchor);
+      return pcEmbodied->GetAnchor(str_anchor);
+   }
 
    void CPhotorealismMedium::Init(TConfigurationNode& t_tree) {
       try {
@@ -111,7 +155,8 @@ namespace argos {
                for(tLightIterator = tLightIterator.begin(&tLights);
                    tLightIterator != tLightIterator.end();
                    ++tLightIterator) {
-                  CPRSceneSync::SLight sLight;
+                  SConfiguredLight sConfigured;
+                  CPRSceneSync::SLight& sLight = sConfigured.Light;
                   sLight.Spot = (str_kind == "spot");
                   GetNodeAttribute(*tLightIterator, "position", sLight.Position);
                   GetNodeAttributeOrDefault(*tLightIterator, "direction",
@@ -130,7 +175,13 @@ namespace argos {
                   GetNodeAttributeOrDefault(*tLightIterator, "cast_shadows",
                                             sLight.CastShadows,
                                             sLight.CastShadows);
-                  m_vecLights.push_back(sLight);
+                  /* Headlight: mounted on an entity anchor, position and
+                   * direction in the anchor frame */
+                  GetNodeAttributeOrDefault(*tLightIterator, "entity",
+                                            sConfigured.Entity, sConfigured.Entity);
+                  GetNodeAttributeOrDefault(*tLightIterator, "anchor",
+                                            sConfigured.Anchor, sConfigured.Anchor);
+                  m_vecLights.push_back(sConfigured);
                }
             }
          }
@@ -138,9 +189,11 @@ namespace argos {
             TConfigurationNode& tEnvironment = GetNode(t_tree, "environment");
             m_sEnvironment.Enabled = true;
             GetNodeAttribute(tEnvironment, "ibl", m_sEnvironment.Ibl);
+            m_sEnvironment.Ibl = ResolveAssetPath(m_sEnvironment.Ibl);
             GetNodeAttributeOrDefault(tEnvironment, "skybox",
                                       m_sEnvironment.Skybox,
                                       m_sEnvironment.Skybox);
+            m_sEnvironment.Skybox = ResolveAssetPath(m_sEnvironment.Skybox);
             GetNodeAttributeOrDefault(tEnvironment, "intensity",
                                       m_sEnvironment.Intensity,
                                       m_sEnvironment.Intensity);
@@ -152,6 +205,7 @@ namespace argos {
                 ++tPropIterator) {
                SProp sProp;
                GetNodeAttribute(*tPropIterator, "model", sProp.Model);
+               sProp.Model = ResolveAssetPath(sProp.Model);
                GetNodeAttributeOrDefault(*tPropIterator, "position",
                                          sProp.Position, sProp.Position);
                GetNodeAttributeOrDefault(*tPropIterator, "orientation",
@@ -219,8 +273,12 @@ namespace argos {
                                             m_sEnvironment.Skybox,
                                             m_sEnvironment.Intensity);
             }
-            for(const CPRSceneSync::SLight& s_light : m_vecLights) {
-               m_cSceneSync.AddLight(s_light);
+            for(SConfiguredLight& s_configured : m_vecLights) {
+               if(!s_configured.Entity.empty()) {
+                  s_configured.Light.Anchor =
+                     &ResolveAnchor(cSpace, s_configured.Entity, s_configured.Anchor);
+               }
+               m_cSceneSync.AddLight(s_configured.Light);
             }
             /* Static scenery props */
             filament::TransformManager& cTransforms =
@@ -595,6 +653,19 @@ namespace argos {
                    "Local lights do not cast shadows unless cast_shadows=\"true\": every\n"
                    "shadow-casting local light shares one shadow atlas and costs an extra\n"
                    "render pass per frame.\n\n"
+                   "A light with an 'entity' attribute is a headlight: it is mounted on\n"
+                   "that entity's 'anchor' (default \"origin\") and follows it every tick,\n"
+                   "with 'position' and 'direction' given in the anchor frame (+x forward,\n"
+                   "+z up for the robots shipped with ARGoS). Underground and night scenes\n"
+                   "are readable to a robot's own camera only through such lights:\n\n"
+                   "  <lights>\n"
+                   "    <spot entity=\"spot1\" position=\"0.45,0,0.1\" direction=\"1,0,-0.15\"\n"
+                   "          intensity=\"3000\" falloff=\"25\" inner_angle=\"20\" outer_angle=\"35\"\n"
+                   "          color=\"1.0,0.95,0.85\" />\n"
+                   "  </lights>\n\n"
+                   "Loop functions can dim or switch any light with the medium's\n"
+                   "GetSceneSync().SetLightIntensity(index, lumens), indices in the order\n"
+                   "the lights are declared.\n\n"
                    "The renderer is physically based, so the image is only as bright as\n"
                    "the exposure allows. The default is the \"sunny 16\" rule, which is\n"
                    "correct for the 100000 lux default sun and renders a lamp-lit scene\n"

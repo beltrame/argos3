@@ -1,0 +1,1725 @@
+{
+ "world": "Urban Circuit Practice 01",
+ "owner": "OpenRobotics",
+ "source": "/home/beltrame/.cache/argos3-fuel/openrobotics/worlds/urban circuit practice 01/urban_circuit_practice_01.sdf",
+ "bounds_min": [
+  -149.84958162688883,
+  -213.90557497485415,
+  -29.056051923559036
+ ],
+ "bounds_max": [
+  148.31664663539075,
+  45.503505859375004,
+  26.056015458721497
+ ],
+ "visual_triangles": 1811856,
+ "collision_triangles": 1811856,
+ "materials": 61,
+ "texture_size": 1024,
+ "placements": [
+  {
+   "name": "staging_area",
+   "model": "urban starting area",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Starting Area",
+   "pose": [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   "visuals": 5,
+   "collisions": 5,
+   "lights": 0
+  },
+  {
+   "name": "base_station",
+   "model": "base station",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Base Station",
+   "pose": [
+    "1",
+    "27",
+    "7.5",
+    "0",
+    "0",
+    "-1.5708"
+   ],
+   "visuals": 2,
+   "collisions": 2,
+   "lights": 0
+  },
+  {
+   "name": "artifact_origin",
+   "model": "fiducial",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Fiducial",
+   "pose": [
+    "17.5",
+    "27",
+    "7.5",
+    "0",
+    "0",
+    "0"
+   ],
+   "visuals": 0,
+   "collisions": 0,
+   "lights": 0
+  },
+  {
+   "name": "tile_1",
+   "model": "urban service room straight lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Straight Lights",
+   "pose": [
+    "-96.000000",
+    "-16.000000",
+    "1.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 21,
+   "collisions": 21,
+   "lights": 2
+  },
+  {
+   "name": "tile_2",
+   "model": "urban service room centered",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Centered",
+   "pose": [
+    "-96.000000",
+    "-16.000000",
+    "1.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 17,
+   "collisions": 17,
+   "lights": 0
+  },
+  {
+   "name": "gas_1",
+   "model": "gas",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Gas",
+   "pose": [
+    "-96.000000",
+    "16.000000",
+    "1.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 0,
+   "collisions": 0,
+   "lights": 0
+  },
+  {
+   "name": "tile_3",
+   "model": "urban large room split lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Large Room Split Lights",
+   "pose": [
+    "-16.000000",
+    "-16.000000",
+    "1.000000",
+    "0",
+    "0",
+    "3.141593"
+   ],
+   "visuals": 15,
+   "collisions": 15,
+   "lights": 3
+  },
+  {
+   "name": "tile_4",
+   "model": "urban service room straight lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Straight Lights",
+   "pose": [
+    "24.000000",
+    "-16.000000",
+    "1.000000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 21,
+   "collisions": 21,
+   "lights": 2
+  },
+  {
+   "name": "backpack_1",
+   "model": "jansport backpack red",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/JanSport Backpack Red",
+   "pose": [
+    "16.000000",
+    "-10.000000",
+    "1.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_5",
+   "model": "urban 2 story lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban 2 Story Lights",
+   "pose": [
+    "64.000000",
+    "-16.000000",
+    "1.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 20,
+   "collisions": 20,
+   "lights": 4
+  },
+  {
+   "name": "tile_6",
+   "model": "urban service room centered",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Centered",
+   "pose": [
+    "64.000000",
+    "-16.000000",
+    "11.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 17,
+   "collisions": 17,
+   "lights": 0
+  },
+  {
+   "name": "tile_7",
+   "model": "tunnel tile blocker",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Tunnel Tile Blocker",
+   "pose": [
+    "84.000000",
+    "-16.000000",
+    "13.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "gas_2",
+   "model": "gas",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Gas",
+   "pose": [
+    "64.000000",
+    "16.000000",
+    "11.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 0,
+   "collisions": 0,
+   "lights": 0
+  },
+  {
+   "name": "tile_8",
+   "model": "urban 2 story lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban 2 Story Lights",
+   "pose": [
+    "-96.000000",
+    "-56.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 20,
+   "collisions": 20,
+   "lights": 4
+  },
+  {
+   "name": "tile_9",
+   "model": "urban service room centered",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Centered",
+   "pose": [
+    "-96.000000",
+    "-56.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 17,
+   "collisions": 17,
+   "lights": 0
+  },
+  {
+   "name": "rescue_randy_1",
+   "model": "rescue randy sitting",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Rescue Randy Sitting",
+   "pose": [
+    "-101.000000",
+    "-66.000000",
+    "1.000000",
+    "0",
+    "0",
+    "3.141593"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "backpack_2",
+   "model": "jansport backpack red",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/JanSport Backpack Red",
+   "pose": [
+    "-91.000000",
+    "-64.000000",
+    "1.000000",
+    "0",
+    "0",
+    "3.490659"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "gas_3",
+   "model": "gas",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Gas",
+   "pose": [
+    "-128.000000",
+    "-56.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 0,
+   "collisions": 0,
+   "lights": 0
+  },
+  {
+   "name": "tile_10",
+   "model": "urban service room straight",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Straight",
+   "pose": [
+    "-56.000000",
+    "-56.000000",
+    "1.000000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 21,
+   "collisions": 21,
+   "lights": 0
+  },
+  {
+   "name": "vent_1",
+   "model": "vent",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Vent",
+   "pose": [
+    "-68.150000",
+    "-48.000000",
+    "3.000000",
+    "0",
+    "1.570796",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_11",
+   "model": "urban large room split lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Large Room Split Lights",
+   "pose": [
+    "-16.000000",
+    "-56.000000",
+    "1.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 15,
+   "collisions": 15,
+   "lights": 3
+  },
+  {
+   "name": "tile_12",
+   "model": "urban 2 story large side 2",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban 2 Story Large Side 2",
+   "pose": [
+    "64.000000",
+    "-56.000000",
+    "1.000000",
+    "0",
+    "0",
+    "-3.141593"
+   ],
+   "visuals": 20,
+   "collisions": 20,
+   "lights": 0
+  },
+  {
+   "name": "phone_1",
+   "model": "samsung j8 black",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Samsung J8 Black",
+   "pose": [
+    "64.000000",
+    "-38.000000",
+    "1.000000",
+    "-1.570796",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_13",
+   "model": "urban service room straight",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Straight",
+   "pose": [
+    "-96.000000",
+    "-96.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 21,
+   "collisions": 21,
+   "lights": 0
+  },
+  {
+   "name": "tile_14",
+   "model": "urban stairwell platform centered lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Stairwell Platform Centered Lights",
+   "pose": [
+    "-16.000000",
+    "-96.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 10,
+   "collisions": 10,
+   "lights": 4
+  },
+  {
+   "name": "backpack_3",
+   "model": "jansport backpack red",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/JanSport Backpack Red",
+   "pose": [
+    "-16.100000",
+    "-88.000000",
+    "1.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_15",
+   "model": "urban 2 story large side 1 lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban 2 Story Large Side 1 Lights",
+   "pose": [
+    "64.000000",
+    "-96.000000",
+    "1.000000",
+    "0",
+    "0",
+    "-3.141593"
+   ],
+   "visuals": 24,
+   "collisions": 24,
+   "lights": 4
+  },
+  {
+   "name": "vent_2",
+   "model": "vent",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Vent",
+   "pose": [
+    "56.000000",
+    "-96.000000",
+    "19.850000",
+    "0",
+    "3.141593",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "rescue_randy_2",
+   "model": "rescue randy sitting",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Rescue Randy Sitting",
+   "pose": [
+    "77.000000",
+    "-96.000000",
+    "11.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_16",
+   "model": "urban service room straight",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Straight",
+   "pose": [
+    "-96.000000",
+    "-136.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 21,
+   "collisions": 21,
+   "lights": 0
+  },
+  {
+   "name": "phone_2",
+   "model": "samsung j8 black",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Samsung J8 Black",
+   "pose": [
+    "-98.000000",
+    "-133.000000",
+    "-9.000000",
+    "-1.570796",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_17",
+   "model": "urban 2 story",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban 2 Story",
+   "pose": [
+    "-16.000000",
+    "-136.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "3.141593"
+   ],
+   "visuals": 20,
+   "collisions": 20,
+   "lights": 0
+  },
+  {
+   "name": "tile_18",
+   "model": "urban service room centered",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Centered",
+   "pose": [
+    "-16.000000",
+    "-136.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 17,
+   "collisions": 17,
+   "lights": 0
+  },
+  {
+   "name": "tile_19",
+   "model": "urban service room centered",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Centered",
+   "pose": [
+    "-16.000000",
+    "-136.000000",
+    "1.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 17,
+   "collisions": 17,
+   "lights": 0
+  },
+  {
+   "name": "tile_20",
+   "model": "tunnel tile blocker",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Tunnel Tile Blocker",
+   "pose": [
+    "-16.000000",
+    "-156.000000",
+    "3.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "vent_3",
+   "model": "vent",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Vent",
+   "pose": [
+    "-68.000000",
+    "-132.000000",
+    "-7.000000",
+    "0",
+    "1.570796",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "rescue_randy_3",
+   "model": "rescue randy sitting",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Rescue Randy Sitting",
+   "pose": [
+    "-56.000000",
+    "-141.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "3.141593"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "phone_3",
+   "model": "samsung j8 black",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Samsung J8 Black",
+   "pose": [
+    "-18.000000",
+    "-116.000000",
+    "-9.000000",
+    "-1.570796",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "gas_4",
+   "model": "gas",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Gas",
+   "pose": [
+    "16.000000",
+    "-136.000000",
+    "1.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 0,
+   "collisions": 0,
+   "lights": 0
+  },
+  {
+   "name": "tile_21",
+   "model": "urban straight door right extension lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Straight Door Right Extension Lights",
+   "pose": [
+    "64.000000",
+    "-136.000000",
+    "11.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 10,
+   "collisions": 10,
+   "lights": 3
+  },
+  {
+   "name": "tile_22",
+   "model": "tunnel tile blocker",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Tunnel Tile Blocker",
+   "pose": [
+    "41.000000",
+    "-136.000000",
+    "13.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "backpack_4",
+   "model": "jansport backpack red",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/JanSport Backpack Red",
+   "pose": [
+    "52.000000",
+    "-136.000000",
+    "11.200000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_23",
+   "model": "urban elevation up",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Elevation Up",
+   "pose": [
+    "104.000000",
+    "-136.000000",
+    "6.000000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 4,
+   "collisions": 4,
+   "lights": 0
+  },
+  {
+   "name": "tile_24",
+   "model": "urban bend left",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Bend Left",
+   "pose": [
+    "144.000000",
+    "-136.000000",
+    "6.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 4,
+   "collisions": 4,
+   "lights": 0
+  },
+  {
+   "name": "tile_25",
+   "model": "urban straight door right extension",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Straight Door Right Extension",
+   "pose": [
+    "-96.000000",
+    "-176.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 10,
+   "collisions": 10,
+   "lights": 0
+  },
+  {
+   "name": "tile_26",
+   "model": "tunnel tile blocker",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Tunnel Tile Blocker",
+   "pose": [
+    "-119.000000",
+    "-176.000000",
+    "-7.000000",
+    "0",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "phone_4",
+   "model": "samsung j8 black",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Samsung J8 Black",
+   "pose": [
+    "-104.000000",
+    "-173.000000",
+    "-9.000000",
+    "-1.570796",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_27",
+   "model": "urban straight",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Straight",
+   "pose": [
+    "-56.000000",
+    "-176.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "1.570796"
+   ],
+   "visuals": 4,
+   "collisions": 4,
+   "lights": 0
+  },
+  {
+   "name": "tile_28",
+   "model": "urban straight door right flipped lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Straight Door Right Flipped Lights",
+   "pose": [
+    "-16.000000",
+    "-176.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "3.141593"
+   ],
+   "visuals": 10,
+   "collisions": 10,
+   "lights": 3
+  },
+  {
+   "name": "tile_29",
+   "model": "urban service room lights",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Service Room Lights",
+   "pose": [
+    "-16.000000",
+    "-176.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "3.141593"
+   ],
+   "visuals": 17,
+   "collisions": 17,
+   "lights": 3
+  },
+  {
+   "name": "vent_4",
+   "model": "vent",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Vent",
+   "pose": [
+    "-3.000000",
+    "-211.000000",
+    "-3.080000",
+    "3.141593",
+    "0",
+    "0.000000"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "rescue_randy_4",
+   "model": "rescue randy sitting",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Rescue Randy Sitting",
+   "pose": [
+    "2.000000",
+    "-206.000000",
+    "-8.080000",
+    "0",
+    "0",
+    "3.141593"
+   ],
+   "visuals": 1,
+   "collisions": 1,
+   "lights": 0
+  },
+  {
+   "name": "tile_30",
+   "model": "urban elevation up",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Elevation Up",
+   "pose": [
+    "24.000000",
+    "-176.000000",
+    "-9.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 4,
+   "collisions": 4,
+   "lights": 0
+  },
+  {
+   "name": "tile_31",
+   "model": "urban elevation up",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Elevation Up",
+   "pose": [
+    "64.000000",
+    "-176.000000",
+    "-4.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 4,
+   "collisions": 4,
+   "lights": 0
+  },
+  {
+   "name": "tile_32",
+   "model": "urban elevation up",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Elevation Up",
+   "pose": [
+    "104.000000",
+    "-176.000000",
+    "1.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 4,
+   "collisions": 4,
+   "lights": 0
+  },
+  {
+   "name": "tile_33",
+   "model": "urban bend left",
+   "uri": "https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Urban Bend Left",
+   "pose": [
+    "144.000000",
+    "-176.000000",
+    "6.000000",
+    "0",
+    "0",
+    "-1.570796"
+   ],
+   "visuals": 4,
+   "collisions": 4,
+   "lights": 0
+  }
+ ],
+ "lights": [
+  {
+   "name": "tile_1/light1/spot_light1",
+   "type": "spot",
+   "position": [
+    -94.0,
+    -18.5,
+    5.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_1/light2/spot_light2",
+   "type": "spot",
+   "position": [
+    -95.0,
+    -5.5,
+    5.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_3/lights/spot_light1",
+   "type": "spot",
+   "position": [
+    -23.199994665282386,
+    -31.400002494152567,
+    8.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_3/lights/spot_light2",
+   "type": "spot",
+   "position": [
+    -8.79999466528325,
+    -31.39999750584559,
+    8.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_3/lights/spot_light3",
+   "type": "spot",
+   "position": [
+    -23.199999168615072,
+    -18.400002494153345,
+    8.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_4/light1/spot_light1",
+   "type": "spot",
+   "position": [
+    26.50000065358966,
+    -14.000000816987349,
+    5.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_4/light2/spot_light2",
+   "type": "spot",
+   "position": [
+    13.500000326795456,
+    -14.99999656865364,
+    5.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_5/light1/downstairs_1",
+   "type": "spot",
+   "position": [
+    64.0,
+    -16.0,
+    8.4
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_5/light1/upstairs_1",
+   "type": "spot",
+   "position": [
+    61.400002352923394,
+    -23.200000849666345,
+    18.4
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_5/light1/upstairs_2",
+   "type": "spot",
+   "position": [
+    74.69999999999942,
+    -15.999996503294607,
+    18.4
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_5/light1/upstairs_3",
+   "type": "spot",
+   "position": [
+    74.69999516343496,
+    -1.199996503295397,
+    18.4
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_8/light1/downstairs_1",
+   "type": "spot",
+   "position": [
+    -96.0,
+    -56.0,
+    -1.5999999999999996
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_8/light1/upstairs_1",
+   "type": "spot",
+   "position": [
+    -98.5999976470766,
+    -63.200000849666345,
+    8.399999999999999
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_8/light1/upstairs_2",
+   "type": "spot",
+   "position": [
+    -85.30000000000058,
+    -55.999996503294604,
+    8.399999999999999
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_8/light1/upstairs_3",
+   "type": "spot",
+   "position": [
+    -85.30000483656504,
+    -41.199996503295395,
+    8.399999999999999
+   ],
+   "direction": [
+    3.2679489653813835e-07,
+    -0.9999999999999466,
+    0.0
+   ],
+   "color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "range": 50.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 85.94366926962348
+  },
+  {
+   "name": "tile_11/lights/spot_light1",
+   "type": "spot",
+   "position": [
+    -8.8,
+    -40.6,
+    8.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_11/lights/spot_light2",
+   "type": "spot",
+   "position": [
+    -23.2,
+    -40.6,
+    8.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_11/lights/spot_light3",
+   "type": "spot",
+   "position": [
+    -8.8,
+    -53.6,
+    8.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_14/light/stairwell_1",
+   "type": "spot",
+   "position": [
+    -18.1,
+    -91.1,
+    2.4000000000000004
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_14/light/stairwell_2",
+   "type": "spot",
+   "position": [
+    -17.5,
+    -110.1,
+    -2.5999999999999996
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_14/light/spot_1",
+   "type": "spot",
+   "position": [
+    -35.1,
+    -91.6,
+    3.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_14/light/spot_2",
+   "type": "spot",
+   "position": [
+    -47.7,
+    -112.5,
+    0.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_15/light1/downstairs1",
+   "type": "spot",
+   "position": [
+    71.30000523079369,
+    -80.90000252879541,
+    9.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_15/light1/downstairs2",
+   "type": "spot",
+   "position": [
+    49.70000072746229,
+    -93.89999504633417,
+    9.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_15/light1/upstairs1",
+   "type": "spot",
+   "position": [
+    71.300000727461,
+    -93.90000252879463,
+    19.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_15/light1/upstairs2",
+   "type": "spot",
+   "position": [
+    49.70000523079498,
+    -80.89999504633495,
+    19.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_21/lights/tunnel1",
+   "type": "spot",
+   "position": [
+    61.4,
+    -137.6,
+    15.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_21/lights/tunnel2",
+   "type": "spot",
+   "position": [
+    76.5,
+    -137.6,
+    15.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_21/lights/door1",
+   "type": "spot",
+   "position": [
+    64.0,
+    -125.1,
+    16.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_28/lights/tunnel1",
+   "type": "spot",
+   "position": [
+    2.1999999999989086,
+    -175.99999369533424,
+    -3.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_28/lights/tunnel2",
+   "type": "spot",
+   "position": [
+    -10.50000000000033,
+    -175.99999809474386,
+    -3.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_28/lights/tunnel3",
+   "type": "spot",
+   "position": [
+    -28.39999952195317,
+    -177.3800042954865,
+    -4.9
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": false,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_29/lights/spot_light1",
+   "type": "spot",
+   "position": [
+    -5.719990127309728,
+    -204.49999643890138,
+    -4.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": true,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_29/lights/spot_light2",
+   "type": "spot",
+   "position": [
+    8.90000651251039,
+    -194.79999137438472,
+    -4.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": true,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  },
+  {
+   "name": "tile_29/lights/spot_light3",
+   "type": "spot",
+   "position": [
+    8.000011189048234,
+    -208.2999916861531,
+    -4.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "range": 20.0,
+   "cast_shadows": true,
+   "inner_angle": 57.29577951308232,
+   "outer_angle": 88.8084582452776
+  }
+ ],
+ "skipped": []
+}

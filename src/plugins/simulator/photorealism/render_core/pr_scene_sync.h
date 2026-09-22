@@ -21,6 +21,7 @@
 namespace argos {
    class CSpace;
    class CEmbodiedEntity;
+   struct SAnchor;
    class CComposableEntity;
    class CLEDEquippedEntity;
    class CDirectionalLEDEquippedEntity;
@@ -90,6 +91,10 @@ namespace argos {
          /* Shadow maps for local lights are expensive and there is one
           * atlas for all of them, so this is off by default */
          bool CastShadows = false;
+         /* When set, the light is mounted on this anchor of an entity
+          * (a headlight): Position and Direction are in the anchor
+          * frame and the light follows the anchor every tick */
+         const SAnchor* Anchor = nullptr;
       };
 
       CPRSceneSync() {}
@@ -143,9 +148,9 @@ namespace argos {
 
       /**
        * Adds a local light to the scene and returns its index, which
-       * SetLightIntensity() takes. Lights are static: they are placed
-       * once and never follow an entity, which is what scenery lamps
-       * need.
+       * SetLightIntensity() takes. A light without an anchor is placed
+       * once and never moves, which is what scenery lamps need; one
+       * with an anchor is re-posed from the anchor at every Sync().
        */
       size_t AddLight(const SLight& s_light);
 
@@ -291,8 +296,17 @@ namespace argos {
       SPRMesh m_sCylinderMesh;
       SPRMesh m_sPlaneMesh;
       utils::Entity m_cSunlight;
-      /* Local lights (lamps), in AddLight() order */
+      /* Local lights (lamps, headlights), in AddLight() order */
       std::vector<utils::Entity> m_vecLights;
+      /* The subset mounted on entity anchors, re-posed every Sync() */
+      struct SMountedLight {
+         utils::Entity Light;
+         const SAnchor* Anchor;
+         CVector3 Position;  /* anchor frame */
+         CVector3 Direction; /* anchor frame, spots only */
+         bool Spot;
+      };
+      std::vector<SMountedLight> m_vecMountedLights;
       filament::IndirectLight* m_pcAmbientLight = nullptr;
       /* HDR environment, when loaded */
       bool m_bHasEnvironment = false;
