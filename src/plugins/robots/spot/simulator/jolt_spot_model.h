@@ -27,6 +27,7 @@ namespace argos {
       ~CJoltSpotModel() override;
 
       void Reset() override;
+      void MoveTo(const CVector3& c_position, const CQuaternion& c_orientation) override;
 
       /* Set contact-surface drive targets without overriding chassis motion. */
       virtual void UpdateFromEntityStatus() override;
@@ -44,6 +45,7 @@ namespace argos {
    private:
 
       enum class EStepPhase { NONE, LIFT, ADVANCE };
+      void ResetMotionState();
       void TryStartStep();
       bool HasStepSupport(JPH::RVec3Arg c_position, float f_reach) const;
       void EndStep();

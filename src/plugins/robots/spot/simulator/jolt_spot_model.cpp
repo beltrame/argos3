@@ -106,7 +106,17 @@ namespace argos {
 
    void CJoltSpotModel::Reset() {
       CJoltGroundRobotModel::Reset();
+      ResetMotionState();
+   }
+
+   void CJoltSpotModel::MoveTo(const CVector3& c_position, const CQuaternion& c_orientation) {
+      CJoltGroundRobotModel::MoveTo(c_position, c_orientation);
+      ResetMotionState();
+   }
+
+   void CJoltSpotModel::ResetMotionState() {
       m_pcBalance->ResetWarmStart();
+      SetDriveVelocity(0.0, 0.0);
       m_eStepPhase = EStepPhase::NONE;
       m_cStepTarget = JPH::RVec3::sZero();
       m_cStepDirection = JPH::Vec3::sZero();

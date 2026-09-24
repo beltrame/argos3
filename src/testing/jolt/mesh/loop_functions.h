@@ -109,6 +109,7 @@ private:
    CJoltModel* m_pcMotionModel = nullptr;
    CVector3 m_cInitialAngularVelocity;
    UInt32 m_unResetTick = 0;
+   UInt32 m_unMoveTick = 0;
    Real m_fPeakTilt = 0.0;
    Real m_fPeakPitch = 0.0;
    Real m_fPeakRoll = 0.0;

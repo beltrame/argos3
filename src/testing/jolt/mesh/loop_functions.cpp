@@ -96,6 +96,7 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
          GetNodeAttributeOrDefault(t_tree, "initial_angular_velocity", m_cInitialAngularVelocity,
                                    m_cInitialAngularVelocity);
          GetNodeAttributeOrDefault(t_tree, "reset_tick", m_unResetTick, m_unResetTick);
+         GetNodeAttributeOrDefault(t_tree, "move_tick", m_unMoveTick, m_unMoveTick);
          m_pcMotionModel->GetJoltEngine().GetBodyInterface().SetAngularVelocity(
             m_pcMotionModel->GetBodies()[0].Id, ToJolt(m_cInitialAngularVelocity));
       }
@@ -430,16 +431,21 @@ void CMeshLoopFunctions::PostStep() {
    if(m_bScan) {
       RunScan();
    }
-   if(m_bResetGroundCheck && GetSpace().GetSimulationClock() == m_unResetTick + 5 &&
+   const UInt32 unStateTick = m_unMoveTick ? m_unMoveTick : m_unResetTick;
+   if(m_bResetGroundCheck && GetSpace().GetSimulationClock() == unStateTick + 5 &&
       m_pcRobot->GetOriginAnchor().Position.GetZ() > m_cMotionStart.GetZ() + 0.01) {
       THROW_ARGOSEXCEPTION("Reset retained stale step lift state");
    }
-   if(m_pcMotionModel && m_unResetTick && GetSpace().GetSimulationClock() == m_unResetTick) {
-      m_pcMotionModel->Reset();
+   if(m_pcMotionModel && unStateTick && GetSpace().GetSimulationClock() == unStateTick) {
+      if(m_unMoveTick)
+         m_pcMotionModel->MoveTo(m_cMotionStart, CQuaternion());
+      else
+         m_pcMotionModel->Reset();
       m_cPreviousPosition = m_pcRobot->GetOriginAnchor().Position;
       m_pcMotionModel->GetJoltEngine().GetBodyInterface().SetAngularVelocity(
          m_pcMotionModel->GetBodies()[0].Id, ToJolt(m_cInitialAngularVelocity));
-      LOG << "[mesh] model reset at tick " << m_unResetTick << std::endl;
+      LOG << "[mesh] model " << (m_unMoveTick ? "MoveTo" : "reset")
+          << " at tick " << unStateTick << std::endl;
    }
 }
 

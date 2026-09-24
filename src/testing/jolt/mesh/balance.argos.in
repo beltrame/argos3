@@ -10,7 +10,7 @@
   </controllers>
   <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
                   label="mesh_loop_functions" robot="test" motion_metrics="true"
-                  maximum_tilt="30.1" maximum_speed="1.5" initial_angular_velocity="3,0,1" reset_tick="15"
+                  maximum_tilt="30.1" maximum_speed="1.5" initial_angular_velocity="3,0,1" @BALANCE_STATE_CHECK@
                   attitude_slope="0" attitude_tolerance="0.53" minimum_rise="-1"
                   minimum_yaw="0.5" attitude_warmup="1" />
   <arena size="20,20,10" center="0,0,3">
