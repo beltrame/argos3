@@ -87,6 +87,7 @@ private:
    bool m_bMotionMetrics = false;
    Real m_fMaximumTilt = 180.0;
    Real m_fMaximumSpeed = 1.0e6;
+   Real m_fMaximumRise = 1.0e6;
    Real m_fPeakPitch = 0.0;
    Real m_fPeakRoll = 0.0;
    Real m_fPeakRise = 0.0;

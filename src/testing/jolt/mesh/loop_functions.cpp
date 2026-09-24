@@ -77,6 +77,8 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
                                 m_fMaximumTilt);
       GetNodeAttributeOrDefault(t_tree, "maximum_speed", m_fMaximumSpeed,
                                 m_fMaximumSpeed);
+      GetNodeAttributeOrDefault(t_tree, "maximum_rise", m_fMaximumRise,
+                                m_fMaximumRise);
       GetNodeAttributeOrDefault(t_tree, "minimum_travel", m_fMinimumTravel,
                                 m_fMinimumTravel);
       m_cMotionStart = m_pcRobot->GetOriginAnchor().Position;
@@ -439,7 +441,7 @@ void CMeshLoopFunctions::PostExperiment() {
          LOG.Flush();
          if(!std::isfinite(m_fPeakSpeed) || m_fPeakSpeed > m_fMaximumSpeed ||
             m_fPeakPitch > m_fMaximumTilt || m_fPeakRoll > m_fMaximumTilt ||
-            m_fTravel < m_fMinimumTravel) {
+            m_fTravel < m_fMinimumTravel || m_fPeakRise > m_fMaximumRise) {
             THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
          }
       }
