@@ -34,6 +34,9 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
       CRadians cTurn = cYaw - m_cHoldYaw;
       m_fHoldYaw = std::max(m_fHoldYaw, std::abs(cTurn.SignedNormalize().GetValue()));
    }
+   if(m_unYawLockTick && unTick > m_unYawLockTick &&
+      unTick <= m_unYawLockTick + m_unYawLockTicks)
+      m_fPeakLockedYawRate = std::max(m_fPeakLockedYawRate, Real(std::abs(c_body.GetAngularVelocity().GetZ())));
    m_fPeakPitch = std::max(m_fPeakPitch, std::abs(cPitch.GetValue()) * 180.0 / M_PI);
    m_fPeakRoll = std::max(m_fPeakRoll, std::abs(cRoll.GetValue()) * 180.0 / M_PI);
    const float fUp = (c_body.GetRotation() * JPH::Vec3::sAxisZ()).GetZ();

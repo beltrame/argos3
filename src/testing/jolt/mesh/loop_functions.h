@@ -107,6 +107,9 @@ private:
    Real m_fHoldPlanarMotion = 0.0;
    Real m_fHoldYaw = 0.0;
    Real m_fMinimumHoldYaw = 0.0;
+   UInt32 m_unYawLockTick = 0;
+   UInt32 m_unYawLockTicks = 0;
+   Real m_fPeakLockedYawRate = 0.0;
    bool m_bConeContactCheck = false;
    bool m_bHaveConeSettleStart = false;
    CVector3 m_cConeSettleStart;

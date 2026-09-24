@@ -112,14 +112,11 @@ namespace argos {
       if(bPause) m_fStepPauseTimeLeft -= fDt;
       else m_fStepTimeLeft -= fDt;
       if(bPause && !m_bStepPaused) m_fStepHoldHeight = float(cPosition.GetZ());
-      if(bPause || m_bStepPaused) {
-         /* While the legs support a paused stance, yaw must work even without
-          * a box/floor manifold. Retain roll/pitch and let contacts resolve
-          * collisions. On resume, clear the last paused yaw command too. */
-         JPH::Vec3 cAngular = cBodies.GetAngularVelocity(cId);
-         cAngular.SetZ(std::clamp(m_fCommandAngular, -MAX_STEP_YAW_RATE, MAX_STEP_YAW_RATE));
-         cBodies.SetAngularVelocity(cId, cAngular);
-      }
+      /* Paused stances may yaw. Active lift/advance is heading-locked even
+       * if the resumed command still requests yaw. Preserve roll/pitch. */
+      JPH::Vec3 cAngular = cBodies.GetAngularVelocity(cId);
+      cAngular.SetZ(bPause ? std::clamp(m_fCommandAngular, -MAX_STEP_YAW_RATE, MAX_STEP_YAW_RATE) : 0.0f);
+      cBodies.SetAngularVelocity(cId, cAngular);
       m_bStepPaused = bPause;
       const float fHeightError = float((bPause ? m_fStepHoldHeight : m_cStepTarget.GetZ()) - cPosition.GetZ());
       if(!bPause && m_eStepPhase == EStepPhase::LIFT && fHeightError < 0.002f)
@@ -138,8 +135,7 @@ namespace argos {
       const float fGravity = GetJoltEngine().GetSystem().GetGravity().GetZ();
       const float fLift = std::clamp(10.0f * fHeightError - fGravity * fDt,
                                     -MAX_LIFT_SPEED, MAX_LIFT_SPEED);
-      SetDriveVelocity(bAdvance ? m_fCommandLinear : 0.0f,
-                       bAdvance ? m_fCommandAngular : 0.0f);
+      SetDriveVelocity(bAdvance ? m_fCommandLinear : 0.0f, 0.0f);
       cBodies.SetLinearVelocity(cId, JPH::Vec3(cPlanar.GetX(), cPlanar.GetY(), fLift));
    }
 }

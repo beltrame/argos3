@@ -91,6 +91,8 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
          GetNodeAttributeOrDefault(t_tree, "step_deadline", m_fStepDeadline, m_fStepDeadline);
          GetNodeAttributeOrDefault(t_tree, "interrupt_tick", m_unInterruptTick, m_unInterruptTick);
          GetNodeAttributeOrDefault(t_tree, "interrupt_ticks", m_unInterruptTicks, m_unInterruptTicks);
+         GetNodeAttributeOrDefault(t_tree, "yaw_lock_tick", m_unYawLockTick, m_unYawLockTick);
+         GetNodeAttributeOrDefault(t_tree, "yaw_lock_ticks", m_unYawLockTicks, m_unYawLockTicks);
          GetNodeAttributeOrDefault(t_tree, "minimum_hold_yaw", m_fMinimumHoldYaw, m_fMinimumHoldYaw);
          GetNodeAttributeOrDefault(t_tree, "step_check", m_bStepCheck, m_bStepCheck);
          GetNodeAttributeOrDefault(t_tree, "cone_contact_check", m_bConeContactCheck, m_bConeContactCheck);
@@ -494,6 +496,11 @@ void CMeshLoopFunctions::PostExperiment() {
          if(!m_bHaveHoldStart || m_fHoldHeightError > 0.02 || m_fHoldPlanarMotion > 0.001 ||
             m_fHoldYaw < m_fMinimumHoldYaw)
             THROW_ARGOSEXCEPTION("Interrupted step did not hold position or execute commanded yaw");
+      }
+      if(m_unYawLockTick) {
+         LOG << "[mesh] active step yaw_rate_rad_s=" << m_fPeakLockedYawRate << std::endl;
+         if(m_fPeakLockedYawRate > 0.01)
+            THROW_ARGOSEXCEPTION("Unpaused step retained yaw spin");
       }
       if(m_bStepCheck) {
          LOG << "[mesh] step fully_supported_s=" << m_fStepReachedTime << std::endl;
