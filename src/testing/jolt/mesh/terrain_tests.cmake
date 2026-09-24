@@ -15,7 +15,9 @@ foreach(ANGLE 16 18)
   else()
     set(TERRAIN_POSITION "1,0,0.524920")
   endif()
-  set(TERRAIN_CHECKS "maximum_tilt=\"25\"")
+  # A 3 m commanded path projects to about 2.85 m uphill along X.
+  # Bound final X as well as path length: downhill travel must not qualify.
+  set(TERRAIN_CHECKS "maximum_tilt=\"25\" expect_x=\"3.85\" position_tolerance=\"0.25\"")
   configure_file(terrain.argos.in ${TERRAIN_CASE}.argos)
   add_spot_terrain_test(${TERRAIN_CASE})
 endforeach()
