@@ -101,7 +101,7 @@ namespace argos {
       const bool bPause = m_fCommandLinear < 0.001f || !bAligned;
       /* Turning through 90 degrees is not reversal: only an explicitly
        * negative forward command, absent support, or either timeout aborts. */
-      if(m_fStepTimeLeft <= 0 || m_fStepPauseTimeLeft <= 0 || m_fCommandLinear < 0.0f ||
+      if(m_fStepTimeLeft <= 0 || m_fStepPauseTimeLeft <= 0 || m_fCommandLinear < -0.001f ||
          !HasStepSupport(cPosition, float(SPOT_HEIGHT) * 0.5f + MAX_STEP_HEIGHT + 0.025f)) {
          EndStep();
          return;
