@@ -56,6 +56,7 @@ namespace argos {
       bool m_bStepPaused = false;
       float m_fStepHoldHeight = 0.0f;
       float m_fStepTimeLeft = 0.0f;
+      float m_fStepPauseTimeLeft = 0.0f;
       float m_fStepCooldown = 0.0f;
       float m_fCommandLinear = 0.0f;
       float m_fCommandAngular = 0.0f;
@@ -64,6 +65,8 @@ namespace argos {
       static constexpr float MAX_LIFT_SPEED = 0.5f;
       /* Match the normal simulated platform/Nav2 yaw envelope (rad/s). */
       static constexpr float MAX_STEP_YAW_RATE = 1.2f;
+      static constexpr float STEP_ALIGNMENT_COS = 0.965925826f; // cos(15 degrees)
+      static constexpr float STEP_PAUSE_ALLOWANCE = 30.0f;
 
       JPH::Ref<JPH::TwoBodyConstraint> m_pcBalance;
       CSpotEntity& m_cSpotEntity;

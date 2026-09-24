@@ -1,10 +1,12 @@
 <?xml version="1.0" ?>
 <argos-configuration>
-  <framework><system threads="0" /><experiment length="10" ticks_per_second="10" random_seed="1" /></framework>
+  <framework><system threads="0" /><experiment length="@TERRAIN_LENGTH@" ticks_per_second="10" random_seed="1" /></framework>
   <controllers>
     <mesh_drive_controller id="drive" library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
       <actuators><differential_steering implementation="default" /></actuators><sensors />
-      <params left="@TERRAIN_SPEED@" right="@TERRAIN_SPEED@" @TERRAIN_COMMANDS@ />
+      <params left="@TERRAIN_SPEED@" right="@TERRAIN_SPEED@" @TERRAIN_COMMANDS@ >
+        @TERRAIN_COMMAND_SEQUENCE@
+      </params>
     </mesh_drive_controller>
   </controllers>
   <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"

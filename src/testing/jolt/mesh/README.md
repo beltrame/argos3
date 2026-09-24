@@ -171,14 +171,28 @@ force-calibrated controller. Jolt integrates every pose and resolves contacts;
 no helper calls SetPosition, moves an anchor, or disables gravity.
 
 Static support must remain within 35 cm leg reach beneath the body centre at
-every physics substep. Zero translation pauses at the current height without
-losing the original lift target. Supported yaw-only holds command world-Z yaw
-(up to the normal 1.2 rad/s envelope), preserving roll/pitch angular motion.
-Reversal, missing support or timeout ends assistance; the timeout continues
-while paused. All state resets with the model. Three interrupt regressions hold
+every physics substep. Zero translation or planar heading more than 15 degrees
+from the checked step direction pauses at the current height without losing the
+original lift target. Lift/advance resumes only after realignment. Supported
+holds command world-Z yaw (up to the normal 1.2 rad/s envelope), preserving
+roll/pitch angular motion. A turn past 90 degrees is not a reversal: only a
+negative forward command aborts for reversal, and reverse commands do not start
+new assistance. Missing support or timeout also ends assistance. Pauses consume
+a separate, cumulative **30 s per-step allowance**, not the active step timeout;
+realignment does not replenish that allowance. All state resets with the model. Three interrupt regressions hold
 for 2 s during advance (zero/yaw-only) or lift, then finish the 35 cm climb.
 They bound held height drift to 2 cm, planar drift to 1 mm, tilt to 30.1 degrees
-and speed to 1.5 m/s, and require actual yaw in the turning variant. Clearance is
+and speed to 1.5 m/s, and require actual yaw in the turning variant. That short
+turn now turns out and back before resuming, instead of resuming at 0.4 rad.
+
+Four further pause cases cover 1.6 rad turns during both advance and lift,
+forward attempts while misaligned at 1.6 and 0.8 rad, a 10 s pause, and expiry of
+the 30 s allowance. The large-turn cases turn back to the checked direction
+before completing. Their 13 s deadlines include 6 s intentionally paused; the
+long-pause case has a 17 s deadline including 10 s paused. Uninterrupted step
+checks retain their 10 s deadline. Pause expiry is tested during lift above
+clear lower ground, with upright ballistic landing and <=0.1 m rebound;
+gravity-driven vertical falling speed is exempt just as in the other drops. Clearance is
 conservative (the initial overhead probe uses the maximum supported step).
 **Known limitation:** stair flights are refused by the landing check when the
 next riser intersects the full-body raised advance 1.15 m ahead. The isolated
@@ -189,6 +203,16 @@ raising it to 0.35 m is a separate planner/configuration decision, needed if
 navigation should use the newly qualified full height.
 
 ## Measured results
+
+Fix round 4: **83/83 default tests (3.11 s), 90/90 with SubT (22.17 s)**.
+Large-turn advance/lift cases both reach 1.600 rad yaw and complete at 12.40 s;
+held height drift is <=5.97e-8 m, planar drift <=6.50e-6 m, and peak speed
+0.50 m/s. The 10 s pause completes at 16.40 s with no held-height drift.
+After pause allowance expiry, the 0.28133 m release lands upright with zero
+rebound: measured flight 0.240 s versus ballistic 0.2395 s. Its 2.2563 m/s
+vertical falling speed is gravitational, not a powered speed spike.
+A 90-degree gate fails both large-turn tests; a 60 s allowance fails the timeout
+landing check. All prior wall, slope, SubT, reset and MoveTo cases still pass.
 
 Fix round 3: **79/79 default tests (2.77 s), 86/86 with SubT (19.96 s)** on the
 same authorized tuf setup. New checks cover three command interruptions,

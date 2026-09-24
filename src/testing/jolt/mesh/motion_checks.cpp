@@ -32,7 +32,7 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
       m_fHoldPlanarMotion = std::max(m_fHoldPlanarMotion,
          std::hypot(cPosition.GetX() - m_cHoldStart.GetX(), cPosition.GetY() - m_cHoldStart.GetY()));
       CRadians cTurn = cYaw - m_cHoldYaw;
-      m_fHoldYaw = std::abs(cTurn.SignedNormalize().GetValue());
+      m_fHoldYaw = std::max(m_fHoldYaw, std::abs(cTurn.SignedNormalize().GetValue()));
    }
    m_fPeakPitch = std::max(m_fPeakPitch, std::abs(cPitch.GetValue()) * 180.0 / M_PI);
    m_fPeakRoll = std::max(m_fPeakRoll, std::abs(cRoll.GetValue()) * 180.0 / M_PI);
@@ -69,9 +69,11 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
       std::hypot(Real(cVelocity.GetX()), Real(cVelocity.GetY())),
       std::hypot(cDelta.GetX(), cDelta.GetY()) / fDt});
    if(m_bDrop) {
-      /* Ledge fixture ends at X=1: start the ballistic clock only after the
-       * entire body clears it, not during supported rotation over its edge. */
-      if(m_fFallStart < 0 && c_body.GetWorldSpaceBounds().mMin.GetX() > 1.001f) {
+      /* Ledge: wait for full clearance. Pause expiry: sample freefall just
+       * after the specified release tick, including its actual initial vz. */
+      const bool bReleased = m_unDropStartTick ? unTick > m_unDropStartTick :
+         c_body.GetWorldSpaceBounds().mMin.GetX() > 1.001f;
+      if(m_fFallStart < 0 && bReleased) {
          m_fFallStart = m_fPhysicsTime;
          m_fDropStartHeight = c_body.GetCenterOfMassPosition().GetZ();
          m_fDropStartVelocity = c_body.GetLinearVelocity().GetZ();

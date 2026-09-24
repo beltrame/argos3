@@ -24,7 +24,8 @@ namespace argos {
    }
 
    void CJoltSpotModel::TryStartStep() {
-      if(std::abs(m_fCommandLinear) < 0.001f) return;
+      /* Reverse commands release assistance; do not start a reverse step. */
+      if(m_fCommandLinear < 0.001f) return;
       auto& cSystem = GetJoltEngine().GetSystem();
       auto& cBodies = cSystem.GetBodyInterface();
       const JPH::BodyID cId = m_vecBodies[0].Id;
@@ -35,7 +36,7 @@ namespace argos {
       if(!HasStepSupport(cPosition, float(SPOT_HEIGHT) * 0.5f + 0.025f)) return;
       JPH::Vec3 cDirection = cRotation * JPH::Vec3::sAxisX();
       cDirection.SetZ(0);
-      cDirection = cDirection.Normalized() * (m_fCommandLinear < 0 ? -1.0f : 1.0f);
+      cDirection = cDirection.Normalized();
       const auto pcShape = cBodies.GetShape(cId);
       JPH::IgnoreSingleBodyFilter cFilter(cId);
       auto Cast = [&](JPH::RVec3Arg cStart, JPH::Vec3Arg cDelta) {
@@ -73,12 +74,14 @@ namespace argos {
       m_cStepDirection = cDirection;
       m_fStepTimeLeft = cAdvance.Length() / std::abs(m_fCommandLinear) +
          fRise / MAX_LIFT_SPEED + 2.0f;
+      m_fStepPauseTimeLeft = STEP_PAUSE_ALLOWANCE;
       m_eStepPhase = EStepPhase::LIFT;
    }
 
    void CJoltSpotModel::EndStep() {
       m_eStepPhase = EStepPhase::NONE;
       m_bStepPaused = false;
+      m_fStepPauseTimeLeft = 0.0f;
       m_fStepCooldown = 0.2f;
       SetDriveVelocity(m_fCommandLinear, m_fCommandAngular);
    }
@@ -91,16 +94,23 @@ namespace argos {
       const JPH::BodyID cId = m_vecBodies[0].Id;
       const JPH::RVec3 cPosition = cBodies.GetPosition(cId);
       JPH::Vec3 cForward = cBodies.GetRotation(cId) * JPH::Vec3::sAxisX();
-      cForward *= m_fCommandLinear;
-      m_fStepTimeLeft -= fDt;
-      /* Zero translation pauses the supported stance. Reversal, loss of
-       * support and timeout still release it; the timeout continues to run. */
-      if(m_fStepTimeLeft <= 0 || cForward.Dot(m_cStepDirection) < -0.001f ||
+      cForward.SetZ(0.0f);
+      /* Compare planar heading, not body tilt, with the checked corridor. */
+      const bool bAligned = cForward.LengthSq() > 1.0e-8f &&
+         cForward.Normalized().Dot(m_cStepDirection) >= STEP_ALIGNMENT_COS;
+      const bool bPause = m_fCommandLinear < 0.001f || !bAligned;
+      /* Turning through 90 degrees is not reversal: only an explicitly
+       * negative forward command, absent support, or either timeout aborts. */
+      if(m_fStepTimeLeft <= 0 || m_fStepPauseTimeLeft <= 0 || m_fCommandLinear < 0.0f ||
          !HasStepSupport(cPosition, float(SPOT_HEIGHT) * 0.5f + MAX_STEP_HEIGHT + 0.025f)) {
          EndStep();
          return;
       }
-      const bool bPause = std::abs(m_fCommandLinear) < 0.001f;
+      /* Charge the interval being actuated, releasing on the next substep
+       * after expiry. Pauses share a cumulative budget, never replenished by
+       * realignment, and do not consume the active step time budget. */
+      if(bPause) m_fStepPauseTimeLeft -= fDt;
+      else m_fStepTimeLeft -= fDt;
       if(bPause && !m_bStepPaused) m_fStepHoldHeight = float(cPosition.GetZ());
       if(bPause || m_bStepPaused) {
          /* While the legs support a paused stance, yaw must work even without

@@ -8,6 +8,7 @@
 #define JOLT_MESH_DRIVE_CONTROLLER_H
 
 #include <argos3/core/control_interface/ci_controller.h>
+#include <vector>
 
 namespace argos {
    class CCI_DifferentialSteeringActuator;
@@ -17,8 +18,8 @@ using namespace argos;
 
 /**
  * Holds the XML wheel velocities, optionally interrupting them for a fixed
- * tick interval to exercise step pause/resume. All motion remains the physics
- * engine's doing.
+ * tick interval or overriding them with ordered <command tick="..." left="..."
+ * right="..." /> entries. All motion remains the physics engine's doing.
  *
  *   <params left="50" right="50" />
  *
@@ -41,6 +42,8 @@ private:
    UInt32 m_unInterruptTicks = 20;
    Real m_fInterruptLeft = 0.0;
    Real m_fInterruptRight = 0.0;
+   struct SCommand { UInt32 Tick; Real Left; Real Right; };
+   std::vector<SCommand> m_vecCommands;
 
 };
 

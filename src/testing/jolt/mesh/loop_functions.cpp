@@ -87,6 +87,8 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
          m_pcMotionModel = &dynamic_cast<CJoltModel&>(m_pcRobot->GetPhysicsModel("jolt"));
          m_pcMotionModel->GetJoltEngine().GetSystem().AddStepListener(this);
          GetNodeAttributeOrDefault(t_tree, "drop_check", m_bDrop, m_bDrop);
+         GetNodeAttributeOrDefault(t_tree, "drop_start_tick", m_unDropStartTick, m_unDropStartTick);
+         GetNodeAttributeOrDefault(t_tree, "step_deadline", m_fStepDeadline, m_fStepDeadline);
          GetNodeAttributeOrDefault(t_tree, "interrupt_tick", m_unInterruptTick, m_unInterruptTick);
          GetNodeAttributeOrDefault(t_tree, "interrupt_ticks", m_unInterruptTicks, m_unInterruptTicks);
          GetNodeAttributeOrDefault(t_tree, "minimum_hold_yaw", m_fMinimumHoldYaw, m_fMinimumHoldYaw);
@@ -486,16 +488,17 @@ void CMeshLoopFunctions::PostExperiment() {
             THROW_ARGOSEXCEPTION("Persistent cone/contact jitter on steep terrain");
       }
       if(m_unInterruptTick) {
-         LOG << "[mesh] hold height_error_m=" << m_fHoldHeightError
-             << " planar_motion_m=" << m_fHoldPlanarMotion << " yaw_rad=" << m_fHoldYaw << std::endl;
+         LOG << "[mesh] hold start_z_m=" << m_cHoldStart.GetZ()
+             << " height_error_m=" << m_fHoldHeightError
+             << " planar_motion_m=" << m_fHoldPlanarMotion << " peak_yaw_rad=" << m_fHoldYaw << std::endl;
          if(!m_bHaveHoldStart || m_fHoldHeightError > 0.02 || m_fHoldPlanarMotion > 0.001 ||
             m_fHoldYaw < m_fMinimumHoldYaw)
             THROW_ARGOSEXCEPTION("Interrupted step did not hold position or execute commanded yaw");
       }
       if(m_bStepCheck) {
          LOG << "[mesh] step fully_supported_s=" << m_fStepReachedTime << std::endl;
-         if(m_fStepReachedTime < 0 || m_fStepReachedTime > 10.0)
-            THROW_ARGOSEXCEPTION("Robot did not finish climbing within 10 seconds");
+         if(m_fStepReachedTime < 0 || m_fStepReachedTime > m_fStepDeadline)
+            THROW_ARGOSEXCEPTION("Robot did not finish climbing within " << m_fStepDeadline << " seconds");
       }
       if(m_bDrop) {
          const Real fFallTime = m_fLandTime - m_fFallStart;

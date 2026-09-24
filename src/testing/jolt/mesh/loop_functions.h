@@ -96,6 +96,7 @@ private:
    Real m_fPeakUpSpeed = 0.0;
    bool m_bStepCheck = false;
    Real m_fStepReachedTime = -1.0;
+   Real m_fStepDeadline = 10.0;
    bool m_bResetGroundCheck = false;
    UInt32 m_unInterruptTick = 0;
    UInt32 m_unInterruptTicks = 20;
@@ -129,6 +130,7 @@ private:
    void SampleMotion(const JPH::Body& c_body);
    /* Ballistic drop timing and rebound are independent of the speed ceiling. */
    bool m_bDrop = false;
+   UInt32 m_unDropStartTick = 0;
    Real m_fPhysicsTime = 0.0;
    Real m_fFallStart = -1.0;
    Real m_fLandTime = -1.0;
