@@ -30,7 +30,8 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
     set(ARGOS3_SOURCES_PLUGINS_ROBOTS_SPOT
       ${ARGOS3_SOURCES_PLUGINS_ROBOTS_SPOT}
       simulator/jolt_spot_model.h
-      simulator/jolt_spot_model.cpp)
+      simulator/jolt_spot_model.cpp
+      simulator/jolt_spot_step.cpp)
   endif()
 endif(ARGOS_BUILD_FOR_SIMULATOR)
 

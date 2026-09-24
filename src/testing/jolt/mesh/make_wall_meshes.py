@@ -35,7 +35,7 @@ for angle in (16, 18):
     )
     write_glb(str(Path(sys.argv[1]) / f"ramp{angle}.glb"), [(mesh, (0, 0, 0))])
 
-for centimetres in (10, 20, 30):
+for centimetres in (10, 20, 30, 35, 40):
     mesh = Mesh()
     mesh.add_quad((-5, -10, 0), (20, -10, 0), (20, 10, 0), (-5, 10, 0))
     mesh.add_box((1, -10, 0), (10, 10, centimetres / 100))

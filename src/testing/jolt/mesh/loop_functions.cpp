@@ -87,6 +87,9 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
          m_pcMotionModel = &dynamic_cast<CJoltModel&>(m_pcRobot->GetPhysicsModel("jolt"));
          m_pcMotionModel->GetJoltEngine().GetSystem().AddStepListener(this);
          GetNodeAttributeOrDefault(t_tree, "drop_check", m_bDrop, m_bDrop);
+         GetNodeAttributeOrDefault(t_tree, "step_check", m_bStepCheck, m_bStepCheck);
+         GetNodeAttributeOrDefault(t_tree, "maximum_up_speed", m_fMaximumUpSpeed, m_fMaximumUpSpeed);
+         GetNodeAttributeOrDefault(t_tree, "reset_ground_check", m_bResetGroundCheck, m_bResetGroundCheck);
          GetNodeAttributeOrDefault(t_tree, "initial_angular_velocity", m_cInitialAngularVelocity,
                                    m_cInitialAngularVelocity);
          GetNodeAttributeOrDefault(t_tree, "reset_tick", m_unResetTick, m_unResetTick);
@@ -424,6 +427,10 @@ void CMeshLoopFunctions::PostStep() {
    if(m_bScan) {
       RunScan();
    }
+   if(m_bResetGroundCheck && GetSpace().GetSimulationClock() == m_unResetTick + 5 &&
+      m_pcRobot->GetOriginAnchor().Position.GetZ() > m_cMotionStart.GetZ() + 0.01) {
+      THROW_ARGOSEXCEPTION("Reset retained stale step lift state");
+   }
    if(m_pcMotionModel && m_unResetTick && GetSpace().GetSimulationClock() == m_unResetTick) {
       m_pcMotionModel->Reset();
       m_cPreviousPosition = m_pcRobot->GetOriginAnchor().Position;
@@ -449,15 +456,21 @@ void CMeshLoopFunctions::PostExperiment() {
              << " travel_m=" << m_fTravel
              << " tilt_deg=" << m_fPeakTilt
              << " horizontal_speed_m_s=" << m_fPeakHorizontalSpeed
+             << " up_speed_m_s=" << m_fPeakUpSpeed
              << " final_x_m=" << m_pcRobot->GetOriginAnchor().Position.GetX()
              << " final_z_m=" << m_pcRobot->GetOriginAnchor().Position.GetZ()
              << std::endl;
          LOG.Flush();
          if(!std::isfinite(m_fPeakSpeed) || (!m_bDrop && m_fPeakSpeed > m_fMaximumSpeed) ||
-            m_fPeakTilt > m_fMaximumTilt ||
+            m_fPeakTilt > m_fMaximumTilt || m_fPeakUpSpeed > m_fMaximumUpSpeed ||
             m_fTravel < m_fMinimumTravel || m_fPeakRise > m_fMaximumRise) {
             THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
          }
+      }
+      if(m_bStepCheck) {
+         LOG << "[mesh] step fully_supported_s=" << m_fStepReachedTime << std::endl;
+         if(m_fStepReachedTime < 0 || m_fStepReachedTime > 10.0)
+            THROW_ARGOSEXCEPTION("Robot did not finish climbing within 10 seconds");
       }
       if(m_bDrop) {
          const Real fFallTime = m_fLandTime - m_fFallStart;

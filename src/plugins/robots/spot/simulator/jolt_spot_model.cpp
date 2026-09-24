@@ -86,6 +86,7 @@ namespace argos {
        * All translation axes remain free: unsupported bodies still fall. */
       JPH::SixDOFConstraintSettings cBalance;
       cBalance.mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+      cBalance.mSwingType = JPH::ESwingType::Cone;
       cBalance.mAxisX1 = cBalance.mAxisX2 = JPH::Vec3::sAxisZ();
       cBalance.mAxisY1 = cBalance.mAxisY2 = JPH::Vec3::sAxisX();
       cBalance.SetLimitedAxis(JPH::SixDOFConstraintSettings::RotationY, -0.523598776f, 0.523598776f);
@@ -106,6 +107,11 @@ namespace argos {
    void CJoltSpotModel::Reset() {
       CJoltGroundRobotModel::Reset();
       m_pcBalance->ResetWarmStart();
+      m_eStepPhase = EStepPhase::NONE;
+      m_cStepTarget = JPH::RVec3::sZero();
+      m_cStepDirection = JPH::Vec3::sZero();
+      m_fStepTimeLeft = m_fStepCooldown = 0.0f;
+      m_fCommandLinear = m_fCommandAngular = 0.0f;
    }
 
    /****************************************/
@@ -116,7 +122,10 @@ namespace argos {
       Real fLinear = (pfWheelVelocities[0] + pfWheelVelocities[1]) * 0.5f;
       Real fAngular = (pfWheelVelocities[1] - pfWheelVelocities[0]) / SPOT_TRACK_GAUGE;
 
+      m_fCommandLinear = float(fLinear);
+      m_fCommandAngular = float(fAngular);
       SetDriveVelocity(fLinear, fAngular);
+      if(m_eStepPhase == EStepPhase::NONE && m_fStepCooldown <= 0.0f) TryStartStep();
    }
 
    /****************************************/
@@ -148,7 +157,7 @@ namespace argos {
        * Classify in world axes: a wall must stay steep even as the body pitches.
        * 40 degrees separates the measured 16/18-degree ramps from rock edges.
        * World-Z yaw also keeps angular surface motion horizontal at every point. */
-      if(c_support_normal.GetZ() < 0.76604444f) {
+      if(c_support_normal.GetZ() < STEEP_CONTACT_NORMAL_Z) {
          sVelocity.Linear.SetZ(0.0f);
          sVelocity.Angular = JPH::Vec3(0.0f, 0.0f, sVelocity.Angular.GetZ());
       }

@@ -87,11 +87,16 @@ private:
    bool m_bHaveAttitudeStart = false;
    CVector3 m_cAttitudeStartPosition;
 
-   /* Wall-contact and replay measurements, sampled each control tick. */
+   /* Wall-contact and replay measurements, sampled each physics substep. */
    bool m_bMotionMetrics = false;
    Real m_fMaximumTilt = 180.0;
    Real m_fMaximumSpeed = 1.0e6;
    Real m_fMaximumRise = 1.0e6;
+   Real m_fMaximumUpSpeed = 1.0e6;
+   Real m_fPeakUpSpeed = 0.0;
+   bool m_bStepCheck = false;
+   Real m_fStepReachedTime = -1.0;
+   bool m_bResetGroundCheck = false;
    CJoltModel* m_pcMotionModel = nullptr;
    CVector3 m_cInitialAngularVelocity;
    UInt32 m_unResetTick = 0;

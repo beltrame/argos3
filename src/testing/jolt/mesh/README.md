@@ -70,7 +70,8 @@ critic and tilt guard provide operational tip prevention.
 Scout Mini and Spot at 10/60 cm/s, head-on/45 degrees, for 20 seconds against
 a vertical mesh wall, with or without a 3 cm toe. Each run reports peak
 absolute pitch/roll (degrees), origin rise (metres) and origin displacement
-speed sampled at 10 Hz. Spot must stay within 10 degrees and 3 cm rise.
+speed sampled at each physics substep. Spot must stay within 10 degrees,
+3 cm rise and 1.5 m/s speed.
 Additional Spot cases exercise a 10 cm toe at both speeds and a flank starting
 1 cm from the wall with (v, w) = (0.2 m/s, -0.5 rad/s).
 
@@ -84,8 +85,9 @@ approximate exposed wheels/tracks, not a safety controller or calibrated
 hardware.
 
 `jolt_mesh_<robot>_no_friction` requires no motion under a forward command
-on a frictionless surface. Drive targets remain friction-limited Jolt surface
-velocities, never direct chassis velocity assignments.
+on a frictionless surface. Ordinary ground drive remains friction-limited
+Jolt surface velocity. The separately gated Spot leg actuator described below
+is active only for a checked step with static support within leg reach.
 
 `jolt_mesh_spot_support_contacts` checks the actual Spot callback on a
 translated, rotated body. Sole and lower-leg edge support drive; torso, roof,
@@ -109,21 +111,20 @@ and final X = 3.85 +/- 0.25 m from X = 1 m: downhill travel cannot qualify.
 
 For optional, local SubT assets, configure with
 `-DARGOS_JOLT_SUBT_MESH=/path/to/finals_prize_round_world_01.collision.glb`.
-Four recorded-route starts must traverse at least 2.5 m in 10 s. Three
+Four recorded-route starts must retain their measured progress in 10 s:
+2.95/2.94/2.94/2.86 m for flat/approach/entry/pinned (about 2 cm margin). Three
 constant-command replays at (11.6, -20), yaw -151 degrees, v=0.3 m/s and
 w=0.4/0.8/1.2 rad/s must stay below 1.5 m/s sampled displacement speed.
 The recorded ROS base_link z=0.54 is **not** ARGoS origin height: subtract
 Spot's 0.50 m base_link offset to get z=0.04. This is a local approximate
 replay, not a reconstruction of the entire recorded command history.
 
-`-DARGOS_JOLT_STEP_TESTS=ON` additionally enables the downstream SwarmDeck
-step-helper qualification cases (10/20/30 cm). Apply that helper before
-building: it is not part of this fork. These tests require <1.5 m/s sampled
-speed, <15 degree pitch/roll, >=2.5 m travel and the correct final step height.
-**Known issue:** the existing helper fails these integration checks: it
-teleports upwards and can tip Spot on 20/30 cm steps. These opt-in tests are
-not part of the default passing fork suite; they expose an unresolved
-helper limitation, not an accepted robot behavior. Physics qualification
+The native Spot 10/20/30/35 cm step tests are now **default tests**; no downstream
+helper or opt-in step flag is needed. They require completion within 10 s at
+0.3 m/s, <1.5 m/s peak speed, <=0.5 m/s upward speed (0.1 mm/s numerical
+tolerance), the balance cone, >=2.5 m travel and the correct final height.
+Reset while lifting must discard the old target and pass a second climb;
+a 40 cm step and a low ceiling must prevent assistance. Physics qualification
 must run on an authorized simulation host, not an operator workstation.
 
 ## Active Spot balance
@@ -136,7 +137,8 @@ than a freely overturning box. Constraint warm-start impulses reset with the
 model, and the constraint is removed before its body is destroyed.
 
 Motion checks sample each physics substep, including instantaneous origin
-velocity and total body-up tilt, not just 10 Hz controller poses. Cone checks
+velocity, finite-difference pose speed (to catch teleports), and total body-up
+tilt, not just 10 Hz controller poses. Cone checks
 allow 0.1 degree of numerical solver tolerance. An angular-impulse case checks
 balance and free yaw before/after Reset. A ledge departure and a separate 1 m
 free release check ballistic COM motion and <=0.1 m rebound. Falling speed is
@@ -145,7 +147,52 @@ drop tests. Ramp fixtures now start parallel to the slope instead of dropping
 horizontally onto it, so their speed limit measures traversal, not a setup
 impact. Wheel/track models are unchanged.
 
+## Smooth Spot stepping
+
+`jolt_spot_step.cpp` probes at control rate for a steep obstruction, overhead
+clearance, a full-body raised advance and a static, walkable landing under
+the future body centre. Ordinary ramp faces are not steps. The full, unshrunken
+collision shape is used. A checked step begins a per-body Lift/Advance state:
+raise at <=0.5 m/s, then advance at commanded speed while holding the checked
+height. This is an idealized leg actuator, not an articulated gait or a
+force-calibrated controller. Jolt integrates every pose and resolves contacts;
+no helper calls SetPosition, moves an anchor, or disables gravity.
+
+Static support must remain within 35 cm leg reach beneath the body centre at
+every physics substep. Missing support, cancellation, command reversal or a
+timeout ends assistance. All state resets with the model. Clearance is
+conservative (the initial overhead probe uses the maximum supported step).
+The old SwarmDeck pose-jump helper must exclude Spot; wheel/track behavior and
+helper limits are unchanged. SwarmDeck's Spot max_step_height remains 0.30 m;
+raising it to 0.35 m is a separate planner/configuration decision, needed if
+navigation should use the newly qualified full height.
+
 ## Measured results
+
+Fix round 2, native fork on tuf (Ubuntu 22.04, GCC 11, Jolt 5.2, Release,
+headless Docker capped at 8 CPUs): 73/73 default tests (2.68 s), or 80/80
+with the local SubT asset (20.27 s), including seven default step checks and
+three balance/drop checks.
+
+| step height (cm) | fully supported by (s) | peak total/up speed (m/s) | final X (m) |
+|---|---:|---:|---:|
+| 10 | 5.77 | 0.50 / 0.50 | 2.832 |
+| 20 | 6.02 | 0.50 / 0.50 | 2.757 |
+| 30 | 6.27 | 0.50 / 0.50 | 2.682 |
+| 35 | 6.40 | 0.50 / 0.50 | 2.643 |
+
+All four finish at the requested step height with <0.001 degree pitch/roll.
+Angular impulse/reset peaks at 30.062 degrees body-up tilt; the ledge drop
+peaks at 30.090 degrees (30 degree nominal cone, 0.1 degree solver tolerance).
+Free release falls for 0.450 s versus 0.455 s analytically; the supported
+rotation off a ledge leaves a shorter detached flight, 0.140 s versus 0.142 s.
+Both have zero rebound. Freefall legitimately reaches 4.415 m/s vertically.
+Ramp16/ramp18 finish at X=3.850/3.820 m at 0.300 m/s. SubT route travel is
+unchanged from balance-only: 2.970/2.963/2.964/2.883 m at physics-substep sampling.
+Removing reset cleanup or doubling the lift-speed cap fails the corresponding
+new regression. Without assistance, all four step heights stall at X=0.450 m.
+
+### Historical fix round 1
 
 Fix round 1, native fork on tuf (Ubuntu 22.04, GCC 11, Jolt 5.2, Release,
 headless Docker capped at 8 CPUs):
@@ -176,7 +223,8 @@ Without that helper, the unchanged box stalls after about 0.45 m on all
 is climbed but reaches 1.50272 m/s; 20/30 cm steps tip, reaching 2.17866 /
 3.03704 m/s. The helper also violates the native Scout low-speed lip envelope
 and both new Spot 10 cm toe rise limits (six failures out of 73 tests with
-all qualifications enabled). No helper or shape change is shipped here.
+all qualifications enabled). Fix round 2 supersedes Spot's helper disposition
+with native smooth lift; the original collision shape is still unchanged.
 
 ### Historical mesh measurements
 

@@ -2,6 +2,7 @@
 #include "loop_functions.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 void CMeshLoopFunctions::OnStep(const JPH::PhysicsStepListenerContext& c_context) {
    const JPH::Body* pcBody = c_context.mPhysicsSystem->GetBodyLockInterfaceNoLock().TryGetBody(
@@ -21,12 +22,24 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
    const float fUp = (c_body.GetRotation() * JPH::Vec3::sAxisZ()).GetZ();
    m_fPeakTilt = std::max(m_fPeakTilt, std::acos(std::clamp(double(fUp), -1.0, 1.0)) * 180.0 / M_PI);
    m_fPeakRise = std::max(m_fPeakRise, cPosition.GetZ() - m_cMotionStart.GetZ());
-   m_fTravel += (cPosition - m_cPreviousPosition).Length();
+   const CVector3 cDelta = cPosition - m_cPreviousPosition;
+   const Real fDt = m_pcMotionModel->GetJoltEngine().GetPhysicsClockTick();
+   m_fTravel += cDelta.Length();
    m_cPreviousPosition = cPosition;
    const JPH::Vec3 cVelocity = c_body.GetPointVelocity(cOrigin);
-   m_fPeakSpeed = std::max(m_fPeakSpeed, Real(cVelocity.Length()));
-   m_fPeakHorizontalSpeed = std::max(m_fPeakHorizontalSpeed,
-      std::hypot(Real(cVelocity.GetX()), Real(cVelocity.GetY())));
+   /* Pose differences also catch teleports, which body velocity alone misses.
+    * Duplicate control-boundary samples have zero displacement. */
+   if(!std::isfinite(cVelocity.Length()) || !std::isfinite(cPosition.Length()))
+      m_fPeakSpeed = std::numeric_limits<Real>::infinity();
+   m_fPeakSpeed = std::max({m_fPeakSpeed, Real(cVelocity.Length()), cDelta.Length() / fDt});
+   m_fPeakUpSpeed = std::max({m_fPeakUpSpeed, Real(cVelocity.GetZ()), cDelta.GetZ() / fDt});
+   if(m_bStepCheck && m_fStepReachedTime < 0 &&
+      c_body.GetWorldSpaceBounds().mMin.GetX() > 1.01f &&
+      std::abs(cPosition.GetZ() - m_fExpectZ) < m_fPositionTolerance)
+      m_fStepReachedTime = m_fPhysicsTime;
+   m_fPeakHorizontalSpeed = std::max({m_fPeakHorizontalSpeed,
+      std::hypot(Real(cVelocity.GetX()), Real(cVelocity.GetY())),
+      std::hypot(cDelta.GetX(), cDelta.GetY()) / fDt});
    if(m_bDrop) {
       /* Ledge fixture ends at X=1: start the ballistic clock only after the
        * entire body clears it, not during supported rotation over its edge. */

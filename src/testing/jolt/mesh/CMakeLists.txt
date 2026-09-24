@@ -13,7 +13,9 @@ set(WALL_ASSETS ${CMAKE_CURRENT_BINARY_DIR}/wall_plain.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ramp18.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/step10.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/step20.glb
-                ${CMAKE_CURRENT_BINARY_DIR}/step30.glb)
+                ${CMAKE_CURRENT_BINARY_DIR}/step30.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/step35.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/step40.glb)
 add_custom_command(
   OUTPUT ${WALL_ASSETS}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/make_wall_meshes.py
