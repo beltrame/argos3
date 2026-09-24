@@ -11,6 +11,7 @@ set(WALL_ASSETS ${CMAKE_CURRENT_BINARY_DIR}/wall_plain.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ledge.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ramp16.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ramp18.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/ramp35.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/step10.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/step20.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/step30.glb

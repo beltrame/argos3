@@ -37,7 +37,8 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
    m_fPeakPitch = std::max(m_fPeakPitch, std::abs(cPitch.GetValue()) * 180.0 / M_PI);
    m_fPeakRoll = std::max(m_fPeakRoll, std::abs(cRoll.GetValue()) * 180.0 / M_PI);
    const float fUp = (c_body.GetRotation() * JPH::Vec3::sAxisZ()).GetZ();
-   m_fPeakTilt = std::max(m_fPeakTilt, std::acos(std::clamp(double(fUp), -1.0, 1.0)) * 180.0 / M_PI);
+   const Real fTilt = std::acos(std::clamp(double(fUp), -1.0, 1.0)) * 180.0 / M_PI;
+   m_fPeakTilt = std::max(m_fPeakTilt, fTilt);
    m_fPeakRise = std::max(m_fPeakRise, cPosition.GetZ() - m_cMotionStart.GetZ());
    const CVector3 cDelta = cPosition - m_cPreviousPosition;
    const Real fDt = m_pcMotionModel->GetJoltEngine().GetPhysicsClockTick();
@@ -50,6 +51,16 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
       m_fPeakSpeed = std::numeric_limits<Real>::infinity();
    m_fPeakSpeed = std::max({m_fPeakSpeed, Real(cVelocity.Length()), cDelta.Length() / fDt});
    m_fPeakUpSpeed = std::max({m_fPeakUpSpeed, Real(cVelocity.GetZ()), cDelta.GetZ() / fDt});
+   if(m_bConeContactCheck && m_fPhysicsTime >= 2.0) {
+      if(!m_bHaveConeSettleStart) {
+         m_bHaveConeSettleStart = true;
+         m_cConeSettleStart = cPosition;
+      }
+      m_fConeSettleMotion = std::max(m_fConeSettleMotion, (cPosition - m_cConeSettleStart).Length());
+      m_fConeSettleSpeed = std::max({m_fConeSettleSpeed, Real(cVelocity.Length()), cDelta.Length() / fDt});
+      m_fConeTiltMin = std::min(m_fConeTiltMin, fTilt);
+      m_fConeTiltMax = std::max(m_fConeTiltMax, fTilt);
+   }
    if(m_bStepCheck && m_fStepReachedTime < 0 &&
       c_body.GetWorldSpaceBounds().mMin.GetX() > 1.01f &&
       std::abs(cPosition.GetZ() - m_fExpectZ) < m_fPositionTolerance)

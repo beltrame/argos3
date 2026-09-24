@@ -134,7 +134,10 @@ cone relative to world up, free yaw and all three translations free. There is
 no point anchor, spring motor or position reset; unsupported bodies still
 fall under gravity. This models the legged platform's active balance rather
 than a freely overturning box. Constraint warm-start impulses reset with the
-model, and the constraint is removed before its body is destroyed.
+model. MoveTo also clears the leg state and constraint warm-start impulses,
+independently of any controller reset; regressions teleport both during lift
+and while the balance cone is active. The constraint is removed before its body
+is destroyed.
 
 Motion checks sample each physics substep, including instantaneous origin
 velocity, finite-difference pose speed (to catch teleports), and total body-up
@@ -146,6 +149,15 @@ not artificially clamped: only horizontal speed is limited to 1.5 m/s in these
 drop tests. Ramp fixtures now start parallel to the slope instead of dropping
 horizontally onto it, so their speed limit measures traversal, not a setup
 impact. Wheel/track models are unchanged.
+
+`cone_slope35` holds Spot stationary on a 35-degree plane, initially at the
+30-degree swing limit, with the engine's normal friction 1.0. This forces the
+cone to oppose terrain contact continuously. Peak tilt is 30.0142 degrees and
+peak speed 0.17050 m/s during settling. After 2 s, the maximum displacement
+from the settled pose is 2.80e-7 m, tilt span is zero at reported precision,
+and peak speed is 4.95e-8 m/s. Assertions bound settled motion to 1 cm, tilt
+span to 0.1 degree and speed to 0.02 m/s. This qualifies sustained contact,
+not climbing a 35-degree incline on arbitrary-friction ground.
 
 ## Smooth Spot stepping
 
@@ -168,12 +180,24 @@ for 2 s during advance (zero/yaw-only) or lift, then finish the 35 cm climb.
 They bound held height drift to 2 cm, planar drift to 1 mm, tilt to 30.1 degrees
 and speed to 1.5 m/s, and require actual yaw in the turning variant. Clearance is
 conservative (the initial overhead probe uses the maximum supported step).
+**Known limitation:** stair flights are refused by the landing check when the
+next riser intersects the full-body raised advance 1.15 m ahead. The isolated
+step qualification is not a stair-flight capability claim.
 The old SwarmDeck pose-jump helper must exclude Spot; wheel/track behavior and
 helper limits are unchanged. SwarmDeck's Spot max_step_height remains 0.30 m;
 raising it to 0.35 m is a separate planner/configuration decision, needed if
 navigation should use the newly qualified full height.
 
 ## Measured results
+
+Fix round 3: **79/79 default tests (2.77 s), 86/86 with SubT (19.96 s)** on the
+same authorized tuf setup. New checks cover three command interruptions,
+MoveTo during lift and active balance, and sustained 35-degree cone/contact
+opposition. Stop/turn/lift interruptions complete by 8.40/8.64/8.40 s;
+held height error is at most 8.95e-8 m, the turn executes 0.400 rad, and peak
+speed is 0.50 m/s. Reinstating cancellation fails all three interrupt cases;
+omitting MoveTo cleanup fails the stale-target ground check. Loosening the cone
+to 40 degrees makes the new slope fixture fail at 35.005 degrees.
 
 Fix round 2, native fork on tuf (Ubuntu 22.04, GCC 11, Jolt 5.2, Release,
 headless Docker capped at 8 CPUs): 73/73 default tests (2.68 s), or 80/80

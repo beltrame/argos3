@@ -4,7 +4,7 @@
   <controllers>
     <mesh_drive_controller id="drive" library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
       <actuators><differential_steering implementation="default" /></actuators><sensors />
-      <params left="30" right="30" @TERRAIN_COMMANDS@ />
+      <params left="@TERRAIN_SPEED@" right="@TERRAIN_SPEED@" @TERRAIN_COMMANDS@ />
     </mesh_drive_controller>
   </controllers>
   <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"

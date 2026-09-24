@@ -106,6 +106,13 @@ private:
    Real m_fHoldPlanarMotion = 0.0;
    Real m_fHoldYaw = 0.0;
    Real m_fMinimumHoldYaw = 0.0;
+   bool m_bConeContactCheck = false;
+   bool m_bHaveConeSettleStart = false;
+   CVector3 m_cConeSettleStart;
+   Real m_fConeSettleMotion = 0.0;
+   Real m_fConeSettleSpeed = 0.0;
+   Real m_fConeTiltMin = 180.0;
+   Real m_fConeTiltMax = 0.0;
    CJoltModel* m_pcMotionModel = nullptr;
    CVector3 m_cInitialAngularVelocity;
    UInt32 m_unResetTick = 0;

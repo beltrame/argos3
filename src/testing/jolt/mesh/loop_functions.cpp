@@ -91,6 +91,7 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
          GetNodeAttributeOrDefault(t_tree, "interrupt_ticks", m_unInterruptTicks, m_unInterruptTicks);
          GetNodeAttributeOrDefault(t_tree, "minimum_hold_yaw", m_fMinimumHoldYaw, m_fMinimumHoldYaw);
          GetNodeAttributeOrDefault(t_tree, "step_check", m_bStepCheck, m_bStepCheck);
+         GetNodeAttributeOrDefault(t_tree, "cone_contact_check", m_bConeContactCheck, m_bConeContactCheck);
          GetNodeAttributeOrDefault(t_tree, "maximum_up_speed", m_fMaximumUpSpeed, m_fMaximumUpSpeed);
          GetNodeAttributeOrDefault(t_tree, "reset_ground_check", m_bResetGroundCheck, m_bResetGroundCheck);
          GetNodeAttributeOrDefault(t_tree, "initial_angular_velocity", m_cInitialAngularVelocity,
@@ -475,6 +476,14 @@ void CMeshLoopFunctions::PostExperiment() {
             m_fTravel < m_fMinimumTravel || m_fPeakRise > m_fMaximumRise) {
             THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
          }
+      }
+      if(m_bConeContactCheck) {
+         LOG << "[mesh] cone_contact settled_motion_m=" << m_fConeSettleMotion
+             << " tilt_span_deg=" << m_fConeTiltMax - m_fConeTiltMin
+             << " settled_speed_m_s=" << m_fConeSettleSpeed << std::endl;
+         if(!m_bHaveConeSettleStart || m_fConeSettleMotion > 0.01 ||
+            m_fConeTiltMax - m_fConeTiltMin > 0.1 || m_fConeSettleSpeed > 0.02)
+            THROW_ARGOSEXCEPTION("Persistent cone/contact jitter on steep terrain");
       }
       if(m_unInterruptTick) {
          LOG << "[mesh] hold height_error_m=" << m_fHoldHeightError
