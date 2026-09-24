@@ -16,8 +16,8 @@ namespace argos {
 using namespace argos;
 
 /**
- * Holds both wheels at the constant velocity given in the XML and does
- * nothing else, so that whatever happens to the robot is the physics
+ * Holds the XML wheel velocities, optionally interrupting them for a fixed
+ * tick interval to exercise step pause/resume. All motion remains the physics
  * engine's doing.
  *
  *   <params left="50" right="50" />
@@ -36,6 +36,11 @@ private:
    CCI_DifferentialSteeringActuator* m_pcWheels = nullptr;
    Real m_fLeft = 0.0;
    Real m_fRight = 0.0;
+   UInt32 m_unTick = 0;
+   UInt32 m_unInterruptTick = 0;
+   UInt32 m_unInterruptTicks = 20;
+   Real m_fInterruptLeft = 0.0;
+   Real m_fInterruptRight = 0.0;
 
 };
 

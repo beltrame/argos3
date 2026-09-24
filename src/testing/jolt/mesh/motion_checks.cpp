@@ -1,5 +1,6 @@
 /* Sample real physics substeps, not only 10 Hz controller poses. */
 #include "loop_functions.h"
+#include <argos3/core/simulator/space/space.h>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -17,6 +18,22 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
    const CVector3 cPosition = ToARGoS(cOrigin);
    CRadians cYaw, cPitch, cRoll;
    ToARGoS(c_body.GetRotation()).ToEulerAngles(cYaw, cPitch, cRoll);
+   const UInt32 unTick = GetSpace().GetSimulationClock();
+   /* Sense/control runs after physics: a command issued on tick N first
+    * reaches the body on tick N+1. Measure exactly the actuated hold interval. */
+   if(m_unInterruptTick && unTick > m_unInterruptTick &&
+      unTick <= m_unInterruptTick + m_unInterruptTicks) {
+      if(!m_bHaveHoldStart) {
+         m_bHaveHoldStart = true;
+         m_cHoldStart = cPosition;
+         m_cHoldYaw = cYaw;
+      }
+      m_fHoldHeightError = std::max(m_fHoldHeightError, std::abs(cPosition.GetZ() - m_cHoldStart.GetZ()));
+      m_fHoldPlanarMotion = std::max(m_fHoldPlanarMotion,
+         std::hypot(cPosition.GetX() - m_cHoldStart.GetX(), cPosition.GetY() - m_cHoldStart.GetY()));
+      CRadians cTurn = cYaw - m_cHoldYaw;
+      m_fHoldYaw = std::abs(cTurn.SignedNormalize().GetValue());
+   }
    m_fPeakPitch = std::max(m_fPeakPitch, std::abs(cPitch.GetValue()) * 180.0 / M_PI);
    m_fPeakRoll = std::max(m_fPeakRoll, std::abs(cRoll.GetValue()) * 180.0 / M_PI);
    const float fUp = (c_body.GetRotation() * JPH::Vec3::sAxisZ()).GetZ();

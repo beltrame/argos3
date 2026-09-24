@@ -51,6 +51,8 @@ namespace argos {
       EStepPhase m_eStepPhase = EStepPhase::NONE;
       JPH::RVec3 m_cStepTarget = JPH::RVec3::sZero();
       JPH::Vec3 m_cStepDirection = JPH::Vec3::sZero();
+      bool m_bStepPaused = false;
+      float m_fStepHoldHeight = 0.0f;
       float m_fStepTimeLeft = 0.0f;
       float m_fStepCooldown = 0.0f;
       float m_fCommandLinear = 0.0f;
@@ -58,6 +60,8 @@ namespace argos {
       static constexpr float STEEP_CONTACT_NORMAL_Z = 0.76604444f; // cos(40 degrees)
       static constexpr float MAX_STEP_HEIGHT = 0.35f;
       static constexpr float MAX_LIFT_SPEED = 0.5f;
+      /* Match the normal simulated platform/Nav2 yaw envelope (rad/s). */
+      static constexpr float MAX_STEP_YAW_RATE = 1.2f;
 
       JPH::Ref<JPH::TwoBodyConstraint> m_pcBalance;
       CSpotEntity& m_cSpotEntity;

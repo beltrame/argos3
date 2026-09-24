@@ -78,6 +78,7 @@ namespace argos {
 
    void CJoltSpotModel::EndStep() {
       m_eStepPhase = EStepPhase::NONE;
+      m_bStepPaused = false;
       m_fStepCooldown = 0.2f;
       SetDriveVelocity(m_fCommandLinear, m_fCommandAngular);
    }
@@ -92,22 +93,33 @@ namespace argos {
       JPH::Vec3 cForward = cBodies.GetRotation(cId) * JPH::Vec3::sAxisX();
       cForward *= m_fCommandLinear;
       m_fStepTimeLeft -= fDt;
-      /* No virtual support over a hole, on a dynamic body, after cancellation,
-       * or once the command turns away from the checked step corridor. */
-      if(m_fStepTimeLeft <= 0 || cForward.Dot(m_cStepDirection) < 0.001f ||
+      /* Zero translation pauses the supported stance. Reversal, loss of
+       * support and timeout still release it; the timeout continues to run. */
+      if(m_fStepTimeLeft <= 0 || cForward.Dot(m_cStepDirection) < -0.001f ||
          !HasStepSupport(cPosition, float(SPOT_HEIGHT) * 0.5f + MAX_STEP_HEIGHT + 0.025f)) {
          EndStep();
          return;
       }
-      const float fHeightError = float(m_cStepTarget.GetZ() - cPosition.GetZ());
-      if(m_eStepPhase == EStepPhase::LIFT && fHeightError < 0.002f)
+      const bool bPause = std::abs(m_fCommandLinear) < 0.001f;
+      if(bPause && !m_bStepPaused) m_fStepHoldHeight = float(cPosition.GetZ());
+      if(bPause || m_bStepPaused) {
+         /* While the legs support a paused stance, yaw must work even without
+          * a box/floor manifold. Retain roll/pitch and let contacts resolve
+          * collisions. On resume, clear the last paused yaw command too. */
+         JPH::Vec3 cAngular = cBodies.GetAngularVelocity(cId);
+         cAngular.SetZ(std::clamp(m_fCommandAngular, -MAX_STEP_YAW_RATE, MAX_STEP_YAW_RATE));
+         cBodies.SetAngularVelocity(cId, cAngular);
+      }
+      m_bStepPaused = bPause;
+      const float fHeightError = float((bPause ? m_fStepHoldHeight : m_cStepTarget.GetZ()) - cPosition.GetZ());
+      if(!bPause && m_eStepPhase == EStepPhase::LIFT && fHeightError < 0.002f)
          m_eStepPhase = EStepPhase::ADVANCE;
       const float fRemaining = JPH::Vec3(m_cStepTarget - cPosition).Dot(m_cStepDirection);
-      if(m_eStepPhase == EStepPhase::ADVANCE && fRemaining < 0.003f) {
+      if(!bPause && m_eStepPhase == EStepPhase::ADVANCE && fRemaining < 0.003f) {
          EndStep();
          return;
       }
-      const bool bAdvance = m_eStepPhase == EStepPhase::ADVANCE;
+      const bool bAdvance = !bPause && m_eStepPhase == EStepPhase::ADVANCE;
       const float fSpeed = bAdvance ? std::min(std::abs(m_fCommandLinear), fRemaining / fDt) : 0.0f;
       const JPH::Vec3 cPlanar = m_cStepDirection * fSpeed;
       /* A bounded leg actuator counters gravity only while static support is

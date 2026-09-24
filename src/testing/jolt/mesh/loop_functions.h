@@ -97,6 +97,15 @@ private:
    bool m_bStepCheck = false;
    Real m_fStepReachedTime = -1.0;
    bool m_bResetGroundCheck = false;
+   UInt32 m_unInterruptTick = 0;
+   UInt32 m_unInterruptTicks = 20;
+   bool m_bHaveHoldStart = false;
+   CVector3 m_cHoldStart;
+   CRadians m_cHoldYaw;
+   Real m_fHoldHeightError = 0.0;
+   Real m_fHoldPlanarMotion = 0.0;
+   Real m_fHoldYaw = 0.0;
+   Real m_fMinimumHoldYaw = 0.0;
    CJoltModel* m_pcMotionModel = nullptr;
    CVector3 m_cInitialAngularVelocity;
    UInt32 m_unResetTick = 0;

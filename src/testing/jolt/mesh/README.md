@@ -159,8 +159,14 @@ force-calibrated controller. Jolt integrates every pose and resolves contacts;
 no helper calls SetPosition, moves an anchor, or disables gravity.
 
 Static support must remain within 35 cm leg reach beneath the body centre at
-every physics substep. Missing support, cancellation, command reversal or a
-timeout ends assistance. All state resets with the model. Clearance is
+every physics substep. Zero translation pauses at the current height without
+losing the original lift target. Supported yaw-only holds command world-Z yaw
+(up to the normal 1.2 rad/s envelope), preserving roll/pitch angular motion.
+Reversal, missing support or timeout ends assistance; the timeout continues
+while paused. All state resets with the model. Three interrupt regressions hold
+for 2 s during advance (zero/yaw-only) or lift, then finish the 35 cm climb.
+They bound held height drift to 2 cm, planar drift to 1 mm, tilt to 30.1 degrees
+and speed to 1.5 m/s, and require actual yaw in the turning variant. Clearance is
 conservative (the initial overhead probe uses the maximum supported step).
 The old SwarmDeck pose-jump helper must exclude Spot; wheel/track behavior and
 helper limits are unchanged. SwarmDeck's Spot max_step_height remains 0.30 m;

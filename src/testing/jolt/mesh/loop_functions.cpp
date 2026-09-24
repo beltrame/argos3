@@ -87,6 +87,9 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
          m_pcMotionModel = &dynamic_cast<CJoltModel&>(m_pcRobot->GetPhysicsModel("jolt"));
          m_pcMotionModel->GetJoltEngine().GetSystem().AddStepListener(this);
          GetNodeAttributeOrDefault(t_tree, "drop_check", m_bDrop, m_bDrop);
+         GetNodeAttributeOrDefault(t_tree, "interrupt_tick", m_unInterruptTick, m_unInterruptTick);
+         GetNodeAttributeOrDefault(t_tree, "interrupt_ticks", m_unInterruptTicks, m_unInterruptTicks);
+         GetNodeAttributeOrDefault(t_tree, "minimum_hold_yaw", m_fMinimumHoldYaw, m_fMinimumHoldYaw);
          GetNodeAttributeOrDefault(t_tree, "step_check", m_bStepCheck, m_bStepCheck);
          GetNodeAttributeOrDefault(t_tree, "maximum_up_speed", m_fMaximumUpSpeed, m_fMaximumUpSpeed);
          GetNodeAttributeOrDefault(t_tree, "reset_ground_check", m_bResetGroundCheck, m_bResetGroundCheck);
@@ -466,6 +469,13 @@ void CMeshLoopFunctions::PostExperiment() {
             m_fTravel < m_fMinimumTravel || m_fPeakRise > m_fMaximumRise) {
             THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
          }
+      }
+      if(m_unInterruptTick) {
+         LOG << "[mesh] hold height_error_m=" << m_fHoldHeightError
+             << " planar_motion_m=" << m_fHoldPlanarMotion << " yaw_rad=" << m_fHoldYaw << std::endl;
+         if(!m_bHaveHoldStart || m_fHoldHeightError > 0.02 || m_fHoldPlanarMotion > 0.001 ||
+            m_fHoldYaw < m_fMinimumHoldYaw)
+            THROW_ARGOSEXCEPTION("Interrupted step did not hold position or execute commanded yaw");
       }
       if(m_bStepCheck) {
          LOG << "[mesh] step fully_supported_s=" << m_fStepReachedTime << std::endl;
