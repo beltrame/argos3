@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<!-- Off-ground angular impulse: free yaw and translation, bounded swing. -->
+<argos-configuration>
+  <framework><system threads="0" /><experiment length="3" ticks_per_second="10" random_seed="1" /></framework>
+  <controllers>
+    <mesh_drive_controller id="drive" library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators><differential_steering implementation="default" /></actuators><sensors />
+      <params left="0" right="0" />
+    </mesh_drive_controller>
+  </controllers>
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions" robot="test" motion_metrics="true"
+                  maximum_tilt="30.1" maximum_speed="1.5" initial_angular_velocity="3,0,1" reset_tick="15"
+                  attitude_slope="0" attitude_tolerance="0.53" minimum_rise="-1"
+                  minimum_yaw="0.5" attitude_warmup="1" />
+  <arena size="20,20,10" center="0,0,3">
+    <spot id="test"><body position="0,0,2" orientation="0,0,0" /><controller config="drive" /></spot>
+  </arena>
+  <physics_engines><jolt id="jolt" threads="1" /></physics_engines>
+  <media />
+</argos-configuration>

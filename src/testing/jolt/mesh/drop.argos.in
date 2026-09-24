@@ -1,23 +1,20 @@
 <?xml version="1.0" ?>
-<!-- Recorded Spot base_link z=0.54 corresponds to origin z=0.04 (+0.50 m). -->
+<!-- Drive off the one-metre ledge at X=1; falling is not speed-clamped. -->
 <argos-configuration>
   <framework><system threads="0" /><experiment length="10" ticks_per_second="10" random_seed="1" /></framework>
   <controllers>
     <mesh_drive_controller id="drive" library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
       <actuators><differential_steering implementation="default" /></actuators><sensors />
-      <params left="@SUBT_LEFT@" right="@SUBT_RIGHT@" />
+      <params left="@DROP_SPEED@" right="@DROP_SPEED@" />
     </mesh_drive_controller>
   </controllers>
   <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
                   label="mesh_loop_functions" robot="test" motion_metrics="true"
-                  maximum_speed="1.5" maximum_tilt="30.1" minimum_travel="@SUBT_TRAVEL@" />
-  <arena size="500,500,100" center="0,0,0">
-    <mesh id="world" file="@ARGOS_JOLT_SUBT_MESH@" y_up="false"
-          position="0,0,0" orientation="0,0,90" />
-    <spot id="test">
-      <body position="@SUBT_POSITION@" orientation="@SUBT_YAW@,0,0" />
-      <controller config="drive" />
-    </spot>
+                  maximum_tilt="30.1" maximum_speed="1.5" drop_check="true"
+                  expect_z="0" position_tolerance="0.02" />
+  <arena size="60,40,20" center="0,0,5">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/ledge.glb" />
+    <spot id="test"><body position="@DROP_POSITION@" orientation="0,0,0" /><controller config="drive" /></spot>
   </arena>
   <physics_engines><jolt id="jolt" threads="1"><gravity g="9.81" /></jolt></physics_engines>
   <media />

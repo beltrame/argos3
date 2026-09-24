@@ -11,6 +11,8 @@
 #ifndef JOLT_MESH_LOOP_FUNCTIONS_H
 #define JOLT_MESH_LOOP_FUNCTIONS_H
 
+#include <argos3/plugins/simulator/physics_engines/jolt/jolt_model.h>
+#include <Jolt/Physics/PhysicsStepListener.h>
 #include <argos3/core/simulator/loop_functions.h>
 
 #include <string>
@@ -23,13 +25,15 @@ namespace argos {
 using namespace argos;
 
 /** Shared checks for the Jolt mesh experiments. */
-class CMeshLoopFunctions : public CLoopFunctions {
+class CMeshLoopFunctions : public CLoopFunctions, public JPH::PhysicsStepListener {
 
 public:
 
    virtual void Init(TConfigurationNode& t_tree);
    virtual void PostStep();
    virtual void PostExperiment();
+   void Destroy() override;
+   void OnStep(const JPH::PhysicsStepListenerContext& c_context) override;
 
 private:
 
@@ -88,6 +92,10 @@ private:
    Real m_fMaximumTilt = 180.0;
    Real m_fMaximumSpeed = 1.0e6;
    Real m_fMaximumRise = 1.0e6;
+   CJoltModel* m_pcMotionModel = nullptr;
+   CVector3 m_cInitialAngularVelocity;
+   UInt32 m_unResetTick = 0;
+   Real m_fPeakTilt = 0.0;
    Real m_fPeakPitch = 0.0;
    Real m_fPeakRoll = 0.0;
    Real m_fPeakRise = 0.0;
@@ -96,6 +104,17 @@ private:
    Real m_fMinimumTravel = 0.0;
    CVector3 m_cMotionStart;
    CVector3 m_cPreviousPosition;
+   void SampleMotion(const JPH::Body& c_body);
+   /* Ballistic drop timing and rebound are independent of the speed ceiling. */
+   bool m_bDrop = false;
+   Real m_fPhysicsTime = 0.0;
+   Real m_fFallStart = -1.0;
+   Real m_fLandTime = -1.0;
+   Real m_fRebound = 0.0;
+   Real m_fPeakHorizontalSpeed = 0.0;
+   Real m_fDropStartHeight = 0.0;
+   Real m_fDropStartVelocity = 0.0;
+   Real m_fDropDistance = 0.0;
 
    /* Ray throughput measurement */
    bool m_bScan = false;

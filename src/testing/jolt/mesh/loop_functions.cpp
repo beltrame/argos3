@@ -83,6 +83,16 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
                                 m_fMinimumTravel);
       m_cMotionStart = m_pcRobot->GetOriginAnchor().Position;
       m_cPreviousPosition = m_cMotionStart;
+      if(m_bMotionMetrics) {
+         m_pcMotionModel = &dynamic_cast<CJoltModel&>(m_pcRobot->GetPhysicsModel("jolt"));
+         m_pcMotionModel->GetJoltEngine().GetSystem().AddStepListener(this);
+         GetNodeAttributeOrDefault(t_tree, "drop_check", m_bDrop, m_bDrop);
+         GetNodeAttributeOrDefault(t_tree, "initial_angular_velocity", m_cInitialAngularVelocity,
+                                   m_cInitialAngularVelocity);
+         GetNodeAttributeOrDefault(t_tree, "reset_tick", m_unResetTick, m_unResetTick);
+         m_pcMotionModel->GetJoltEngine().GetBodyInterface().SetAngularVelocity(
+            m_pcMotionModel->GetBodies()[0].Id, ToJolt(m_cInitialAngularVelocity));
+      }
       m_bCheckAttitude = NodeAttributeExists(t_tree, "attitude_slope");
       if(m_bCheckAttitude) {
          GetNodeAttribute(t_tree, "attitude_slope", m_fAttitudeSlope);
@@ -394,17 +404,9 @@ void CMeshLoopFunctions::PostStep() {
    }
    if(m_pcRobot != nullptr) {
       if(m_bMotionMetrics) {
-         const SAnchor& sAnchor = m_pcRobot->GetOriginAnchor();
-         CRadians cYaw, cPitch, cRoll;
-         sAnchor.Orientation.ToEulerAngles(cYaw, cPitch, cRoll);
-         m_fPeakPitch = std::max(m_fPeakPitch, std::fabs(cPitch.GetValue()) * 180.0 / M_PI);
-         m_fPeakRoll = std::max(m_fPeakRoll, std::fabs(cRoll.GetValue()) * 180.0 / M_PI);
-         m_fPeakRise = std::max(m_fPeakRise, sAnchor.Position.GetZ() - m_cMotionStart.GetZ());
-         const Real fDistance = (sAnchor.Position - m_cPreviousPosition).Length();
-         m_fTravel += fDistance;
-         m_fPeakSpeed = std::max(m_fPeakSpeed,
-            fDistance / CPhysicsEngine::GetSimulationClockTick());
-         m_cPreviousPosition = sAnchor.Position;
+         JPH::BodyLockRead cLock(m_pcMotionModel->GetJoltEngine().GetSystem().GetBodyLockInterface(),
+                                 m_pcMotionModel->GetBodies()[0].Id);
+         SampleMotion(cLock.GetBody());
       }
       /* Every scenario starts the robot on the X axis and drives it along
        * it, so |Y| is its lateral deviation. */
@@ -422,6 +424,13 @@ void CMeshLoopFunctions::PostStep() {
    if(m_bScan) {
       RunScan();
    }
+   if(m_pcMotionModel && m_unResetTick && GetSpace().GetSimulationClock() == m_unResetTick) {
+      m_pcMotionModel->Reset();
+      m_cPreviousPosition = m_pcRobot->GetOriginAnchor().Position;
+      m_pcMotionModel->GetJoltEngine().GetBodyInterface().SetAngularVelocity(
+         m_pcMotionModel->GetBodies()[0].Id, ToJolt(m_cInitialAngularVelocity));
+      LOG << "[mesh] model reset at tick " << m_unResetTick << std::endl;
+   }
 }
 
 /****************************************/
@@ -438,14 +447,28 @@ void CMeshLoopFunctions::PostExperiment() {
              << " rise_m=" << m_fPeakRise
              << " speed_m_s=" << m_fPeakSpeed
              << " travel_m=" << m_fTravel
+             << " tilt_deg=" << m_fPeakTilt
+             << " horizontal_speed_m_s=" << m_fPeakHorizontalSpeed
              << " final_x_m=" << m_pcRobot->GetOriginAnchor().Position.GetX()
              << " final_z_m=" << m_pcRobot->GetOriginAnchor().Position.GetZ()
              << std::endl;
          LOG.Flush();
-         if(!std::isfinite(m_fPeakSpeed) || m_fPeakSpeed > m_fMaximumSpeed ||
-            m_fPeakPitch > m_fMaximumTilt || m_fPeakRoll > m_fMaximumTilt ||
+         if(!std::isfinite(m_fPeakSpeed) || (!m_bDrop && m_fPeakSpeed > m_fMaximumSpeed) ||
+            m_fPeakTilt > m_fMaximumTilt ||
             m_fTravel < m_fMinimumTravel || m_fPeakRise > m_fMaximumRise) {
             THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
+         }
+      }
+      if(m_bDrop) {
+         const Real fFallTime = m_fLandTime - m_fFallStart;
+         const Real fExpectedTime = (m_fDropStartVelocity + std::sqrt(
+            m_fDropStartVelocity * m_fDropStartVelocity + 2 * 9.81 * m_fDropDistance)) / 9.81;
+         LOG << "[mesh] drop fall_s=" << fFallTime << " ballistic_s=" << fExpectedTime
+             << " distance_m=" << m_fDropDistance << " rebound_m=" << m_fRebound << std::endl;
+         if(m_fFallStart < 0 || m_fLandTime < 0 || fFallTime < 0.05 ||
+            std::abs(fFallTime - fExpectedTime) > 0.03 || m_fRebound > 0.1 ||
+            m_fPeakHorizontalSpeed > 1.5) {
+            THROW_ARGOSEXCEPTION("Unphysical drop timing, horizontal speed or rebound");
          }
       }
       CheckRobot();

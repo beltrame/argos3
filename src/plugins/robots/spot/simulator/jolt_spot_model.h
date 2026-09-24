@@ -24,7 +24,9 @@ namespace argos {
       CJoltSpotModel(CJoltEngine& c_engine,
                            CSpotEntity& c_entity);
 
-      virtual ~CJoltSpotModel() {}
+      ~CJoltSpotModel() override;
+
+      void Reset() override;
 
       /* Set contact-surface drive targets without overriding chassis motion. */
       virtual void UpdateFromEntityStatus() override;
@@ -39,6 +41,7 @@ namespace argos {
 
    private:
 
+      JPH::Ref<JPH::TwoBodyConstraint> m_pcBalance;
       CSpotEntity& m_cSpotEntity;
       CWheeledEntity& m_cWheeledEntity;
 

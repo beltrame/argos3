@@ -9,11 +9,13 @@ function(add_spot_terrain_test name)
 endfunction()
 foreach(ANGLE 16 18)
   set(TERRAIN_CASE ramp${ANGLE})
-  # Release horizontally 20 cm above the ramp centerline, then drive uphill.
+  # Start parallel to the surface, 2 mm above it: measure driven traversal,
+  # not the impact velocity of the former horizontal settling drop.
+  set(TERRAIN_ORIENTATION "0,-${ANGLE},0")
   if(ANGLE EQUAL 16)
-    set(TERRAIN_POSITION "1,0,0.486745")
+    set(TERRAIN_POSITION "1,0,0.288745")
   else()
-    set(TERRAIN_POSITION "1,0,0.524920")
+    set(TERRAIN_POSITION "1,0,0.326920")
   endif()
   # A 3 m commanded path projects to about 2.85 m uphill along X.
   # Bound final X as well as path length: downhill travel must not qualify.
@@ -57,6 +59,7 @@ if(ARGOS_JOLT_STEP_TESTS)
   foreach(HEIGHT 10 20 30)
     set(TERRAIN_CASE step${HEIGHT})
     set(TERRAIN_POSITION "0,0,0")
+    set(TERRAIN_ORIENTATION "0,0,0")
     set(TERRAIN_CHECKS "maximum_tilt=\"15\" expect_z=\"0.${HEIGHT}\" position_tolerance=\"0.02\"")
     configure_file(terrain.argos.in ${TERRAIN_CASE}.argos)
     add_spot_terrain_test(${TERRAIN_CASE})

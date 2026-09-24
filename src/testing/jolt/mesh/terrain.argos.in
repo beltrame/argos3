@@ -13,7 +13,7 @@
   <arena size="60,40,20" center="0,0,5">
     <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/@TERRAIN_CASE@.glb" />
     <spot id="test">
-      <body position="@TERRAIN_POSITION@" orientation="0,0,0" />
+      <body position="@TERRAIN_POSITION@" orientation="@TERRAIN_ORIENTATION@" />
       <controller config="drive" />
     </spot>
   </arena>

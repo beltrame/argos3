@@ -126,6 +126,25 @@ not part of the default passing fork suite; they expose an unresolved
 helper limitation, not an accepted robot behavior. Physics qualification
 must run on an authorized simulation host, not an operator workstation.
 
+## Active Spot balance
+
+Spot has an angular-only Jolt SixDOF constraint: a 30-degree circular swing
+cone relative to world up, free yaw and all three translations free. There is
+no point anchor, spring motor or position reset; unsupported bodies still
+fall under gravity. This models the legged platform's active balance rather
+than a freely overturning box. Constraint warm-start impulses reset with the
+model, and the constraint is removed before its body is destroyed.
+
+Motion checks sample each physics substep, including instantaneous origin
+velocity and total body-up tilt, not just 10 Hz controller poses. Cone checks
+allow 0.1 degree of numerical solver tolerance. An angular-impulse case checks
+balance and free yaw before/after Reset. A ledge departure and a separate 1 m
+free release check ballistic COM motion and <=0.1 m rebound. Falling speed is
+not artificially clamped: only horizontal speed is limited to 1.5 m/s in these
+drop tests. Ramp fixtures now start parallel to the slope instead of dropping
+horizontally onto it, so their speed limit measures traversal, not a setup
+impact. Wheel/track models are unchanged.
+
 ## Measured results
 
 Fix round 1, native fork on tuf (Ubuntu 22.04, GCC 11, Jolt 5.2, Release,

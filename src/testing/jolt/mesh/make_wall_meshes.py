@@ -19,6 +19,11 @@ for name, lip_height in (
         mesh.add_box((0.85, -20, 0), (1, 20, lip_height))
     write_glb(str(Path(sys.argv[1]) / name), [(mesh, (0, 0, 0))])
 
+mesh = Mesh()
+mesh.add_quad((-10, -10, 0), (20, -10, 0), (20, 10, 0), (-10, 10, 0))
+mesh.add_box((-10, -10, 0), (1, 10, 1))
+write_glb(str(Path(sys.argv[1]) / "ledge.glb"), [(mesh, (0, 0, 0))])
+
 for angle in (16, 18):
     slope = math.tan(math.radians(angle))
     mesh = Mesh()

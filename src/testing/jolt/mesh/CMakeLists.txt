@@ -8,6 +8,7 @@ endif(NOT Python3_Interpreter_FOUND)
 set(WALL_ASSETS ${CMAKE_CURRENT_BINARY_DIR}/wall_plain.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/wall_lip.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/wall_high_lip.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/ledge.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ramp16.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ramp18.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/step10.glb
@@ -41,9 +42,11 @@ target_link_libraries(mesh_jolt_controller
 # compile test loop functions
 add_library(mesh_jolt_loop_functions MODULE
   loop_functions.h
-  loop_functions.cpp)
+  loop_functions.cpp
+  motion_checks.cpp)
 target_link_libraries(mesh_jolt_loop_functions
-    argos3core_${ARGOS_BUILD_FOR})
+    argos3core_${ARGOS_BUILD_FOR}
+    argos3plugin_${ARGOS_BUILD_FOR}_jolt)
 foreach(ATTITUDE_PLUGIN bunker scoutmini spot)
   if(TARGET argos3plugin_${ARGOS_BUILD_FOR}_${ATTITUDE_PLUGIN})
     add_dependencies(mesh_jolt_loop_functions
@@ -82,7 +85,7 @@ foreach(WALL_ROBOT bunker scout_mini spot)
   set(WALL_TILT 180)
   if(WALL_ROBOT STREQUAL "spot")
     set(WALL_TILT 10)
-    set(WALL_CHECKS "maximum_rise=\"0.03\"")
+    set(WALL_CHECKS "maximum_rise=\"0.03\" maximum_speed=\"1.5\"")
   endif()
   foreach(WALL_SPEED 10 60)
     set(WALL_RIGHT ${WALL_SPEED})
@@ -141,7 +144,7 @@ set(WALL_POSITION "0,0,0")
 set(WALL_YAW 0)
 set(WALL_KIND high_lip)
 set(WALL_TILT 10)
-set(WALL_CHECKS "maximum_rise=\"0.03\"")
+set(WALL_CHECKS "maximum_rise=\"0.03\" maximum_speed=\"1.5\"")
 foreach(WALL_SPEED 10 60)
   set(WALL_RIGHT ${WALL_SPEED})
   set(WALL_CASE spot_wall_push_${WALL_SPEED}_0_high_lip)
@@ -165,6 +168,22 @@ add_test(NAME jolt_mesh_spot_wall_push_flank
   COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc spot_wall_push_flank.argos)
 set_tests_properties(jolt_mesh_spot_wall_push_flank PROPERTIES
   LABELS "spot-wall-stress" ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+foreach(SPOT_CHECK balance drop free_fall)
+  set(DROP_SPEED 30)
+  set(DROP_POSITION "0,0,1")
+  set(SPOT_TEMPLATE ${SPOT_CHECK})
+  if(SPOT_CHECK STREQUAL "free_fall")
+    set(SPOT_TEMPLATE drop)
+    set(DROP_SPEED 0)
+    set(DROP_POSITION "2,0,1")
+  endif()
+  configure_file(${SPOT_TEMPLATE}.argos.in ${SPOT_CHECK}.argos)
+  add_test(NAME jolt_mesh_spot_${SPOT_CHECK}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc ${SPOT_CHECK}.argos)
+  set_tests_properties(jolt_mesh_spot_${SPOT_CHECK} PROPERTIES
+    ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+endforeach()
 include(terrain_tests.cmake)
 # configure experiments
 configure_file(

@@ -4,6 +4,8 @@
  * @author Giovanni Beltrame - <giovanni.beltrame@polymtl.ca>
  */
 
+#include <argos3/plugins/simulator/physics_engines/jolt/jolt_common.h>
+#include <Jolt/Physics/Constraints/SixDOFConstraint.h>
 #include "jolt_spot_model.h"
 #include "spot_entity.h"
 
@@ -78,8 +80,32 @@ namespace argos {
       cSettings.mOverrideMassProperties =
          JPH::EOverrideMassProperties::CalculateInertia;
       cSettings.mMassPropertiesOverride.mMass = float(SPOT_MASS);
-      CreateBody(cSettings, &sAnchor, cAnchorOffset, JPH::Quat::sIdentity());
+      const JPH::BodyID cId = CreateBody(cSettings, &sAnchor, cAnchorOffset, JPH::Quat::sIdentity());
+      /* Active balance approximation: constrain swing only, never position.
+       * Constraint X is world/body up, so its free twist axis is chassis yaw.
+       * All translation axes remain free: unsupported bodies still fall. */
+      JPH::SixDOFConstraintSettings cBalance;
+      cBalance.mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+      cBalance.mAxisX1 = cBalance.mAxisX2 = JPH::Vec3::sAxisZ();
+      cBalance.mAxisY1 = cBalance.mAxisY2 = JPH::Vec3::sAxisX();
+      cBalance.SetLimitedAxis(JPH::SixDOFConstraintSettings::RotationY, -0.523598776f, 0.523598776f);
+      cBalance.SetLimitedAxis(JPH::SixDOFConstraintSettings::RotationZ, -0.523598776f, 0.523598776f);
+      cBalance.mNumPositionStepsOverride = 12;
+      m_pcBalance = c_engine.GetBodyInterface().CreateConstraint(&cBalance, JPH::BodyID(), cId);
+      c_engine.GetSystem().AddConstraint(m_pcBalance);
       UpdateEntityStatus();
+   }
+
+   /****************************************/
+   /****************************************/
+
+   CJoltSpotModel::~CJoltSpotModel() {
+      GetJoltEngine().GetSystem().RemoveConstraint(m_pcBalance);
+   }
+
+   void CJoltSpotModel::Reset() {
+      CJoltGroundRobotModel::Reset();
+      m_pcBalance->ResetWarmStart();
    }
 
    /****************************************/
