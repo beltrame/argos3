@@ -60,14 +60,28 @@ corridor and 6.2e-5 m over the 130 m terrain.
 
 ## Contact-drive safety regressions
 
+**Operator-approved scope:** "real wheeled and tracked robots can climb walls
+and tip over, so keep wheel/track wall traction in ARGoS; only fix clear
+unrealism." This explicitly supersedes the original no-climbing requirement
+for Bunker and Scout Mini. Their traction is unchanged; the SwarmDeck footprint
+critic and tilt guard provide operational tip prevention.
+
 `jolt_mesh_<robot>_wall_push_<speed>_<yaw>_<plain|lip>` drives Bunker,
 Scout Mini and Spot at 10/60 cm/s, head-on/45 degrees, for 20 seconds against
 a vertical mesh wall, with or without a 3 cm toe. Each run reports peak
 absolute pitch/roll (degrees), origin rise (metres) and origin displacement
-speed sampled at 10 Hz. Spot must stay within 10 degrees. Wheel/track tests
-**do not prohibit climbing or tipping**: these are single-box approximations
-of exposed wheels/tracks, not a safety controller. Their metrics characterize
-that limitation, rather than claiming calibrated hardware fidelity.
+speed sampled at 10 Hz. Spot must stay within 10 degrees and 3 cm rise.
+Additional Spot cases exercise a 10 cm toe at both speeds and a flank starting
+1 cm from the wall with (v, w) = (0.2 m/s, -0.5 rad/s).
+
+At 0.1 m/s, wheel/track plain-wall cases assert 10 degrees / 3 cm limits.
+Bunker's 3 cm lip cases assert 10 degrees / 5 cm; Scout's assert 25 degrees /
+10 cm, preserving its measured 18.71-degree, 8.87 cm climb. Wheel/track
+high-speed and lip cases carry CTest labels `characterization;wheel-track-wall`
+(`ctest -L characterization -V`). These tests **do not prohibit climbing or
+tipping** outside the bounded low-speed envelopes: the single-box proxies
+approximate exposed wheels/tracks, not a safety controller or calibrated
+hardware.
 
 `jolt_mesh_<robot>_no_friction` requires no motion under a forward command
 on a frictionless surface. Drive targets remain friction-limited Jolt surface
@@ -77,15 +91,21 @@ velocities, never direct chassis velocity assignments.
 translated, rotated body. Sole and lower-leg edge support drive; torso, roof,
 reversed normals, empty and mixed manifolds do not. Spot's single box includes
 leg volume: its bottom 12 cm approximates feet and lower legs. Normals retain
-the positive body-up criterion, because angle gating pins the solid leg-volume
-proxy against small rocks on SubT. This is not an articulated gait model.
-Bunker and Scout retain their existing contact classification.
+the positive body-up criterion, because disabling steep contacts pins the
+solid leg-volume proxy against small rocks on SubT. For normals more than
+40 degrees from **world up**, only the drive direction changes: linear Z is
+zero and angular surface motion is yaw-only. This preserves contact traction
+but prevents a pitched chassis from motoring vertically along a wall. World
+axes keep the wall classification stable as the body tips; 16/18-degree ramp
+support keeps the original full surface velocity. This is not an articulated
+gait model. Bunker and Scout retain their existing contact classification.
 
 In a head-on 0.6 m/s lip test, unfiltered Spot reached 90 degrees pitch and
 0.583 m origin rise. Lower-leg-only Spot stays upright; Bunker and Scout still
 reach 90 degrees pitch. The existing incline tests continue to exercise
 terrain following and differential yaw with all three platforms. Additional
-Spot ramp16/ramp18 tests require at least 2.5 m travel in 10 s at 0.3 m/s.
+Spot ramp16/ramp18 tests require at least 2.5 m travel in 10 s at 0.3 m/s,
+and final X = 3.85 +/- 0.25 m from X = 1 m: downhill travel cannot qualify.
 
 For optional, local SubT assets, configure with
 `-DARGOS_JOLT_SUBT_MESH=/path/to/finals_prize_round_world_01.collision.glb`.
@@ -108,13 +128,42 @@ must run on an authorized simulation host, not an operator workstation.
 
 ## Measured results
 
-All 22 tests of the ARGoS suite pass, the 14 that existed before and the 8
-added here:
+Fix round 1, native fork on tuf (Ubuntu 22.04, GCC 11, Jolt 5.2, Release,
+headless Docker capped at 8 CPUs):
 
-    100% tests passed, 0 tests failed out of 22
-    Total Test time (real) =   0.75 sec
+    Default: 100% tests passed, 0 tests failed out of 63 (3.26 sec)
+    With SubT asset: 100% tests passed, 0 tests failed out of 70 (37.26 sec)
 
-No pre-existing test changed its result.
+The 12 wheel/track characterization cases remain labelled separately. The
+three Spot stress cases are default regressions, not opt-in qualifications.
+The 0.6 m/s, 10 cm toe tipped Spot before the world-horizontal drive fix:
+89.39 degrees pitch and 0.592 m rise.
+
+| Spot case | peak pitch (deg) | peak roll (deg) | rise (m) |
+|---|---:|---:|---:|
+| 10 cm toe, 0.1 m/s | 0.09764 | 0.00229 | 0.000905 |
+| 10 cm toe, 0.6 m/s | 0.11516 | 0.02107 | 0.001022 |
+| flank, (0.2 m/s, -0.5 rad/s) | 0.00830 | 0.00724 | 0 |
+
+The rough pinned SubT start retains 2.87512 m travel versus 2.87395 m before
+projection. The 16/18-degree ramps finish at X = 3.87063 / 3.84095 m. Their
+reversed-command negative controls fail the X bound despite sufficient path
+length. A 1 mm rise-budget negative control and high-speed substitutions into
+the low-speed wheel/track cases also fail as intended.
+
+These passing counts exclude the three opt-in step-helper qualifications.
+Without that helper, the unchanged box stalls after about 0.45 m on all
+10/20/30 cm steps. With the current helper and new projection, the 10 cm step
+is climbed but reaches 1.50272 m/s; 20/30 cm steps tip, reaching 2.17866 /
+3.03704 m/s. The helper also violates the native Scout low-speed lip envelope
+and both new Spot 10 cm toe rise limits (six failures out of 73 tests with
+all qualifications enabled). No helper or shape change is shipped here.
+
+### Historical mesh measurements
+
+The ray/throughput tables below are the original mesh-entity measurements,
+with their original environment recorded at the end; they are not timings
+from the current safety-regression run. Those pre-existing tests still pass.
 
 ### Ray distances
 
