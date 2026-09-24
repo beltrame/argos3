@@ -71,6 +71,14 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
       }
       GetNodeAttributeOrDefault(t_tree, "poses_file", m_strPosesFile,
                                 m_strPosesFile);
+      GetNodeAttributeOrDefault(t_tree, "motion_metrics", m_bMotionMetrics,
+                                m_bMotionMetrics);
+      GetNodeAttributeOrDefault(t_tree, "maximum_tilt", m_fMaximumTilt,
+                                m_fMaximumTilt);
+      GetNodeAttributeOrDefault(t_tree, "maximum_speed", m_fMaximumSpeed,
+                                m_fMaximumSpeed);
+      m_cMotionStart = m_pcRobot->GetOriginAnchor().Position;
+      m_cPreviousPosition = m_cMotionStart;
       m_bCheckAttitude = NodeAttributeExists(t_tree, "attitude_slope");
       if(m_bCheckAttitude) {
          GetNodeAttribute(t_tree, "attitude_slope", m_fAttitudeSlope);
@@ -381,6 +389,18 @@ void CMeshLoopFunctions::PostStep() {
       CheckRays();
    }
    if(m_pcRobot != nullptr) {
+      if(m_bMotionMetrics) {
+         const SAnchor& sAnchor = m_pcRobot->GetOriginAnchor();
+         CRadians cYaw, cPitch, cRoll;
+         sAnchor.Orientation.ToEulerAngles(cYaw, cPitch, cRoll);
+         m_fPeakPitch = std::max(m_fPeakPitch, std::fabs(cPitch.GetValue()) * 180.0 / M_PI);
+         m_fPeakRoll = std::max(m_fPeakRoll, std::fabs(cRoll.GetValue()) * 180.0 / M_PI);
+         m_fPeakRise = std::max(m_fPeakRise, sAnchor.Position.GetZ() - m_cMotionStart.GetZ());
+         m_fPeakSpeed = std::max(m_fPeakSpeed,
+            (sAnchor.Position - m_cPreviousPosition).Length() /
+            CPhysicsEngine::GetSimulationClockTick());
+         m_cPreviousPosition = sAnchor.Position;
+      }
       /* Every scenario starts the robot on the X axis and drives it along
        * it, so |Y| is its lateral deviation. */
       m_fMaxLateral = std::max(
@@ -408,6 +428,17 @@ void CMeshLoopFunctions::PostExperiment() {
          WritePoses();
       }
       CheckRobot();
+      if(m_bMotionMetrics) {
+         LOG << "[mesh] motion peak_pitch_deg=" << m_fPeakPitch
+             << " peak_roll_deg=" << m_fPeakRoll
+             << " rise_m=" << m_fPeakRise
+             << " speed_m_s=" << m_fPeakSpeed << std::endl;
+         LOG.Flush();
+         if(!std::isfinite(m_fPeakSpeed) || m_fPeakSpeed > m_fMaximumSpeed ||
+            m_fPeakPitch > m_fMaximumTilt || m_fPeakRoll > m_fMaximumTilt) {
+            THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
+         }
+      }
       if(m_bCheckAttitude) {
          if(!m_bHaveAttitudeStart) {
             THROW_ARGOSEXCEPTION("Terrain attitude check did not reach its "

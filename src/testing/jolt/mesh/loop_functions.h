@@ -83,6 +83,17 @@ private:
    bool m_bHaveAttitudeStart = false;
    CVector3 m_cAttitudeStartPosition;
 
+   /* Wall-contact and replay measurements, sampled each control tick. */
+   bool m_bMotionMetrics = false;
+   Real m_fMaximumTilt = 180.0;
+   Real m_fMaximumSpeed = 1.0e6;
+   Real m_fPeakPitch = 0.0;
+   Real m_fPeakRoll = 0.0;
+   Real m_fPeakRise = 0.0;
+   Real m_fPeakSpeed = 0.0;
+   CVector3 m_cMotionStart;
+   CVector3 m_cPreviousPosition;
+
    /* Ray throughput measurement */
    bool m_bScan = false;
    UInt32 m_unRings = 16;

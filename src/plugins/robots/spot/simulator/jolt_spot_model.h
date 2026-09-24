@@ -29,6 +29,12 @@ namespace argos {
       /* Set contact-surface drive targets without overriding chassis motion. */
       virtual void UpdateFromEntityStatus() override;
 
+      SContactSurfaceVelocity GetContactSurfaceVelocity(
+         const JPH::Body& c_body,
+         JPH::Vec3Arg c_support_normal,
+         JPH::RVec3Arg c_contact_offset,
+         const JPH::ContactPoints& c_contact_points) const override;
+
       void UpdateAuxiliaryAnchor(SAnchor& s_anchor);
 
    private:

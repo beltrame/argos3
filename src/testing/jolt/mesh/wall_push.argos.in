@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+<!-- Constant-speed wall contact, head-on or oblique, for twenty seconds. -->
+<argos-configuration>
+  <framework>
+    <system threads="0" />
+    <experiment length="20" ticks_per_second="10" random_seed="1" />
+  </framework>
+  <controllers>
+    <mesh_drive_controller id="drive"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators><differential_steering implementation="default" /></actuators>
+      <sensors />
+      <params left="@WALL_SPEED@" right="@WALL_SPEED@" />
+    </mesh_drive_controller>
+  </controllers>
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions" robot="test"
+                  motion_metrics="true" maximum_tilt="@WALL_TILT@" @WALL_CHECKS@ />
+  <arena size="20,50,10" center="0,0,3">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/wall_@WALL_KIND@.glb" />
+    <@WALL_ROBOT@ id="test">
+      <body position="0,0,0" orientation="@WALL_YAW@,0,0" />
+      <controller config="drive" />
+    </@WALL_ROBOT@>
+  </arena>
+  <physics_engines>
+    <jolt id="jolt" threads="1" default_friction="@WALL_FRICTION@">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+  <media />
+</argos-configuration>

@@ -67,11 +67,14 @@ namespace argos {
 
       /**
        * Called with bodies locked by Jolt; implementations must only read state.
-       * The normal points from the other body towards this body.
+       * The normal points from the other body towards this body. Contact points
+       * lie on this body's surface, relative to the supplied world offset.
        */
       virtual SContactSurfaceVelocity GetContactSurfaceVelocity(
          const JPH::Body&,
-         JPH::Vec3Arg) const {
+         JPH::Vec3Arg,
+         JPH::RVec3Arg,
+         const JPH::ContactPoints&) const {
          return {};
       }
 

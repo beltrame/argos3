@@ -5,6 +5,14 @@ if(NOT Python3_Interpreter_FOUND)
   message(STATUS "Python 3 not found: skipping the Jolt mesh tests")
   return()
 endif(NOT Python3_Interpreter_FOUND)
+set(WALL_ASSETS ${CMAKE_CURRENT_BINARY_DIR}/wall_plain.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/wall_lip.glb)
+add_custom_command(
+  OUTPUT ${WALL_ASSETS}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/make_wall_meshes.py
+          ${CMAKE_CURRENT_BINARY_DIR}
+  DEPENDS make_wall_meshes.py make_meshes.py)
+add_custom_target(mesh_jolt_wall_assets ALL DEPENDS ${WALL_ASSETS})
 set(MESH_ASSETS
   ${CMAKE_CURRENT_BINARY_DIR}/corridor.glb
   ${CMAKE_CURRENT_BINARY_DIR}/flipped_wall.glb
@@ -51,6 +59,50 @@ set(ATTITUDE_ID spot_attitude)
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/attitude.argos.in
   ${CMAKE_CURRENT_BINARY_DIR}/spot_attitude.argos)
+add_library(mesh_jolt_support_contacts MODULE support_contacts.cpp)
+target_link_libraries(mesh_jolt_support_contacts
+  argos3plugin_${ARGOS_BUILD_FOR}_jolt)
+configure_file(support_contacts.argos.in support_contacts.argos)
+add_test(NAME jolt_mesh_spot_support_contacts
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc support_contacts.argos)
+set_tests_properties(jolt_mesh_spot_support_contacts PROPERTIES
+  ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+# Wheel/track climbing remains physical; only Spot's side contacts are passive.
+foreach(WALL_ROBOT bunker scout_mini spot)
+  set(WALL_FRICTION 1.0)
+  set(WALL_CHECKS "")
+  set(WALL_TILT 180)
+  if(WALL_ROBOT STREQUAL "spot")
+    set(WALL_TILT 10)
+  endif()
+  foreach(WALL_SPEED 10 60)
+    foreach(WALL_YAW 0 45)
+      foreach(WALL_KIND plain lip)
+        set(WALL_CASE ${WALL_ROBOT}_wall_push_${WALL_SPEED}_${WALL_YAW}_${WALL_KIND})
+        configure_file(wall_push.argos.in ${WALL_CASE}.argos)
+        add_test(NAME jolt_mesh_${WALL_CASE}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+          COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc ${WALL_CASE}.argos)
+        set_tests_properties(jolt_mesh_${WALL_CASE} PROPERTIES
+          ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+      endforeach()
+    endforeach()
+  endforeach()
+  # A surface-velocity command is not a chassis-velocity overwrite: with zero
+  # friction a supported robot cannot accelerate, even at full command.
+  set(WALL_FRICTION 0.0)
+  set(WALL_YAW 0)
+  set(WALL_KIND plain)
+  set(WALL_SPEED 60)
+  set(WALL_CHECKS "expect_x=\"0\" position_tolerance=\"0.001\" maximum_speed=\"0.001\"")
+  configure_file(wall_push.argos.in ${WALL_ROBOT}_no_friction.argos)
+  add_test(NAME jolt_mesh_${WALL_ROBOT}_no_friction
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc ${WALL_ROBOT}_no_friction.argos)
+  set_tests_properties(jolt_mesh_${WALL_ROBOT}_no_friction PROPERTIES
+    ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+endforeach()
 # configure experiments
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/rays.argos.in

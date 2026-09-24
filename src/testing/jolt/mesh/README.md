@@ -58,6 +58,35 @@ set by Jolt's vertex quantisation, which stores mesh vertices at 21 bits per
 component relative to the mesh bounding box, i.e. 1.9e-5 m over the 40 m
 corridor and 6.2e-5 m over the 130 m terrain.
 
+## Contact-drive safety regressions
+
+`jolt_mesh_<robot>_wall_push_<speed>_<yaw>_<plain|lip>` drives Bunker,
+Scout Mini and Spot at 10/60 cm/s, head-on/45 degrees, for 20 seconds against
+a vertical mesh wall, with or without a 3 cm toe. Each run reports peak
+absolute pitch/roll (degrees), origin rise (metres) and origin displacement
+speed sampled at 10 Hz. Spot must stay within 10 degrees. Wheel/track tests
+**do not prohibit climbing or tipping**: these are single-box approximations
+of exposed wheels/tracks, not a safety controller. Their metrics characterize
+that limitation, rather than claiming calibrated hardware fidelity.
+
+`jolt_mesh_<robot>_no_friction` requires no motion under a forward command
+on a frictionless surface. Drive targets remain friction-limited Jolt surface
+velocities, never direct chassis velocity assignments.
+
+`jolt_mesh_spot_support_contacts` checks the actual Spot callback on a
+translated, rotated body. Sole and rounded-sole support drive; walls (including
+at foot height), torso, roof, reversed normals, empty and mixed manifolds do
+not. Spot's single box includes leg volume: its bottom 6 cm (5 cm convex
+rounding plus contact tolerance) approximates planted feet, and support
+normals must lie within 40 degrees of body-up. This is not an articulated gait
+model. Bunker and Scout retain their existing contact classification.
+
+In a head-on 0.6 m/s lip test, unfiltered Spot reached 90 degrees pitch and
+0.583 m origin rise; support-only Spot stayed below 0.071 degrees pitch and
+0.063 degrees roll. Bunker and Scout still reach 90 degrees pitch in that
+case. The existing incline tests continue to exercise terrain following and
+differential yaw with all three platforms.
+
 ## Measured results
 
 All 22 tests of the ARGoS suite pass, the 14 that existed before and the 8
