@@ -32,7 +32,8 @@ public:
       Check("sole", JPH::Vec3(0, 0, 1), JPH::Vec3(0.4f, 0.2f, -0.31f), true);
       Check("sole edge", JPH::Vec3(-0.2f, 0, 0.9798f), JPH::Vec3(0.53f, 0, -0.29f), true);
       Check("wall", JPH::Vec3(-0.99f, 0, 0.1411f), JPH::Vec3(0.55f, 0, 0), false);
-      Check("wall at foot", JPH::Vec3(-0.99f, 0, 0.1411f), JPH::Vec3(0.55f, 0, -0.29f), false);
+      Check("rounded foot edge", JPH::Vec3(-0.99f, 0, 0.1411f), JPH::Vec3(0.55f, 0, -0.29f), true);
+      Check("lower leg on rough ground", JPH::Vec3(-0.9987f, 0, 0.05f), JPH::Vec3(0.53f, 0.25f, -0.21f), true);
       Check("body with upward normal", JPH::Vec3(0, 0, 1), JPH::Vec3(0.55f, 0, 0), false);
       Check("roof", JPH::Vec3(0, 0, 1), JPH::Vec3(0, 0, 0.31f), false);
       Check("inverted sole", JPH::Vec3(0, 0, -1), JPH::Vec3(0, 0, -0.31f), false);

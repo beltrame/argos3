@@ -91,6 +91,8 @@ private:
    Real m_fPeakRoll = 0.0;
    Real m_fPeakRise = 0.0;
    Real m_fPeakSpeed = 0.0;
+   Real m_fTravel = 0.0;
+   Real m_fMinimumTravel = 0.0;
    CVector3 m_cMotionStart;
    CVector3 m_cPreviousPosition;
 

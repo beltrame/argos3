@@ -74,18 +74,37 @@ on a frictionless surface. Drive targets remain friction-limited Jolt surface
 velocities, never direct chassis velocity assignments.
 
 `jolt_mesh_spot_support_contacts` checks the actual Spot callback on a
-translated, rotated body. Sole and rounded-sole support drive; walls (including
-at foot height), torso, roof, reversed normals, empty and mixed manifolds do
-not. Spot's single box includes leg volume: its bottom 6 cm (5 cm convex
-rounding plus contact tolerance) approximates planted feet, and support
-normals must lie within 40 degrees of body-up. This is not an articulated gait
-model. Bunker and Scout retain their existing contact classification.
+translated, rotated body. Sole and lower-leg edge support drive; torso, roof,
+reversed normals, empty and mixed manifolds do not. Spot's single box includes
+leg volume: its bottom 12 cm approximates feet and lower legs. Normals retain
+the positive body-up criterion, because angle gating pins the solid leg-volume
+proxy against small rocks on SubT. This is not an articulated gait model.
+Bunker and Scout retain their existing contact classification.
 
 In a head-on 0.6 m/s lip test, unfiltered Spot reached 90 degrees pitch and
-0.583 m origin rise; support-only Spot stayed below 0.071 degrees pitch and
-0.063 degrees roll. Bunker and Scout still reach 90 degrees pitch in that
-case. The existing incline tests continue to exercise terrain following and
-differential yaw with all three platforms.
+0.583 m origin rise. Lower-leg-only Spot stays upright; Bunker and Scout still
+reach 90 degrees pitch. The existing incline tests continue to exercise
+terrain following and differential yaw with all three platforms. Additional
+Spot ramp16/ramp18 tests require at least 2.5 m travel in 10 s at 0.3 m/s.
+
+For optional, local SubT assets, configure with
+`-DARGOS_JOLT_SUBT_MESH=/path/to/finals_prize_round_world_01.collision.glb`.
+Four recorded-route starts must traverse at least 2.5 m in 10 s. Three
+constant-command replays at (11.6, -20), yaw -151 degrees, v=0.3 m/s and
+w=0.4/0.8/1.2 rad/s must stay below 1.5 m/s sampled displacement speed.
+The recorded ROS base_link z=0.54 is **not** ARGoS origin height: subtract
+Spot's 0.50 m base_link offset to get z=0.04. This is a local approximate
+replay, not a reconstruction of the entire recorded command history.
+
+`-DARGOS_JOLT_STEP_TESTS=ON` additionally enables the downstream SwarmDeck
+step-helper qualification cases (10/20/30 cm). Apply that helper before
+building: it is not part of this fork. These tests require <1.5 m/s sampled
+speed, <15 degree pitch/roll, >=2.5 m travel and the correct final step height.
+**Known issue:** the existing helper fails these integration checks: it
+teleports upwards and can tip Spot on 20/30 cm steps. These opt-in tests are
+not part of the default passing fork suite; they expose an unresolved
+helper limitation, not an accepted robot behavior. Physics qualification
+must run on an authorized simulation host, not an operator workstation.
 
 ## Measured results
 

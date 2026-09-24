@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+  <framework><system threads="0" /><experiment length="10" ticks_per_second="10" random_seed="1" /></framework>
+  <controllers>
+    <mesh_drive_controller id="drive" library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators><differential_steering implementation="default" /></actuators><sensors />
+      <params left="30" right="30" />
+    </mesh_drive_controller>
+  </controllers>
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions" robot="test" motion_metrics="true"
+                  maximum_speed="1.5" minimum_travel="2.5" @TERRAIN_CHECKS@ />
+  <arena size="60,40,20" center="0,0,5">
+    <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/@TERRAIN_CASE@.glb" />
+    <spot id="test">
+      <body position="@TERRAIN_POSITION@" orientation="0,0,0" />
+      <controller config="drive" />
+    </spot>
+  </arena>
+  <physics_engines><jolt id="jolt" threads="1"><gravity g="9.81" /></jolt></physics_engines>
+  <media />
+</argos-configuration>

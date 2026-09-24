@@ -102,18 +102,19 @@ namespace argos {
       JPH::RVec3Arg c_contact_offset,
       const JPH::ContactPoints& c_contact_points) const {
       const JPH::Quat cRotation = c_body.GetRotation();
-      /* Spot's box includes the legs: only its sole approximates planted feet.
-       * Unlike exposed wheels/tracks, the torso and leg sides are not belts.
-       * 40 degrees admits ramp/rounded-sole support without driving walls. */
-      if(c_support_normal.Dot(cRotation * JPH::Vec3::sAxisZ()) < 0.76604444f ||
+      /* The lower part of Spot's box approximates feet and lower legs, not
+       * articulated limbs. Keep rounded/edge support on rough terrain: an
+       * angle cutoff pins this solid leg-volume proxy against small rocks. */
+      if(c_support_normal.Dot(cRotation * JPH::Vec3::sAxisZ()) <= 0.0f ||
          c_contact_points.empty()) return {};
       const JPH::Quat cInverse = cRotation.Conjugated();
       for(const JPH::Vec3& cPoint : c_contact_points) {
          const JPH::Vec3 cLocal = cInverse * JPH::Vec3(
             c_contact_offset + cPoint - c_body.GetCenterOfMassPosition());
-         /* Include the box's 5 cm convex rounding, plus 1 cm contact tolerance.
-          * A manifold shares one surface velocity, so every point must qualify. */
-         if(std::abs(cLocal.GetZ() + float(SPOT_HEIGHT) * 0.5f) > 0.06f) return {};
+         /* Only the bottom 12 cm acts as the foot/lower-leg drive envelope;
+          * torso contacts stay passive. A manifold shares one surface velocity,
+          * so every point must qualify (never drive a whole side from one toe). */
+         if(std::abs(cLocal.GetZ() + float(SPOT_HEIGHT) * 0.5f) > 0.12f) return {};
       }
       return CJoltGroundRobotModel::GetContactSurfaceVelocity(
          c_body, c_support_normal, c_contact_offset, c_contact_points);

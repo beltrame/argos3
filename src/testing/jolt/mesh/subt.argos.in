@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<!-- Recorded Spot base_link z=0.54 corresponds to origin z=0.04 (+0.50 m). -->
+<argos-configuration>
+  <framework><system threads="0" /><experiment length="10" ticks_per_second="10" random_seed="1" /></framework>
+  <controllers>
+    <mesh_drive_controller id="drive" library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators><differential_steering implementation="default" /></actuators><sensors />
+      <params left="@SUBT_LEFT@" right="@SUBT_RIGHT@" />
+    </mesh_drive_controller>
+  </controllers>
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
+                  label="mesh_loop_functions" robot="test" motion_metrics="true"
+                  maximum_speed="1.5" minimum_travel="@SUBT_TRAVEL@" />
+  <arena size="500,500,100" center="0,0,0">
+    <mesh id="world" file="@ARGOS_JOLT_SUBT_MESH@" y_up="false"
+          position="0,0,0" orientation="0,0,90" />
+    <spot id="test">
+      <body position="@SUBT_POSITION@" orientation="@SUBT_YAW@,0,0" />
+      <controller config="drive" />
+    </spot>
+  </arena>
+  <physics_engines><jolt id="jolt" threads="1"><gravity g="9.81" /></jolt></physics_engines>
+  <media />
+</argos-configuration>

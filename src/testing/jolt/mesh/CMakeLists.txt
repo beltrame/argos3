@@ -6,7 +6,12 @@ if(NOT Python3_Interpreter_FOUND)
   return()
 endif(NOT Python3_Interpreter_FOUND)
 set(WALL_ASSETS ${CMAKE_CURRENT_BINARY_DIR}/wall_plain.glb
-                ${CMAKE_CURRENT_BINARY_DIR}/wall_lip.glb)
+                ${CMAKE_CURRENT_BINARY_DIR}/wall_lip.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/ramp16.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/ramp18.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/step10.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/step20.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/step30.glb)
 add_custom_command(
   OUTPUT ${WALL_ASSETS}
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/make_wall_meshes.py
@@ -103,6 +108,7 @@ foreach(WALL_ROBOT bunker scout_mini spot)
   set_tests_properties(jolt_mesh_${WALL_ROBOT}_no_friction PROPERTIES
     ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
 endforeach()
+include(terrain_tests.cmake)
 # configure experiments
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/rays.argos.in

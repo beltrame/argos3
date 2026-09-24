@@ -77,6 +77,8 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
                                 m_fMaximumTilt);
       GetNodeAttributeOrDefault(t_tree, "maximum_speed", m_fMaximumSpeed,
                                 m_fMaximumSpeed);
+      GetNodeAttributeOrDefault(t_tree, "minimum_travel", m_fMinimumTravel,
+                                m_fMinimumTravel);
       m_cMotionStart = m_pcRobot->GetOriginAnchor().Position;
       m_cPreviousPosition = m_cMotionStart;
       m_bCheckAttitude = NodeAttributeExists(t_tree, "attitude_slope");
@@ -396,9 +398,10 @@ void CMeshLoopFunctions::PostStep() {
          m_fPeakPitch = std::max(m_fPeakPitch, std::fabs(cPitch.GetValue()) * 180.0 / M_PI);
          m_fPeakRoll = std::max(m_fPeakRoll, std::fabs(cRoll.GetValue()) * 180.0 / M_PI);
          m_fPeakRise = std::max(m_fPeakRise, sAnchor.Position.GetZ() - m_cMotionStart.GetZ());
+         const Real fDistance = (sAnchor.Position - m_cPreviousPosition).Length();
+         m_fTravel += fDistance;
          m_fPeakSpeed = std::max(m_fPeakSpeed,
-            (sAnchor.Position - m_cPreviousPosition).Length() /
-            CPhysicsEngine::GetSimulationClockTick());
+            fDistance / CPhysicsEngine::GetSimulationClockTick());
          m_cPreviousPosition = sAnchor.Position;
       }
       /* Every scenario starts the robot on the X axis and drives it along
@@ -427,18 +430,20 @@ void CMeshLoopFunctions::PostExperiment() {
       if(!m_strPosesFile.empty()) {
          WritePoses();
       }
-      CheckRobot();
       if(m_bMotionMetrics) {
          LOG << "[mesh] motion peak_pitch_deg=" << m_fPeakPitch
              << " peak_roll_deg=" << m_fPeakRoll
              << " rise_m=" << m_fPeakRise
-             << " speed_m_s=" << m_fPeakSpeed << std::endl;
+             << " speed_m_s=" << m_fPeakSpeed
+             << " travel_m=" << m_fTravel << std::endl;
          LOG.Flush();
          if(!std::isfinite(m_fPeakSpeed) || m_fPeakSpeed > m_fMaximumSpeed ||
-            m_fPeakPitch > m_fMaximumTilt || m_fPeakRoll > m_fMaximumTilt) {
+            m_fPeakPitch > m_fMaximumTilt || m_fPeakRoll > m_fMaximumTilt ||
+            m_fTravel < m_fMinimumTravel) {
             THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
          }
       }
+      CheckRobot();
       if(m_bCheckAttitude) {
          if(!m_bHaveAttitudeStart) {
             THROW_ARGOSEXCEPTION("Terrain attitude check did not reach its "
