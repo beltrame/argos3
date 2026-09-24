@@ -116,8 +116,17 @@ namespace argos {
           * so every point must qualify (never drive a whole side from one toe). */
          if(std::abs(cLocal.GetZ() + float(SPOT_HEIGHT) * 0.5f) > 0.12f) return {};
       }
-      return CJoltGroundRobotModel::GetContactSurfaceVelocity(
+      auto sVelocity = CJoltGroundRobotModel::GetContactSurfaceVelocity(
          c_body, c_support_normal, c_contact_offset, c_contact_points);
+      /* Keep traction on steep lower-leg contacts, but never motor up a wall.
+       * Classify in world axes: a wall must stay steep even as the body pitches.
+       * 40 degrees separates the measured 16/18-degree ramps from rock edges.
+       * World-Z yaw also keeps angular surface motion horizontal at every point. */
+      if(c_support_normal.GetZ() < 0.76604444f) {
+         sVelocity.Linear.SetZ(0.0f);
+         sVelocity.Angular = JPH::Vec3(0.0f, 0.0f, sVelocity.Angular.GetZ());
+      }
+      return sVelocity;
    }
 
    /****************************************/

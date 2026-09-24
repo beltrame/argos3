@@ -10,7 +10,7 @@
                            library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
       <actuators><differential_steering implementation="default" /></actuators>
       <sensors />
-      <params left="@WALL_SPEED@" right="@WALL_SPEED@" />
+      <params left="@WALL_SPEED@" right="@WALL_RIGHT@" />
     </mesh_drive_controller>
   </controllers>
   <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_loop_functions"
@@ -19,7 +19,7 @@
   <arena size="20,50,10" center="0,0,3">
     <mesh id="world" file="@CMAKE_CURRENT_BINARY_DIR@/wall_@WALL_KIND@.glb" />
     <@WALL_ROBOT@ id="test">
-      <body position="0,0,0" orientation="@WALL_YAW@,0,0" />
+      <body position="@WALL_POSITION@" orientation="@WALL_YAW@,0,0" />
       <controller config="drive" />
     </@WALL_ROBOT@>
   </arena>

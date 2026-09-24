@@ -7,13 +7,16 @@ import sys
 
 from make_meshes import Mesh, write_glb
 
-for lip in (False, True):
+for name, lip_height in (
+    ("wall_plain.glb", 0),
+    ("wall_lip.glb", 0.03),
+    ("wall_high_lip.glb", 0.10),
+):
     mesh = Mesh()
     mesh.add_quad((-5, -20, 0), (5, -20, 0), (5, 20, 0), (-5, 20, 0))
     mesh.add_box((1, -20, 0), (2, 20, 3))
-    if lip:
-        mesh.add_box((0.85, -20, 0), (1, 20, 0.03))
-    name = "wall_lip.glb" if lip else "wall_plain.glb"
+    if lip_height:
+        mesh.add_box((0.85, -20, 0), (1, 20, lip_height))
     write_glb(str(Path(sys.argv[1]) / name), [(mesh, (0, 0, 0))])
 
 for angle in (16, 18):

@@ -437,7 +437,10 @@ void CMeshLoopFunctions::PostExperiment() {
              << " peak_roll_deg=" << m_fPeakRoll
              << " rise_m=" << m_fPeakRise
              << " speed_m_s=" << m_fPeakSpeed
-             << " travel_m=" << m_fTravel << std::endl;
+             << " travel_m=" << m_fTravel
+             << " final_x_m=" << m_pcRobot->GetOriginAnchor().Position.GetX()
+             << " final_z_m=" << m_pcRobot->GetOriginAnchor().Position.GetZ()
+             << std::endl;
          LOG.Flush();
          if(!std::isfinite(m_fPeakSpeed) || m_fPeakSpeed > m_fMaximumSpeed ||
             m_fPeakPitch > m_fMaximumTilt || m_fPeakRoll > m_fMaximumTilt ||

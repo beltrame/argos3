@@ -7,6 +7,7 @@ if(NOT Python3_Interpreter_FOUND)
 endif(NOT Python3_Interpreter_FOUND)
 set(WALL_ASSETS ${CMAKE_CURRENT_BINARY_DIR}/wall_plain.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/wall_lip.glb
+                ${CMAKE_CURRENT_BINARY_DIR}/wall_high_lip.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ramp16.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/ramp18.glb
                 ${CMAKE_CURRENT_BINARY_DIR}/step10.glb
@@ -75,6 +76,7 @@ set_tests_properties(jolt_mesh_spot_support_contacts PROPERTIES
   ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
 # Wheel/track climbing remains physical; only Spot's side contacts are passive.
 foreach(WALL_ROBOT bunker scout_mini spot)
+  set(WALL_POSITION "0,0,0")
   set(WALL_FRICTION 1.0)
   set(WALL_CHECKS "")
   set(WALL_TILT 180)
@@ -83,6 +85,7 @@ foreach(WALL_ROBOT bunker scout_mini spot)
     set(WALL_CHECKS "maximum_rise=\"0.03\"")
   endif()
   foreach(WALL_SPEED 10 60)
+    set(WALL_RIGHT ${WALL_SPEED})
     foreach(WALL_YAW 0 45)
       foreach(WALL_KIND plain lip)
         if(NOT WALL_ROBOT STREQUAL "spot")
@@ -122,6 +125,7 @@ foreach(WALL_ROBOT bunker scout_mini spot)
   set(WALL_YAW 0)
   set(WALL_KIND plain)
   set(WALL_SPEED 60)
+  set(WALL_RIGHT 60)
   set(WALL_CHECKS "expect_x=\"0\" position_tolerance=\"0.001\" maximum_speed=\"0.001\"")
   configure_file(wall_push.argos.in ${WALL_ROBOT}_no_friction.argos)
   add_test(NAME jolt_mesh_${WALL_ROBOT}_no_friction
@@ -130,6 +134,37 @@ foreach(WALL_ROBOT bunker scout_mini spot)
   set_tests_properties(jolt_mesh_${WALL_ROBOT}_no_friction PROPERTIES
     ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
 endforeach()
+# Stress the lower-leg envelope with a 10 cm lip and a turning flank contact.
+set(WALL_ROBOT spot)
+set(WALL_FRICTION 1.0)
+set(WALL_POSITION "0,0,0")
+set(WALL_YAW 0)
+set(WALL_KIND high_lip)
+set(WALL_TILT 10)
+set(WALL_CHECKS "maximum_rise=\"0.03\"")
+foreach(WALL_SPEED 10 60)
+  set(WALL_RIGHT ${WALL_SPEED})
+  set(WALL_CASE spot_wall_push_${WALL_SPEED}_0_high_lip)
+  configure_file(wall_push.argos.in ${WALL_CASE}.argos)
+  add_test(NAME jolt_mesh_${WALL_CASE}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc ${WALL_CASE}.argos)
+  set_tests_properties(jolt_mesh_${WALL_CASE} PROPERTIES
+    LABELS "spot-wall-stress" ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+endforeach()
+# The right flank starts 1 cm from the wall, turning toward it with v=0.2 m/s,
+# w=-0.5 rad/s (0.5 m track gauge): left/right commands are 32.5/7.5 cm/s.
+set(WALL_POSITION "0.74,0,0")
+set(WALL_YAW 90)
+set(WALL_KIND plain)
+set(WALL_SPEED 32.5)
+set(WALL_RIGHT 7.5)
+configure_file(wall_push.argos.in spot_wall_push_flank.argos)
+add_test(NAME jolt_mesh_spot_wall_push_flank
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc spot_wall_push_flank.argos)
+set_tests_properties(jolt_mesh_spot_wall_push_flank PROPERTIES
+  LABELS "spot-wall-stress" ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
 include(terrain_tests.cmake)
 # configure experiments
 configure_file(
