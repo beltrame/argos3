@@ -90,6 +90,8 @@ private:
    /* Wall-contact and replay measurements, sampled each physics substep. */
    bool m_bMotionMetrics = false;
    Real m_fMaximumTilt = 180.0;
+   Real m_fMaximumFinishTilt = 1.0e6;
+   Real m_fFinishTilt = 0.0;
    Real m_fMaximumSpeed = 1.0e6;
    Real m_fMaximumRise = 1.0e6;
    Real m_fMaximumUpSpeed = 1.0e6;
@@ -133,6 +135,17 @@ private:
    void SampleMotion(const JPH::Body& c_body);
    /* Ballistic drop timing and rebound are independent of the speed ceiling. */
    bool m_bDrop = false;
+   bool m_bDropAfterRetreat = false;
+   Real m_fRetreatDistance = 0.0;
+   Real m_fPeakRetreatSpeed = 0.0;
+   Real m_fRetreatHeightError = 0.0;
+   Real m_fRetreatYaw = 0.0;
+   bool m_bBlockedRecovery = false;
+   bool m_bHaveBlockedSample = false;
+   CVector3 m_cBlockedPosition;
+   Real m_fBlockedMotion = 0.0;
+   Real m_fBlockedHeightError = 0.0;
+   Real m_fBlockedReleaseTime = -1.0;
    UInt32 m_unDropStartTick = 0;
    Real m_fPhysicsTime = 0.0;
    Real m_fFallStart = -1.0;

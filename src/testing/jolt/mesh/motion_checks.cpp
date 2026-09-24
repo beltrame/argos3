@@ -42,9 +42,32 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
    const float fUp = (c_body.GetRotation() * JPH::Vec3::sAxisZ()).GetZ();
    const Real fTilt = std::acos(std::clamp(double(fUp), -1.0, 1.0)) * 180.0 / M_PI;
    m_fPeakTilt = std::max(m_fPeakTilt, fTilt);
+   m_fFinishTilt = fTilt;
    m_fPeakRise = std::max(m_fPeakRise, cPosition.GetZ() - m_cMotionStart.GetZ());
    const CVector3 cDelta = cPosition - m_cPreviousPosition;
    const Real fDt = m_pcMotionModel->GetJoltEngine().GetPhysicsClockTick();
+   if(m_bDropAfterRetreat && unTick > m_unDropStartTick && m_fFallStart < 0 &&
+      c_body.GetLinearVelocity().GetX() < -0.02f) {
+      m_fRetreatDistance += std::max(Real(0), -cDelta.GetX());
+      m_fPeakRetreatSpeed = std::max({m_fPeakRetreatSpeed,
+         std::hypot(Real(c_body.GetLinearVelocity().GetX()), Real(c_body.GetLinearVelocity().GetY())),
+         std::hypot(cDelta.GetX(), cDelta.GetY()) / fDt});
+      m_fRetreatHeightError = std::max(m_fRetreatHeightError, std::abs(cPosition.GetZ() - 0.356));
+      m_fRetreatYaw = std::max(m_fRetreatYaw, std::abs(cYaw.GetValue()));
+   }
+   /* Obstacle inserted at 4.5 s; expiry starts recovery at 34.5 s. Allow
+    * one second to hit the block, then require a held stance until 44.5 s. */
+   if(m_bBlockedRecovery && m_fPhysicsTime >= 35.5 && m_fPhysicsTime < 44.5) {
+      if(!m_bHaveBlockedSample) {
+         m_bHaveBlockedSample = true;
+         m_cBlockedPosition = cPosition;
+      }
+      m_fBlockedMotion = std::max(m_fBlockedMotion, (cPosition - m_cBlockedPosition).Length());
+      m_fBlockedHeightError = std::max(m_fBlockedHeightError, std::abs(cPosition.GetZ() - 0.356));
+   }
+   if(m_bBlockedRecovery && m_fPhysicsTime >= 35.5 &&
+      m_fBlockedReleaseTime < 0 && cPosition.GetZ() < 0.354)
+      m_fBlockedReleaseTime = m_fPhysicsTime;
    m_fTravel += cDelta.Length();
    m_cPreviousPosition = cPosition;
    const JPH::Vec3 cVelocity = c_body.GetPointVelocity(cOrigin);
@@ -74,8 +97,11 @@ void CMeshLoopFunctions::SampleMotion(const JPH::Body& c_body) {
    if(m_bDrop) {
       /* Ledge: wait for full clearance. Pause expiry: sample freefall just
        * after the specified release tick, including its actual initial vz. */
-      const bool bReleased = m_unDropStartTick ? unTick > m_unDropStartTick :
-         c_body.GetWorldSpaceBounds().mMin.GetX() > 1.001f;
+      const bool bReleased = m_bDropAfterRetreat ?
+         (unTick > m_unDropStartTick && c_body.GetWorldSpaceBounds().mMax.GetX() < 0.999f &&
+          c_body.GetLinearVelocity().GetZ() < -0.01f) :
+         (m_unDropStartTick ? unTick > m_unDropStartTick :
+          c_body.GetWorldSpaceBounds().mMin.GetX() > 1.001f);
       if(m_fFallStart < 0 && bReleased) {
          m_fFallStart = m_fPhysicsTime;
          m_fDropStartHeight = c_body.GetCenterOfMassPosition().GetZ();

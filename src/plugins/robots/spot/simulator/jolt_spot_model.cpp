@@ -119,10 +119,12 @@ namespace argos {
       SetDriveVelocity(0.0, 0.0);
       m_eStepPhase = EStepPhase::NONE;
       m_cStepTarget = JPH::RVec3::sZero();
+      m_cStepLiftPosition = JPH::RVec3::sZero();
       m_cStepDirection = JPH::Vec3::sZero();
       m_bStepPaused = false;
       m_fStepHoldHeight = 0.0f;
       m_fStepTimeLeft = m_fStepPauseTimeLeft = m_fStepCooldown = 0.0f;
+      m_fStepRecoveryTimeLeft = 0.0f;
       m_fCommandLinear = m_fCommandAngular = 0.0f;
    }
 

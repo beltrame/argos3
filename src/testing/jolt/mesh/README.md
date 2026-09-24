@@ -173,13 +173,15 @@ no helper calls SetPosition, moves an anchor, or disables gravity.
 Static support must remain within 35 cm leg reach beneath the body centre at
 every physics substep. Zero translation or planar heading more than 15 degrees
 from the checked step direction pauses at the current height without losing the
-original lift target. Lift/advance resumes only after realignment. Supported
-holds command world-Z yaw (up to the normal 1.2 rad/s envelope), preserving
-roll/pitch angular motion. A turn past 90 degrees is not a reversal: only a
-negative forward command aborts for reversal, and reverse commands do not start
-new assistance. Missing support or timeout also ends assistance. Pauses consume
-a separate, cumulative **30 s per-step allowance**, not the active step timeout;
-realignment does not replenish that allowance. All state resets with the model. Three interrupt regressions hold
+original lift target. Lift/advance resumes only after realignment and holds
+angular Z at zero, even if the resumed command requests yaw. Supported holds
+command world-Z yaw (up to the normal 1.2 rad/s envelope), preserving roll/pitch
+angular motion. A turn past 90 degrees is not a reversal: only a forward command
+**below -0.001 m/s** aborts for reversal; near-zero negative noise pauses. Reverse
+commands do not start new assistance. Missing support releases immediately.
+Pauses consume a separate, cumulative **30 s per-step allowance**, not the
+active step timeout; realignment does not replenish it. All state resets with
+the model. Three original interrupt regressions hold
 for 2 s during advance (zero/yaw-only) or lift, then finish the 35 cm climb.
 They bound held height drift to 2 cm, planar drift to 1 mm, tilt to 30.1 degrees
 and speed to 1.5 m/s, and require actual yaw in the turning variant. That short
@@ -192,8 +194,35 @@ before completing. Their 13 s deadlines include 6 s intentionally paused; the
 long-pause case has a 17 s deadline including 10 s paused. Uninterrupted step
 checks retain their 10 s deadline. Pause expiry is tested during lift above
 clear lower ground, with upright ballistic landing and <=0.1 m rebound;
-gravity-driven vertical falling speed is exempt just as in the other drops. Clearance is
-conservative (the initial overhead probe uses the maximum supported step).
+gravity-driven vertical falling speed is exempt just as in the other drops.
+Two additional regressions pause on -0.0001 m/s input and resume with a held
+0.4 rad/s yaw command; both must complete, and the active yaw rate must stay zero.
+
+**Expiry during advance:** either timeout starts a recovery instead of dropping
+Spot onto the riser edge. Recovery holds the current height, automatically
+realigns to the saved lift heading (<=1.2 rad/s), then backs along the original
+checked direction at <=0.3 m/s. At the saved lift position it brakes and releases
+onto the lower floor. Ordinary drive commands are ignored during recovery;
+explicit reverse or support loss still releases immediately. Expiry during lift
+continues to release directly over lower ground.
+
+**Blocked-recovery exception:** recovery has its own **10 s allowance**, including
+realignment. A newly obstructed retreat holds height against the obstacle while
+support remains, then logs a recovery-timeout warning and releases where it is.
+It may remain perched on the riser at up to the 30-degree cone limit: an upright
+lower-floor landing is not guaranteed in this approved rare case.
+
+Four default 35 cm recovery cases cover an advance pause at tick 45 lasting
+beyond 30 s, active timeout provoked by slowing to 0.05 m/s, expiry after a
+1.6 rad turn, and a rear obstacle moved into the path at tick 45 without overlap.
+Unblocked returns require finish tilt <5 degrees, <=0.1 m rebound, level and
+aligned retreat, and return to the original lift location. The blocked case
+requires a stable hold until the recovery allowance expires, a timed release,
+peak tilt <=30.1 degrees and speed <=1.5 m/s. Its rear wall and the riser can
+support a level bridge after release; the test measures settling rather than
+requiring a particular tilted pose.
+
+Clearance is conservative (the initial overhead probe uses the maximum supported step).
 **Known limitation:** stair flights are refused by the landing check when the
 next riser intersects the full-body raised advance 1.15 m ahead. The isolated
 step qualification is not a stair-flight capability claim.
@@ -203,6 +232,19 @@ raising it to 0.35 m is a separate planner/configuration decision, needed if
 navigation should use the newly qualified full height.
 
 ## Measured results
+
+Fix round 5: **89/89 default tests, 96/96 with SubT**. Without recovery, advance
+pause expiry finishes at 30.0003 degrees. With recovery, pause/active/turned
+expiry cases all finish at 0 degrees with zero rebound. Their retreats cover
+0.630/0.798/0.630 m at <=0.300002 m/s, height drift <=2.45e-7 m and retreat
+yaw <=1.91e-5 rad in these fixtures. All three falls take 0.260 s against a
+0.25922 s ballistic prediction. The 2.5506 m/s peak is gravity-driven falling;
+upward speed stays <=0.50 m/s. Blocked recovery holds within 0.08 mm, logs the
+10 s expiry, then settles about 6 mm onto contact support (2 mm crossed at
+44.52 s); its peak speed is 0.50 m/s. Disabling recovery fails all four cases;
+relaxing alignment, doubling retreat speed or extending the recovery allowance
+also fails the respective regression. Tiny-negative and held-yaw resume cases
+finish by 8.40/8.46 s, with zero active-step yaw rate in the latter.
 
 Fix round 4: **83/83 default tests (3.11 s), 90/90 with SubT (22.17 s)**.
 Large-turn advance/lift cases both reach 1.600 rad yaw and complete at 12.40 s;

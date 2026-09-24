@@ -86,6 +86,9 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
       if(m_bMotionMetrics) {
          m_pcMotionModel = &dynamic_cast<CJoltModel&>(m_pcRobot->GetPhysicsModel("jolt"));
          m_pcMotionModel->GetJoltEngine().GetSystem().AddStepListener(this);
+         GetNodeAttributeOrDefault(t_tree, "maximum_finish_tilt", m_fMaximumFinishTilt, m_fMaximumFinishTilt);
+         GetNodeAttributeOrDefault(t_tree, "drop_after_retreat", m_bDropAfterRetreat, m_bDropAfterRetreat);
+         GetNodeAttributeOrDefault(t_tree, "blocked_recovery", m_bBlockedRecovery, m_bBlockedRecovery);
          GetNodeAttributeOrDefault(t_tree, "drop_check", m_bDrop, m_bDrop);
          GetNodeAttributeOrDefault(t_tree, "drop_start_tick", m_unDropStartTick, m_unDropStartTick);
          GetNodeAttributeOrDefault(t_tree, "step_deadline", m_fStepDeadline, m_fStepDeadline);
@@ -436,6 +439,12 @@ void CMeshLoopFunctions::PostStep() {
    if(m_bScan) {
       RunScan();
    }
+   if(m_bBlockedRecovery && GetSpace().GetSimulationClock() == 45) {
+      auto& cBlock = dynamic_cast<CComposableEntity&>(GetSpace().GetEntity("retreat_block"));
+      cBlock.GetComponent<CEmbodiedEntity>("body").GetPhysicsModel("jolt").MoveTo(
+         CVector3(0.25, 0, 0), CQuaternion());
+      LOG << "[mesh] inserted retreat obstacle behind Spot at tick 45" << std::endl;
+   }
    const UInt32 unStateTick = m_unMoveTick ? m_unMoveTick : m_unResetTick;
    if(m_bResetGroundCheck && GetSpace().GetSimulationClock() == unStateTick + 5 &&
       m_pcRobot->GetOriginAnchor().Position.GetZ() > m_cMotionStart.GetZ() + 0.01) {
@@ -507,12 +516,32 @@ void CMeshLoopFunctions::PostExperiment() {
          if(m_fStepReachedTime < 0 || m_fStepReachedTime > m_fStepDeadline)
             THROW_ARGOSEXCEPTION("Robot did not finish climbing within " << m_fStepDeadline << " seconds");
       }
+      LOG << "[mesh] finish_tilt_deg=" << m_fFinishTilt << std::endl;
+      if(m_fFinishTilt >= m_fMaximumFinishTilt)
+         THROW_ARGOSEXCEPTION("Robot did not finish upright");
+      if(m_bDropAfterRetreat) {
+         LOG << "[mesh] retreat distance_m=" << m_fRetreatDistance
+             << " height_error_m=" << m_fRetreatHeightError << " yaw_rad=" << m_fRetreatYaw
+             << " speed_m_s=" << m_fPeakRetreatSpeed << std::endl;
+         if(m_fRetreatDistance < 0.5 || m_fRetreatHeightError > 0.02 ||
+            m_fRetreatYaw > 0.01 || m_fPeakRetreatSpeed > 0.3001)
+            THROW_ARGOSEXCEPTION("Step recovery did not back out level and aligned");
+      }
+      if(m_bBlockedRecovery) {
+         LOG << "[mesh] blocked motion_m=" << m_fBlockedMotion
+             << " height_error_m=" << m_fBlockedHeightError
+             << " release_s=" << m_fBlockedReleaseTime << std::endl;
+         if(!m_bHaveBlockedSample || m_fBlockedMotion > 0.01 || m_fBlockedHeightError > 0.02 ||
+            m_fBlockedReleaseTime < 44.48 || m_fBlockedReleaseTime > 44.60)
+            THROW_ARGOSEXCEPTION("Blocked recovery did not hold then release");
+      }
       if(m_bDrop) {
          const Real fFallTime = m_fLandTime - m_fFallStart;
          const Real fExpectedTime = (m_fDropStartVelocity + std::sqrt(
             m_fDropStartVelocity * m_fDropStartVelocity + 2 * 9.81 * m_fDropDistance)) / 9.81;
          LOG << "[mesh] drop fall_s=" << fFallTime << " ballistic_s=" << fExpectedTime
-             << " distance_m=" << m_fDropDistance << " rebound_m=" << m_fRebound << std::endl;
+             << " distance_m=" << m_fDropDistance << " rebound_m=" << m_fRebound
+             << " start_s=" << m_fFallStart << " landing_s=" << m_fLandTime << std::endl;
          if(m_fFallStart < 0 || m_fLandTime < 0 || fFallTime < 0.05 ||
             std::abs(fFallTime - fExpectedTime) > 0.03 || m_fRebound > 0.1 ||
             m_fPeakHorizontalSpeed > 1.5) {
