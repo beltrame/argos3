@@ -87,6 +87,33 @@ namespace argos {
          return m_fTargetYawAngle;
       }
 
+      /**
+       * Reads the optional <flight_system> node of the drone entity:
+       * max_xy_velocity (m/s, default 1), max_tilt (rad, default 0.5) and
+       * armed (default true; false starts the drone with its motors off).
+       */
+      void Configure(TConfigurationNode& t_tree);
+
+      void SetArmed(bool b_armed) {
+         m_bArmed = b_armed;
+      }
+
+      bool IsArmed() const {
+         return m_bArmed;
+      }
+
+      bool IsArmedAtStart() const {
+         return m_bArmedAtStart;
+      }
+
+      Real GetMaxXYVelocity() const {
+         return m_fMaxXYVelocity;
+      }
+
+      Real GetMaxTilt() const {
+         return m_fMaxTilt;
+      }
+
       virtual std::string GetTypeDescription() const {
          return "flight_system";
       }
@@ -98,6 +125,10 @@ namespace argos {
       CVector3 m_cAngularVelocityReading;
       CVector3 m_cTargetPosition;
       CRadians m_fTargetYawAngle;
+      Real m_fMaxXYVelocity = 1.0;
+      Real m_fMaxTilt = 0.5;
+      bool m_bArmedAtStart = true;
+      bool m_bArmed = true;
       
    };
 }

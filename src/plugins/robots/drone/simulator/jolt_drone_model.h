@@ -90,14 +90,12 @@ namespace argos {
       const static Real B;
       const static Real D;
       const static Real JR;
-      const static CRange<Real> ROLL_PITCH_LIMIT;
       const static CRange<Real> THRUST_LIMIT;
       const static CRange<Real> TORQUE_LIMIT;
       /* Yaw-rate limit (clamp on the yaw error fed to the PID) */
       const static CRange<Real> YAW_ERROR_LIMIT;
       /* Slew limit on the attitude-target feedforward */
       const static CRange<Real> ANGULAR_RATE_LIMIT;
-      const static Real XY_VEL_MAX;
       const static Real Z_VEL_MAX;
       const static Real XY_POS_KP;
       const static Real XY_VEL_KP;

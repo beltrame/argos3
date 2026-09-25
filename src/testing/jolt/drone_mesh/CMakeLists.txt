@@ -26,6 +26,15 @@ if(TARGET mesh_jolt_assets)
     COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc corridor.argos)
   set_tests_properties(jolt_drone_mesh_corridor
     PROPERTIES ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/corridor_fast.argos.in
+    ${CMAKE_CURRENT_BINARY_DIR}/corridor_fast.argos)
+  add_test(
+    NAME jolt_drone_mesh_corridor_fast
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_BINARY_DIR}/core/argos3 -zc corridor_fast.argos)
+  set_tests_properties(jolt_drone_mesh_corridor_fast
+    PROPERTIES ENVIRONMENT "ARGOS_PLUGIN_PATH=${ARGOS_PLUGIN_PATH}")
 endif()
 
 set(ARGOS_SUBT_COLLISION_GLB

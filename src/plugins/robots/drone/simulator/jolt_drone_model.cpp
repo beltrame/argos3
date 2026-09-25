@@ -159,7 +159,19 @@ namespace argos {
 
    void CJoltDroneModel::UpdatePhysics() {
       ReadBodyState();
+      if(!m_cFlightSystemEntity.IsArmed()) {
+         /* motors off: no thrust and no torque, gravity and contacts only;
+          * keep the controller at rest so arming starts from a clean state */
+         m_cAngularVelocityCumulativeError.Set(0.0, 0.0, 0.0);
+         m_fAltitudeCumulativeError = 0.0;
+         m_cOrientationTargetPrev = m_cOrientation;
+         m_fTargetPositionZPrev = m_cInputPosition.GetZ();
+         return;
+      }
       Real fGravity = 9.81;
+      const Real fXYVelocityMax = m_cFlightSystemEntity.GetMaxXYVelocity();
+      const CRange<Real> cTiltLimit(-m_cFlightSystemEntity.GetMaxTilt(),
+                                    m_cFlightSystemEntity.GetMaxTilt());
       Real fClockTick = GetJoltEngine().GetPhysicsClockTick();
       /* update the position (XY) and altitude (Z) controller */
       CVector3 cPositionError(m_cInputPosition - m_cPosition);
@@ -170,10 +182,10 @@ namespace argos {
       Real fAzimuth = std::atan2(std::abs(cPositionError.GetY()),
                                  std::abs(cPositionError.GetX()));
       /* calculate velocity limits */
-      CRange<Real> cVelocityLimitX(-XY_VEL_MAX * std::cos(fAzimuth),
-                                   XY_VEL_MAX * std::cos(fAzimuth));
-      CRange<Real> cVelocityLimitY(-XY_VEL_MAX * std::sin(fAzimuth),
-                                   XY_VEL_MAX * std::sin(fAzimuth));
+      CRange<Real> cVelocityLimitX(-fXYVelocityMax * std::cos(fAzimuth),
+                                   fXYVelocityMax * std::cos(fAzimuth));
+      CRange<Real> cVelocityLimitY(-fXYVelocityMax * std::sin(fAzimuth),
+                                   fXYVelocityMax * std::sin(fAzimuth));
       CRange<Real> cVelocityLimitZ(-Z_VEL_MAX, Z_VEL_MAX);
       /* calculate desired XYZ velocities */
       Real fTargetTransVelX = cPositionError.GetX() * XY_POS_KP;
@@ -203,8 +215,8 @@ namespace argos {
       Real fDesiredPitchAngle = std::cos(m_cOrientation.GetY()) * std::cos(m_cOrientation.GetX()) *
          cTargetTransAcc.GetX() / fGravity;
       Real fDesiredYawAngle = m_fInputYawAngle;
-      ROLL_PITCH_LIMIT.TruncValue(fDesiredRollAngle);
-      ROLL_PITCH_LIMIT.TruncValue(fDesiredPitchAngle);
+      cTiltLimit.TruncValue(fDesiredRollAngle);
+      cTiltLimit.TruncValue(fDesiredPitchAngle);
       CVector3 cOrientationTarget(fDesiredRollAngle, fDesiredPitchAngle, fDesiredYawAngle);
       /* output of the altitude controller */
       Real fAltitudeControlSignal = MASS * fGravity +
@@ -354,8 +366,6 @@ namespace argos {
    const CRange<Real> CJoltDroneModel::YAW_ERROR_LIMIT = CRange<Real>(-0.3, 0.3);
    const CRange<Real> CJoltDroneModel::ANGULAR_RATE_LIMIT = CRange<Real>(-3.0, 3.0);
    const CRange<Real> CJoltDroneModel::THRUST_LIMIT = CRange<Real>(-15, 15);
-   const CRange<Real> CJoltDroneModel::ROLL_PITCH_LIMIT = CRange<Real>(-0.5, 0.5);
-   const Real CJoltDroneModel::XY_VEL_MAX = 1;
    const Real CJoltDroneModel::Z_VEL_MAX = 0.05;
    const Real CJoltDroneModel::XY_POS_KP = 1;
    const Real CJoltDroneModel::XY_VEL_KP = 3;

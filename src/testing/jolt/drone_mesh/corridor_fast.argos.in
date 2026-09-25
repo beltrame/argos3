@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<!-- The corridor wall hit at speed: max_xy_velocity 5, 1.78 m to the wall.
+     The drone must stop at the wall (continuous collision), not pass it.
+     It strikes the wall tilted (roll ~ -0.34) and leans on it by its upper
+     rim; with the default friction 1.0 the rim friction beats the attitude
+     and altitude corrections, so it stays wedged when the target returns to
+     (0, 0, 1) at tick 900 and slides off only when the landing command at
+     tick 1100 unloads it, landing upright near (0, 0.42, 0). The same run
+     with default_friction="0.0" frees itself at tick ~920 and lands at
+     y ~ -0.12. A 5 m/s wall strike is a crash: only the stop and an upright
+     landing are asserted, hence the loose final position. -->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="100" random_seed="7" />
+  </framework>
+
+  <controllers>
+    <drone_mesh_controller id="dmc"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_mesh_jolt_controller">
+      <actuators>
+        <drone_flight_system implementation="default" />
+      </actuators>
+      <sensors />
+      <params waypoints="0:0,0,1;300:0,6,1;900:0,0,1;1100:0,0,-0.3" />
+    </drone_mesh_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_mesh_jolt_loop_functions"
+                  label="drone_mesh_loop_functions"
+                  drone="drone"
+                  wall_from="300" wall_to="900"
+                  wall_limit_y="1.83" wall_reach_y="1.6"
+                  min_z="-0.05" end_tick="1500"
+                  expect_final="0,0.4,0" final_tolerance="0.3" />
+
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world" file="@DRONE_MESH_CORRIDOR@" />
+    <drone id="drone">
+      <body position="0,0,0.01" orientation="0,0,0" />
+      <controller config="dmc" />
+      <flight_system max_xy_velocity="5" />
+    </drone>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" iterations="10" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+</argos-configuration>

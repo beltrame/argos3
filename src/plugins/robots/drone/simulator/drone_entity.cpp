@@ -53,6 +53,9 @@ namespace argos {
             new CDroneFlightSystemEntity(this, "flight_system_0");
          m_pcFlightSystemEntity->Enable();
          AddComponent(*m_pcFlightSystemEntity);
+         if(NodeExists(t_tree, "flight_system")) {
+            m_pcFlightSystemEntity->Configure(GetNode(t_tree, "flight_system"));
+         }
          /* create and initialize a radio equipped entity for WiFi */
          m_pcSimpleRadioEquippedEntity = new CSimpleRadioEquippedEntity(this, "simple_radios_0");
          std::string strWifiMedium;

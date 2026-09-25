@@ -42,13 +42,19 @@ namespace argos {
          return true;
       };
 
-      virtual void Arm(bool b_arm, bool b_bypass_safety_checks) {}
+      /** Motors on or off; applied to the flight system at the next Update */
+      virtual void Arm(bool b_arm, bool b_bypass_safety_checks) {
+         m_bArmed = b_arm;
+      }
+
+      virtual void Reset();
       
       virtual void SetOffboardMode(bool b_offboard_mode) {}
 
    private:
 
       CDroneFlightSystemEntity* m_pcFlightSystemEntity;
+      bool m_bArmed = true;
 
    };
 }

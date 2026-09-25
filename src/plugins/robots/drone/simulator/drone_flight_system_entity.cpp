@@ -48,11 +48,28 @@ namespace argos {
       m_cAngularVelocityReading = CVector3::ZERO;
       m_cTargetPosition = CVector3::ZERO;
       m_fTargetYawAngle = CRadians::ZERO;
+      m_bArmed = m_bArmedAtStart;
    }
 
    /****************************************/
    /****************************************/
-   
+
+   void CDroneFlightSystemEntity::Configure(TConfigurationNode& t_tree) {
+      GetNodeAttributeOrDefault(t_tree, "max_xy_velocity", m_fMaxXYVelocity, m_fMaxXYVelocity);
+      GetNodeAttributeOrDefault(t_tree, "max_tilt", m_fMaxTilt, m_fMaxTilt);
+      GetNodeAttributeOrDefault(t_tree, "armed", m_bArmedAtStart, m_bArmedAtStart);
+      if(m_fMaxXYVelocity <= 0.0) {
+         THROW_ARGOSEXCEPTION("flight_system max_xy_velocity must be > 0, got " << m_fMaxXYVelocity);
+      }
+      if(m_fMaxTilt <= 0.0 || m_fMaxTilt >= 1.5) {
+         THROW_ARGOSEXCEPTION("flight_system max_tilt must be in (0, 1.5) rad, got " << m_fMaxTilt);
+      }
+      m_bArmed = m_bArmedAtStart;
+   }
+
+   /****************************************/
+   /****************************************/
+
    REGISTER_STANDARD_SPACE_OPERATIONS_ON_ENTITY(CDroneFlightSystemEntity);
 
    /****************************************/

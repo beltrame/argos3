@@ -30,6 +30,7 @@ namespace argos {
    void CDroneFlightSystemDefaultActuator::SetRobot(CComposableEntity& c_entity) {
       m_pcFlightSystemEntity = 
          &(c_entity.GetComponent<CDroneFlightSystemEntity>("flight_system"));
+      m_bArmed = m_pcFlightSystemEntity->IsArmed();
    }
 
    /****************************************/
@@ -50,6 +51,15 @@ namespace argos {
    void CDroneFlightSystemDefaultActuator::Update() {
       m_pcFlightSystemEntity->SetTargetPosition(m_cTargetPosition);
       m_pcFlightSystemEntity->SetTargetYawAngle(m_cTargetYawAngle);
+      m_pcFlightSystemEntity->SetArmed(m_bArmed);
+   }
+
+   /****************************************/
+   /****************************************/
+
+   void CDroneFlightSystemDefaultActuator::Reset() {
+      CCI_DroneFlightSystemActuator::Reset();
+      m_bArmed = m_pcFlightSystemEntity->IsArmedAtStart();
    }
 
    /****************************************/

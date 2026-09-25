@@ -1,0 +1,39 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="100" random_seed="33" />
+  </framework>
+
+  <controllers>
+    <drone_mesh_controller library="@DRONE_MESH_CONTROLLER@" id="dfc">
+      <actuators>
+        <drone_flight_system implementation="default" />
+      </actuators>
+      <sensors />
+      <params waypoints="0:20,0,1" />
+    </drone_mesh_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_fast_jolt_loop_functions"
+                  label="drone_fast_loop_functions" />
+
+  <arena size="30, 6, 4" center="10,0,2">
+    <drone id="drone">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="dfc" />
+      <flight_system max_xy_velocity="5" />
+    </drone>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" iterations="10" threads="1">
+      <floor height="0" />
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+</argos-configuration>

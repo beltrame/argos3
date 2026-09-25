@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="10" random_seed="33" />
+  </framework>
+
+  <controllers>
+    <drone_arm_controller library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_arm_jolt_controller"
+                          id="dac">
+      <actuators>
+        <drone_flight_system implementation="default" />
+      </actuators>
+      <sensors />
+      <params arm_tick="20" disarm_tick="150" />
+    </drone_arm_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_arm_jolt_loop_functions"
+                  label="drone_arm_loop_functions" />
+
+  <arena size="10, 4, 3" center="0,0,1.5">
+    <drone id="drone">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="dac" />
+      <flight_system armed="false" />
+    </drone>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" iterations="10" threads="1">
+      <floor height="0" />
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+</argos-configuration>
