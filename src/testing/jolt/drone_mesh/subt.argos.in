@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<!--
+  The drone in the SubT Finals collision mesh, at the transform SwarmDeck's
+  make_argos_session.py writes. A crash into the hangar wall must be stopped
+  and reported, and the gate and tunnel must let it through and carry it.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="100" random_seed="7" />
+  </framework>
+
+  <controllers>
+    <drone_mesh_controller id="dmc"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_mesh_jolt_controller">
+      <actuators>
+        <drone_flight_system implementation="default" />
+      </actuators>
+      <sensors />
+      <params waypoints="0:0,0,1.2;300:0,8,1.2;1200:0,0,1.2;1800:14.5,0,1.2;3800:14.5,0,-0.3" />
+    </drone_mesh_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_mesh_jolt_loop_functions"
+                  label="drone_mesh_loop_functions"
+                  drone="drone"
+                  wall_from="300" wall_to="1200"
+                  wall_limit_y="5.5" wall_reach_y="4.5"
+                  min_z="-0.2" end_tick="4400"
+                  expect_final="0,0,0" final_tolerance="0.3" />
+
+  <arena size="453.5,213.5,36.5" center="191.9,10,-1.7">
+    <mesh id="world_mesh" y_up="false" file="@ARGOS_SUBT_COLLISION_GLB@"
+          position="0,0,0" orientation="0,0,90" scale="1.0" />
+    <drone id="drone">
+      <body position="-14.5,0,0.0" orientation="0,0,0" />
+      <controller config="dmc" />
+    </drone>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" iterations="10" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+</argos-configuration>

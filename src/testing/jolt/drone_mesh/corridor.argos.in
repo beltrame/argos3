@@ -1,0 +1,49 @@
+<?xml version="1.0" ?>
+<!--
+  The drone and a static mesh, with no floor plugin: the corridor's own floor
+  carries it on take-off, its wall at y = +2 stops it (one arm length short,
+  0.22 m), and it lands on the landing at z = 2.5.
+-->
+<argos-configuration>
+
+  <framework>
+    <system threads="0" />
+    <experiment length="0" ticks_per_second="100" random_seed="7" />
+  </framework>
+
+  <controllers>
+    <drone_mesh_controller id="dmc"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_mesh_jolt_controller">
+      <actuators>
+        <drone_flight_system implementation="default" />
+      </actuators>
+      <sensors />
+      <params waypoints="0:0,0,1;300:0,4,1;900:0,0,1;1300:24,0,3.5;4000:24,0,2.2" />
+    </drone_mesh_controller>
+  </controllers>
+
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libdrone_mesh_jolt_loop_functions"
+                  label="drone_mesh_loop_functions"
+                  drone="drone"
+                  wall_from="300" wall_to="900"
+                  wall_limit_y="1.83" wall_reach_y="1.6"
+                  min_z="-0.05" end_tick="5000"
+                  expect_final="24,0,2.5" final_tolerance="0.15" />
+
+  <arena size="60,20,14" center="10,0,6">
+    <mesh id="world" file="@DRONE_MESH_CORRIDOR@" />
+    <drone id="drone">
+      <body position="0,0,0.01" orientation="0,0,0" />
+      <controller config="dmc" />
+    </drone>
+  </arena>
+
+  <physics_engines>
+    <jolt id="jolt" iterations="10" threads="1">
+      <gravity g="9.81" />
+    </jolt>
+  </physics_engines>
+
+  <media />
+
+</argos-configuration>
