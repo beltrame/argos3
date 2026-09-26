@@ -233,12 +233,12 @@ namespace argos {
        * - the yaw read from the Jolt body wraps at +/- pi (pointmass3d
        *   integrates an unwrapped yaw state), so the yaw error must be
        *   normalized or a wrap crossing looks like a full-turn error;
-       * - pointmass3d's angular-velocity target differentiates the
-       *   commanded attitude, which spikes when the position
-       *   controller moves its output between sub-steps; its half-step
-       *   integration absorbs the kicks, an exact integrator turns
-       *   them into a sustained attitude limit cycle; the feedforward
-       *   is therefore clamped to a physical slew rate */
+       * - roll/pitch derivative feedback uses measured angular velocity,
+       *   not differentiated target attitude. Sample-and-hold position
+       *   commands produce large positive derivative kicks and small
+       *   negative derivatives between commands. Clamping just the kicks
+       *   creates a DC attitude bias and ~Kd/Kp seconds of tracking lag.
+       *   Yaw retains its bounded target-rate feedforward. */
       CVector3 cOrientationError(cOrientationTarget - m_cOrientation);
       cOrientationError.SetZ(
          NormalizedDifference(CRadians(cOrientationTarget.GetZ()),
@@ -255,13 +255,9 @@ namespace argos {
       CVector3 cAngularVelocityTarget =
          (cOrientationTarget - m_cOrientationTargetPrev) / fClockTick;
       m_cOrientationTargetPrev = cOrientationTarget;
-      Real fRateX = cAngularVelocityTarget.GetX();
-      Real fRateY = cAngularVelocityTarget.GetY();
       Real fRateZ = cAngularVelocityTarget.GetZ();
-      ANGULAR_RATE_LIMIT.TruncValue(fRateX);
-      ANGULAR_RATE_LIMIT.TruncValue(fRateY);
       ANGULAR_RATE_LIMIT.TruncValue(fRateZ);
-      cAngularVelocityTarget.Set(fRateX, fRateY, fRateZ);
+      cAngularVelocityTarget.Set(0.0, 0.0, fRateZ);
       CVector3 cAngularVelocityError(cAngularVelocityTarget - m_cAngularVelocity);
       m_cAngularVelocityCumulativeError += cAngularVelocityError * fClockTick;
       Real fAttitudeControlSignalX = INERTIA.GetX() *
@@ -381,9 +377,9 @@ namespace argos {
     * exact rigid-body integration those bandwidths collide and the
     * drone circles in a +/- 60 deg coning limit cycle; wn ~7 rad/s
     * with damping ratio ~0.7 restores the cascade separation */
-   const Real CJoltDroneModel::ROLL_PITCH_KP = 12;
+   const Real CJoltDroneModel::ROLL_PITCH_KP = 50;
    const Real CJoltDroneModel::ROLL_PITCH_KI = 0;
-   const Real CJoltDroneModel::ROLL_PITCH_KD = 6;
+   const Real CJoltDroneModel::ROLL_PITCH_KD = 10;
    const Real CJoltDroneModel::ROOT_TWO = std::sqrt(2.0);
 
    /****************************************/
