@@ -21,3 +21,4 @@ TAGS
 .dir-locals.el
 .vscode*
 __pycache__/
+.worktrees/
