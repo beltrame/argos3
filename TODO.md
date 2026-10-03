@@ -8,5 +8,6 @@
 - [x] Approve ALab as the public sample target with documented compatibility limits.
 - [x] Write the approved design specification.
 - [x] Self-review the specification for placeholders, contradictions, scope, and ambiguity.
-- [ ] Obtain user review of the written specification.
-- [ ] Create an implementation plan and agree on execution.
+- [x] Obtain user approval of the written specification.
+- [x] Create and self-review the implementation plan.
+- [ ] Obtain user review of the plan and select an execution method.
