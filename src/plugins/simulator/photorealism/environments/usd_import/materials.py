@@ -221,7 +221,7 @@ def convert_material(binding_prim,ctx):
 
 
 def attach_material(part,data,ctx):
-    mesh=part.mesh.copy(); pbr=data.pbr.copy()
+    mesh=part.mesh.copy(include_cache=True); pbr=data.pbr.copy()
     pbr.doubleSided=mesh.metadata.get('usd_double_sided',False)
     if data.gltf_overrides.get('display_fallback'):
         if mesh.metadata.get('usd_display_color'):
