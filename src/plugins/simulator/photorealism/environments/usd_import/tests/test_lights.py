@@ -66,6 +66,12 @@ class LightTests(unittest.TestCase):
             lamp.GetPrim().GetAttribute('inputs:'+attr).Set(value)
             with self.subTest(attr=attr,value=value),self.assertRaisesRegex(ValueError,'Lamp'): self.convert(stage)
 
+    def test_authored_point_emitter_does_not_warn_about_size(self):
+        stage=make_stage(self); lamp=UsdLux.SphereLight.Define(stage,'/Lamp')
+        lamp.CreateTreatAsPointAttr(True)
+        _,ctx=self.convert(stage)
+        self.assertFalse(any(d['code']=='area_light' for d in ctx.report['diagnostics']))
+
     def test_linking_and_softness_diagnostics(self):
         stage=make_stage(self); lamp=UsdLux.SphereLight.Define(stage,'/Lamp')
         lamp.GetPrim().CreateRelationship('filters').SetTargets(['/Filter'])

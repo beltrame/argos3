@@ -59,7 +59,7 @@ def convert_lights(ctx,occurrences):
             continue
         details={}
         for name in ('radius','width','height','length','treatAsPoint'):
-            attr=prim.GetAttribute('inputs:'+name)
+            attr=prim.GetAttribute(name if name=='treatAsPoint' else 'inputs:'+name)
             if attr: details[name]=attr.Get(ctx.time)
         if not prim.IsA(UsdLux.SphereLight) or not details.get('treatAsPoint',False):
             warn(ctx,'area_light',path,'finite emitter approximated as a local point/spot light',**details)
