@@ -4,6 +4,11 @@ from pathlib import Path
 import hashlib
 import json
 import struct
+import tempfile
+import shutil
+import sys
+import math
+import xml.etree.ElementTree as ET
 import numpy as np
 import trimesh
 from pxr import UsdLux, UsdPhysics
@@ -137,3 +142,94 @@ def export_glb(scene,path):
         raise ValueError('GLB size exceeds format limits; reduce geometry/texture resolution or selected roots') from error
     if len(data)>0xffffffff: raise ValueError('GLB size exceeds 4 GiB format limit; select smaller roots')
     Path(path).write_bytes(data)
+
+
+def _destination(out,name,overwrite):
+    destination=Path(out).resolve()/name
+    if destination.is_symlink(): raise ValueError(f'destination is a symlink: {destination}')
+    if destination.exists():
+        if not overwrite: raise ValueError(f'bundle exists: {destination}; use --overwrite')
+        try:
+            report=json.loads((destination/(name+'.json')).read_text())
+            if report.get('importer')!='openusd-static': raise ValueError('not an importer bundle')
+        except (OSError,ValueError) as error:
+            raise ValueError(f'refusing to overwrite unrelated directory: {destination}') from error
+    return destination
+
+
+def _fmt(values):
+    return ','.join(format(float(v),'.9g') for v in values)
+
+
+def _xml(path,root):
+    ET.indent(root,space='  ')
+    ET.ElementTree(root).write(path,encoding='utf-8',xml_declaration=True)
+
+
+def write_bundle(bundle,ctx):
+    name=ctx.name; destination=_destination(ctx.options.out,name,ctx.options.overwrite)
+    out=destination.parent; out.mkdir(parents=True,exist_ok=True)
+    temporary=Path(tempfile.mkdtemp(prefix='.'+name+'.tmp-',dir=out)); backup=None
+    try:
+        export_glb(bundle.visual,temporary/(name+'.glb'))
+        if bundle.collision is not None: export_glb(bundle.collision,temporary/(name+'.collision.glb'))
+        # Validate actual exported assets before replacing any existing bundle.
+        for path in temporary.glob('*.glb'):
+            loaded=trimesh.load(path,force='scene')
+            if not loaded.geometry or not np.isfinite(loaded.bounds).all(): raise ValueError(f'invalid exported GLB: {path.name}')
+        lights=ET.Element('lights')
+        for light in bundle.lighting.local:
+            attributes={k:_fmt(light[k]) for k in ('position','color')}
+            attributes.update(intensity=str(light['intensity']),falloff=str(light['falloff']),cast_shadows=str(light['cast_shadows']).lower())
+            if light['type']=='spot':
+                attributes.update(direction=_fmt(light['direction']),inner_angle=str(light['inner_angle']),outer_angle=str(light['outer_angle']))
+            ET.SubElement(lights,light['type'],attributes)
+        _xml(temporary/(name+'.lights.xml'),lights)
+        lower,upper=bundle.bounds; center=(lower+upper)/2; diagonal=float(np.linalg.norm(upper-lower))
+        camera=center+np.array([max(diagonal*.65,2),-max(diagonal*.65,2),max(diagonal*.4,1)])
+        viewer=dict(position=_fmt(camera),look_at=_fmt(center),resolution='1280,720',near='0.1',far=str(max(300,2*diagonal)))
+        debug=dict(position=_fmt(camera),look_at=_fmt(center),fov='70',resolution='960,540',period='10',dump='frames')
+        try:
+            stops=ctx.options.stops; aperture=round(16/2**(min(stops,6)/2),1)
+            remaining=max(0,stops-6); shutter=round(.01*2**min(remaining,2),4); iso=round(100*2**max(0,remaining-2))
+        except (OverflowError,ZeroDivisionError) as error: raise ValueError('exposure stops outside representable range') from error
+        if not math.isfinite(aperture) or aperture<=0: raise ValueError('invalid aperture')
+        root=ET.Element('argos-configuration'); framework=ET.SubElement(root,'framework')
+        ET.SubElement(framework,'system',threads='0'); ET.SubElement(framework,'experiment',length='0',ticks_per_second='10',random_seed='1')
+        ET.SubElement(root,'controllers')
+        arena=ET.SubElement(root,'arena',size=_fmt(np.maximum(upper-lower+4,.001)),center=_fmt(center))
+        if bundle.collision is not None:
+            ET.SubElement(arena,'mesh',id='world',file=name+'.collision.glb',y_up='true',double_sided='true')
+        jolt=ET.SubElement(ET.SubElement(root,'physics_engines'),'jolt',id='jolt'); ET.SubElement(jolt,'gravity',g='9.81')
+        medium=ET.SubElement(ET.SubElement(root,'media'),'photorealism',id='pr',backend='vulkan',draw_floor='false')
+        sun=bundle.lighting.sun or dict(direction=[0,0,-1],intensity=0,cast_shadows=False)
+        ET.SubElement(medium,'sun',direction=_fmt(sun['direction']),intensity=str(sun['intensity']),cast_shadows=str(sun['cast_shadows']).lower())
+        ET.SubElement(medium,'skybox',color='0.53,0.71,0.92' if bundle.lighting.defaulted else '0,0,0')
+        ET.SubElement(medium,'exposure',aperture=str(aperture),shutter_speed=str(shutter),sensitivity=str(iso))
+        medium.append(lights)
+        ET.SubElement(ET.SubElement(medium,'scenery'),'prop',model=name+'.glb',position='0,0,0',orientation='0,0,90',scale='1')
+        ET.SubElement(medium,'debug_camera',debug)
+        ET.SubElement(ET.SubElement(root,'visualization'),'filament',viewer,medium='pr',speed='1',flashlight='true')
+        _xml(temporary/(name+'.argos'),root)
+        ctx.report.update(importer='openusd-static',name=name,camera=dict(debug=debug,viewer=viewer),
+                          outputs=[p.name for p in sorted(temporary.iterdir())]+[name+'.json'])
+        (temporary/(name+'.json')).write_text(json.dumps(ctx.report,indent=2,sort_keys=True,allow_nan=False)+'\n')
+        # Recheck just before publication, including symlinks and ownership marker.
+        _destination(out,name,ctx.options.overwrite)
+        if destination.exists():
+            backup=Path(tempfile.mkdtemp(prefix='.'+name+'.backup-',dir=out)); backup.rmdir()
+            destination.rename(backup)
+        try:
+            temporary.rename(destination)
+        except BaseException as error:
+            if backup is not None and backup.exists():
+                try: backup.rename(destination)
+                except OSError as restore_error:
+                    raise OSError(f'publication failed ({error}); rollback failed ({restore_error}); old bundle retained at {backup}') from error
+            raise
+        if backup is not None:
+            try: shutil.rmtree(backup)
+            except OSError as error: print(f'warning: bundle published; old backup retained at {backup}: {error}',file=sys.stderr)
+        return destination
+    finally:
+        if temporary.exists(): shutil.rmtree(temporary)

@@ -2,3 +2,8 @@
 # import_fuel_world.py; only the experiment, lights and summary are kept
 */*.glb
 */frames/
+__pycache__/
+alab/downloads/
+alab/source/
+alab/generated/
+alab/acceptance-output/

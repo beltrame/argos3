@@ -129,6 +129,51 @@ regenerated locally):
   triangles. Any of the 62 `subt`-tagged Fuel worlds imports the same
   way.
 
+### Local OpenUSD environments
+
+`environments/import_usd_world.py` snapshots a local composed `.usd`,
+`.usda` or `.usdc` stage into the same portable scenery/Jolt bundle.
+It is an offline tool: OpenUSD is not a simulator dependency.
+
+```sh
+python3 -m venv /tmp/usd-venv
+/tmp/usd-venv/bin/pip install -r environments/requirements-usd.txt
+/tmp/usd-venv/bin/python environments/import_usd_world.py scene.usda \
+    --out environments --name lab
+argos3 -c environments/lab/lab.argos
+```
+
+The output directory contains `lab.glb`, `lab.collision.glb`,
+`lab.lights.xml`, `lab.argos`, and `lab.json` (settings, bounds, source
+paths and diagnostics). Existing bundles require `--overwrite`;
+publication is staged and rolled back if replacement fails.
+
+- `--collision auto` uses enabled authored colliders when any are
+  present in selected roots, otherwise visual geometry. `authored`
+  requires them, `visual` forces visible geometry, `none` omits Jolt
+  meshes. Hidden/proxy colliders remain independent of visual selection.
+- `--purpose render|proxy` also includes default-purpose geometry;
+  guides are excluded. `--root /World/Set` is repeatable. `--time 1004`
+  overrides authored start time (otherwise USD's default time).
+- `--texture-size 1024` caps the longest texture side; `0` keeps it.
+  `--light-scale 1`, `--light-range 20` meters, and `--stops 6` are
+  calibration knobs, not photometric equivalence guarantees.
+- `--strict` makes approximations/warnings fatal, including automatic
+  collision/illumination fallbacks. No synthetic floor is added.
+
+Supported: composed local references/payloads, authored variants,
+instances, polygon meshes, analytic shapes, corner attributes,
+Preview Surface and its UV texture/reader/Transform2d graph. Units and
+up axis convert to Z-up meters; assets remain glTF Y-up. Missing
+composition layers and malformed geometry are errors.
+
+Not supported: USDZ, dynamics/joints/robot mapping, procedural or skin
+animation, subdivision evaluation, MDL/MaterialX/arbitrary shader
+networks, HDR/EXR shading, multi-tile UDIM baking. Unauthored normals
+are flat-generated. Area lights, normalization and multiple distant
+lights are approximated and reported. Cameras in the generated
+experiment are bounds-based inspection cameras, not imported cameras.
+
 ### Headlights
 
 These worlds are dark away from the lit tiles; in the competition the
