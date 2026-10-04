@@ -225,7 +225,11 @@ def attach_material(part,data,ctx):
     pbr.doubleSided=mesh.metadata.get('usd_double_sided',False)
     if data.gltf_overrides.get('display_fallback'):
         if mesh.metadata.get('usd_display_color'):
-            # Keep vertex colors (including corner discontinuities) in glTF.
+            # glTF still needs a material to enable vertex-alpha blending.
+            mesh.metadata['usd_gltf_overrides']={'display_material':dict(
+                name='usd-display-color',doubleSided=pbr.doubleSided,
+                alphaMode='BLEND' if np.any(mesh.visual.vertex_colors[:,3]<255) else 'OPAQUE',
+                pbrMetallicRoughness=dict(baseColorFactor=[1,1,1,1],metallicFactor=0,roughnessFactor=.8))}
             return mesh
         pbr.baseColorFactor=[.7,.7,.7,1]
     uv=None

@@ -18,18 +18,35 @@ def _cross(a,b):
     return a[0]*b[1]-a[1]*b[0]
 
 
-def _triangulate(points, path):
-    n = len(points)
-    if n < 3:
+def _triangulate(points, path, ctx=None):
+    if len(points) < 3:
         raise ValueError(f'{path}: face has fewer than three corners')
-    normal = np.cross(points, np.roll(points,-1,axis=0)).sum(axis=0)
-    if np.linalg.norm(normal) < 1e-14:
-        # Collinear faces are degenerates; crossed polygons are malformed.
-        span = points.max(axis=0)-points.min(axis=0)
-        axis = int(np.argmin(span))
-    else:
-        axis = int(np.argmax(np.abs(normal)))
-    p = np.delete(points,axis,axis=1)
+    points=points-points[0]
+    normal=np.cross(points,np.roll(points,-1,axis=0)).sum(axis=0)
+    length=np.linalg.norm(normal)
+    axes=[int(np.argmax(np.abs(normal))) if length>=1e-14 else int(np.argmin(np.ptp(points,axis=0)))]
+    # A twisted but valid 3D cage can cross itself in its dominant projection.
+    nonplanar=length>=1e-14 and np.max(np.abs(points @ normal)) > np.ptp(points,axis=0).max()*length*np.finfo(float).eps*32
+    if nonplanar:
+        axes.extend(a for a in np.argsort(-np.abs(normal)) if a!=axes[0] and abs(normal[a])>length*1e-12)
+    for axis in axes:
+        try: return _triangulate_projected(np.delete(points,axis,axis=1),path)
+        except ValueError as error: failure=error
+    if len(points)==4 and nonplanar:
+        tolerance=np.linalg.norm(np.ptp(points,axis=0))*np.finfo(float).eps*32
+        for a,b,c,d in ((0,1,2,3),(1,2,3,0)):
+            edges=np.column_stack((points[b]-points[a],points[c]-points[d]))
+            uv=np.linalg.lstsq(edges,points[c]-points[a],rcond=None)[0]
+            if np.all((uv>=0)&(uv<=1)) and np.linalg.norm(edges @ uv-(points[c]-points[a]))<=tolerance:
+                raise ValueError(f'{path}: self-intersecting 3D quad')
+        if ctx is not None: warn(ctx,'twisted_quad',path,'nonplanar quad triangulated along shorter 3D diagonal')
+        return ([[0,1,2],[0,2,3]] if np.linalg.norm(points[2]-points[0])<=np.linalg.norm(points[3]-points[1])
+                else [[0,1,3],[1,2,3]])
+    raise failure
+
+
+def _triangulate_projected(p,path):
+    n=len(p)
     epsilon = max(float(np.ptp(p,axis=0).max())**2*1e-12,1e-20)
     # ponytail: O(n²) per polygon; use a tessellation library if very large n-gons dominate.
     for i in range(n):
@@ -130,7 +147,7 @@ def convert_geometry(occ,ctx):
         triangles=[]; face_ids=[]; offset=0; dropped=0
         for face,n in enumerate(counts):
             if face not in holes:
-                local=_triangulate(points[indices[offset:offset+n]],path)
+                local=_triangulate(points[indices[offset:offset+n]],path,ctx)
                 if not local: dropped+=1
                 for tri in local:
                     corners=np.asarray(tri)+offset
@@ -162,8 +179,10 @@ def convert_geometry(occ,ctx):
     uvs={}; colors=None; opacity=None; normals=None
     for name,pv in attributes.items():
         value=pv.ComputeFlattened(time)
-        if value is None or not len(value): continue
+        if value is None: continue
         a=np.asarray(value)
+        if not a.size: continue
+        if not pv.GetTypeName().isArray: a=a.reshape((1,)+a.shape)
         useful=name in ('displayColor','displayOpacity','normals') or (a.ndim==2 and a.shape[1]==2)
         if not useful: continue
         try:

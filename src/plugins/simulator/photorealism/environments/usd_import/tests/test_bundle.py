@@ -48,6 +48,13 @@ class BundleTests(unittest.TestCase):
         np.testing.assert_allclose(bundle.visual.bounds,original)
         np.testing.assert_allclose(original,[[.99,-.01,-.01],[1.01,.01,.01]],atol=1e-6)
 
+    def test_shared_diagonal_vertices_are_not_duplicated(self):
+        stage=make_stage(self)
+        author_mesh(stage,'/Mesh',[[0,0,0],[1,0,0],[1,1,0],[0,1,0]],[[0,1,2,3]])
+        bundle=build_bundle(context(stage))
+        self.assertEqual(len(next(iter(bundle.visual.geometry.values())).vertices),4)
+        self.assertEqual(len(next(iter(bundle.collision.geometry.values())).vertices),4)
+
     def test_instance_reuse_and_reflection(self):
         stage=make_stage(self)
         UsdGeom.Xform.Define(stage,'/Model'); UsdGeom.Cube.Define(stage,'/Model/Box')
@@ -84,6 +91,16 @@ class BundleTests(unittest.TestCase):
         self.assertIn('normalTexture',material)
         self.assertTrue(all('bufferView' in image and 'uri' not in image for image in tree['images']))
         self.assertNotIn('images',glb_json(directory/'collision.glb'))
+
+    def test_display_opacity_has_blend_material_and_corner_colors(self):
+        stage=make_stage(self)
+        mesh=author_mesh(stage,'/Mesh',[[0,0,0],[1,0,0],[0,1,0]],[[0,1,2]])
+        mesh.CreateDisplayColorPrimvar('constant').Set([(1,0,0)])
+        mesh.CreateDisplayOpacityPrimvar('constant').Set([.5])
+        bundle=build_bundle(context(stage)); path=Path(stage.GetRootLayer().realPath).parent/'colors.glb'
+        export_glb(bundle.visual,path); tree=glb_json(path)
+        self.assertEqual(tree['materials'][0]['alphaMode'],'BLEND')
+        self.assertIn('COLOR_0',tree['meshes'][0]['primitives'][0]['attributes'])
 
     def test_deterministic_export_and_empty_scene(self):
         stage=make_stage(self); UsdGeom.Cube.Define(stage,'/Box')

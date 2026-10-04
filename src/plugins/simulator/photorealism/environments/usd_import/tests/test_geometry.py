@@ -19,6 +19,27 @@ class GeometryTests(unittest.TestCase):
         self.assertEqual(sum(len(p.mesh.faces) for p in parts),3)
         self.assertAlmostEqual(sum(p.mesh.area for p in parts),3)
 
+    def test_nonplanar_face_valid_alternate_projection(self):
+        s=make_stage(self)
+        author_mesh(s,'/Mesh',[[0,0,0],[.01,-.003,-.023],[.63,-.033,.295],[.634,-.029,.276]],[[0,1,2,3]])
+        parts,_=self.convert(s)
+        self.assertEqual(len(parts[0].mesh.faces),2)
+        self.assertTrue(np.isfinite(parts[0].mesh.vertices).all())
+
+    def test_nearly_planar_fold_is_not_a_planar_self_intersection(self):
+        s=make_stage(self)
+        author_mesh(s,'/Mesh',[[0,0,0],[1e-6,-.007,.792],[1e-6,-.008,.7925],[0,.312,.562]],[[0,1,2,3]])
+        parts,_=self.convert(s)
+        self.assertEqual(len(parts[0].mesh.faces),2)
+
+    def test_folded_quad_uses_3d_diagonal_with_diagnostic(self):
+        s=make_stage(self)
+        author_mesh(s,'/Mesh',[[0,0,0],[0,.3285,-.3823],[-1e-6,.0044,-.6223],[-1e-6,.0054,-.6227]],[[0,1,2,3]])
+        parts,ctx=self.convert(s)
+        self.assertEqual(len(parts[0].mesh.faces),2)
+        self.assertTrue(any(d['code']=='twisted_quad' for d in ctx.report['diagnostics']))
+        with self.assertRaises(ValueError): self.convert(s,strict=True)
+
     def test_holes_orientation_and_degenerates(self):
         s = make_stage(self)
         m=author_mesh(s,'/Mesh',[[0,0,0],[1,0,0],[0,1,0],[0,0,0]],[[0,1,2],[0,1,2],[0,3,3]])
@@ -56,6 +77,14 @@ class GeometryTests(unittest.TestCase):
         parts,_=self.convert(s)
         np.testing.assert_array_equal(parts[0].mesh.visual.vertex_colors,[[255,0,0,255]]*3)
         np.testing.assert_allclose(parts[0].mesh.vertex_normals,[[0,0,1]]*3)
+
+    def test_scalar_custom_and_constant_vector_primvars(self):
+        s=make_stage(self); m=author_mesh(s,'/Mesh',[[0,0,0],[1,0,0],[0,1,0]],[[0,1,2]])
+        api=UsdGeom.PrimvarsAPI(m)
+        api.CreatePrimvar('productionMask',Sdf.ValueTypeNames.Int,'constant').Set(7)
+        api.CreatePrimvar('perfuv',Sdf.ValueTypeNames.TexCoord2f,'constant').Set((.2,.3))
+        parts,_=self.convert(s)
+        np.testing.assert_allclose(parts[0].uvs['perfuv'],[[.2,.3]]*3,atol=1e-6)
 
     def test_analytic_dimensions(self):
         for schema in (UsdGeom.Cube,UsdGeom.Sphere,UsdGeom.Cylinder,UsdGeom.Cone,UsdGeom.Capsule):

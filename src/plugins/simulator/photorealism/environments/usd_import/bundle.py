@@ -34,7 +34,7 @@ MATERIAL_FIELDS=('baseColorFactor','metallicFactor','roughnessFactor','emissiveF
 
 def _material_digest(mesh):
     digest=hashlib.sha256()
-    material=mesh.visual.material
+    material=getattr(mesh.visual,'material',None)
     for name in MATERIAL_FIELDS:
         value=getattr(material,name,None)
         digest.update(name.encode())
@@ -54,11 +54,13 @@ def _geometry_digest(mesh):
         digest.update(_material_digest(mesh).encode())
         if mesh.visual.uv is not None: digest.update(np.asarray(mesh.visual.uv).tobytes())
     elif mesh.visual.kind=='vertex': digest.update(mesh.visual.vertex_colors.tobytes())
+    digest.update(json.dumps(mesh.metadata.get('usd_gltf_overrides',{}),sort_keys=True).encode())
     return digest.hexdigest()
 
 
 def _add(scene,mesh,transform,key):
     transform=transform.copy()
+    if mesh.visual.kind!='vertex': mesh.merge_vertices(merge_tex=False,merge_norm=False)
     if np.linalg.det(transform[:3,:3])<0:
         reflection=np.diag([-1.,1.,1.,1.])
         mesh=mesh.copy(include_cache=True); mesh.apply_transform(reflection)
@@ -108,7 +110,8 @@ def build_bundle(ctx):
     def triangles(scene):
         return sum(len(scene.geometry[scene.graph[n][1]].faces) for n in scene.graph.nodes_geometry) if scene is not None else 0
     ctx.report['counts'].update(visual_triangles=triangles(visual),collision_triangles=triangles(collision),
-          geometry_count=len(visual.geometry),material_count=len({_material_digest(m) for m in visual.geometry.values() if m.visual.kind=='texture'}),
+          geometry_count=len(visual.geometry),material_count=len({_material_digest(m) for m in visual.geometry.values()
+              if m.visual.kind=='texture' or 'display_material' in m.metadata.get('usd_gltf_overrides',{})}),
           occurrence_count=len(visual.graph.nodes_geometry))
     ctx.report.update(bounds_min=bounds[0].tolist(),bounds_max=bounds[1].tolist(),
                       lights=dict(local=lighting.local,sun=lighting.sun,defaulted=lighting.defaulted))
@@ -123,7 +126,16 @@ def export_glb(scene,path):
     overrides={m.visual.material.name:m.metadata.get('usd_gltf_overrides',{})
                for m in copy.geometry.values() if m.visual.kind=='texture'}
 
+    display_materials={name:mesh.metadata['usd_gltf_overrides']['display_material']
+                       for name,mesh in copy.geometry.items() if 'display_material' in mesh.metadata.get('usd_gltf_overrides',{})}
+
     def postprocess(tree):
+        for mesh in tree.get('meshes',[]):
+            material=display_materials.get(mesh.get('name'))
+            if material is None: continue
+            materials=tree.setdefault('materials',[])
+            if material not in materials: materials.append(material)
+            for primitive in mesh['primitives']: primitive['material']=materials.index(material)
         for material in tree.get('materials',[]):
             extra=overrides.get(material.get('name'),{})
             if extra.get('extensions'):
