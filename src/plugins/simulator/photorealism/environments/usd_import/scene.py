@@ -125,18 +125,27 @@ def iter_occurrences(ctx):
     result = []
     ctx.report['counts']['point_instances'] = 0
     visibility = ctx.cache.setdefault('visibility', {})
+    purposes = ctx.cache.setdefault('purpose', {})
 
     def selected(path):
         return not roots or any(path.HasPrefix(r) for r in roots)
 
-    def emit(prim, key, transform, visible=True):
+    def prototype_purpose(child, proto, inherited):
+        while child and child.GetPath().HasPrefix(proto.GetPath()):
+            attr=UsdGeom.Imageable(child).GetPurposeAttr()
+            if attr and attr.HasAuthoredValueOpinion(): return str(attr.Get(ctx.time))
+            child=child.GetParent()
+        return inherited
+
+    def emit(prim, key, transform, visible=True, purpose=None):
         if _renderable(prim):
             if not np.isfinite(transform).all() or abs(np.linalg.det(transform[:3,:3])) < 1e-20:
                 raise ValueError(f'{key}: non-finite or singular transform')
             result.append(Occurrence(prim, key, transform))
             visibility[key] = visible
+            purposes[key] = purpose if purpose is not None else UsdGeom.Imageable(prim).ComputePurpose()
 
-    def expand(prim, key, world, active=()):
+    def expand(prim, key, world, active=(), visible=True, purpose=None):
         if str(prim.GetPath()) in active:
             raise ValueError(f'{key}: cyclic point-instancer prototypes')
         inst = UsdGeom.PointInstancer(prim)
@@ -152,7 +161,8 @@ def iter_occurrences(ctx):
         mask = list(inst.ComputeMaskAtTime(ctx.time))
         if len(matrices) != len(indices) or (mask and len(mask) != len(indices)):
             raise ValueError(f'{key}: invalid instance transforms/mask')
-        visible = UsdGeom.Imageable(prim).ComputeVisibility(ctx.time) != 'invisible'
+        visible = visible and UsdGeom.Imageable(prim).ComputeVisibility(ctx.time) != 'invisible'
+        if purpose is None: purpose=UsdGeom.Imageable(prim).ComputePurpose()
         for i, proto_index in enumerate(indices):
             if mask and not mask[i]:
                 continue
@@ -166,19 +176,21 @@ def iter_occurrences(ctx):
             nested_targets = {p for child in descendants if child.IsA(UsdGeom.PointInstancer)
                               for p in UsdGeom.PointInstancer(child).GetPrototypesRel().GetTargets()}
             for child in descendants:
-                if any(child.GetPath().HasPrefix(p) for p in nested_targets):
+                if (any(child.GetPath().HasPrefix(p) for p in nested_targets)
+                        or not (_renderable(child) or child.IsA(UsdGeom.PointInstancer))):
                     continue
                 relative = inverse @ _matrix(cache.GetLocalToWorldTransform(child), str(child.GetPath()))
                 child_key = f'{key}[{i}]{str(child.GetPath())[len(str(proto.GetPath())):]}'
                 transform = placement @ relative
                 if child.IsA(UsdGeom.PointInstancer):
-                    expand(child,child_key,transform,active+(str(prim.GetPath()),))
+                    expand(child,child_key,transform,active+(str(prim.GetPath()),),visible,prototype_purpose(child,proto,purpose))
                 else:
-                    emit(child,child_key,transform,visible)
+                    emit(child,child_key,transform,visible,prototype_purpose(child,proto,purpose))
 
     for prim in prims:
         path = prim.GetPath()
-        if not selected(path) or any(path.HasPrefix(p) for p in prototype_paths):
+        if (not selected(path) or any(path.HasPrefix(p) for p in prototype_paths)
+                or not (_renderable(prim) or prim.IsA(UsdGeom.PointInstancer))):
             continue
         world = ctx.stage_to_argos @ _matrix(cache.GetLocalToWorldTransform(prim), str(path))
         if prim.IsA(UsdGeom.PointInstancer):
@@ -192,7 +204,7 @@ def is_visual(occ, ctx):
     imageable = UsdGeom.Imageable(occ.prim)
     return (ctx.cache.get('visibility',{}).get(occ.key,True)
             and imageable.ComputeVisibility(ctx.time) != 'invisible'
-            and imageable.ComputePurpose() in ('default',ctx.options.purpose))
+            and (ctx.cache.get('purpose',{}).get(occ.key) or imageable.ComputePurpose()) in ('default',ctx.options.purpose))
 
 
 def is_collider(occ, ctx):

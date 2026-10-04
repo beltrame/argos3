@@ -107,7 +107,10 @@ zero-area triangles with a counted diagnostic.
 Execution amendment approved by the user: if a valid nonplanar quad crosses in
 all orthogonal projections, triangulate its shorter 3D diagonal and report a
 `twisted_quad` approximation. Still reject actual 3D boundary-edge intersections
-and planar self-intersections. This accommodates folded ALab control cages; it
+and planar self-intersections in non-subdivision meshes. A second user-approved
+execution amendment permits ambiguous four-corner subdivision cages, including
+planar bow-ties, to use the shorter diagonal with an `ambiguous_cage_quad`
+diagnostic (strict-fatal). This accommodates defective ALab control cages; it
 is not subdivision evaluation or general malformed-polygon repair.
 
 Support constant, uniform, vertex/varying, and face-varying UV and display-color

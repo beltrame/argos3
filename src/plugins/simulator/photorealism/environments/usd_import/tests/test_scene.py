@@ -86,6 +86,27 @@ class SceneTests(unittest.TestCase):
         inst.CreateProtoIndicesAttr([0,7,0])
         with self.assertRaises(ValueError): list(iter_occurrences(context(stage)))
 
+    def test_nested_point_instancer_keeps_outer_visibility(self):
+        stage=make_stage(self)
+        outer=UsdGeom.PointInstancer.Define(stage,'/Outer')
+        outer.CreatePrototypesRel().SetTargets(['/ProtoA']); outer.CreateProtoIndicesAttr([0]); outer.CreatePositionsAttr([(0,0,0)])
+        outer.CreateVisibilityAttr('invisible')
+        UsdGeom.Xform.Define(stage,'/ProtoA')
+        nested=UsdGeom.PointInstancer.Define(stage,'/ProtoA/Nested')
+        nested.CreatePrototypesRel().SetTargets(['/ProtoB']); nested.CreateProtoIndicesAttr([0]); nested.CreatePositionsAttr([(0,0,0)])
+        UsdGeom.Cube.Define(stage,'/ProtoB')
+        ctx=context(stage,roots=('/Outer',));occ=list(iter_occurrences(ctx))
+        self.assertEqual(len(occ),1); self.assertFalse(is_visual(occ[0],ctx))
+
+    def test_point_instancer_purpose_reaches_external_prototype(self):
+        stage=make_stage(self)
+        inst=UsdGeom.PointInstancer.Define(stage,'/Outer')
+        inst.CreatePrototypesRel().SetTargets(['/Proto']); inst.CreateProtoIndicesAttr([0]); inst.CreatePositionsAttr([(0,0,0)])
+        inst.CreatePurposeAttr('proxy'); UsdGeom.Cube.Define(stage,'/Proto')
+        for purpose,expected in [('render',False),('proxy',True)]:
+            ctx=context(stage,roots=('/Outer',),purpose=purpose)
+            self.assertEqual(is_visual(next(iter_occurrences(ctx)),ctx),expected)
+
     def test_invalid_numeric_inputs_and_transforms(self):
         stage = make_stage(self)
         box = UsdGeom.Cube.Define(stage,'/Box')

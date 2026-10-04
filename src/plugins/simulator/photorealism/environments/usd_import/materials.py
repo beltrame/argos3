@@ -101,7 +101,7 @@ def _sample(attr,default,ctx,role,visited=()):
     shader=UsdShade.Shader(api.GetPrim()); shader_id=shader.GetIdAttr().Get() if shader else None
     if shader_id!='UsdUVTexture':
         target=api.GetInput(channel) if kind==UsdShade.AttributeType.Input else api.GetOutput(channel)
-        if not shader_id and target and target.GetConnectedSource():
+        if not shader_id and target and (kind==UsdShade.AttributeType.Input or target.GetConnectedSource()):
             return _sample(target,default,ctx,role,visited+(path,))
         raise ValueError(f'unsupported shader node {shader_id or path}')
     try:
@@ -114,8 +114,8 @@ def _sample(attr,default,ctx,role,visited=()):
                 image=original.convert('RGBA')
                 if ctx.options.texture_size:
                     image.thumbnail((ctx.options.texture_size,ctx.options.texture_size),Image.Resampling.LANCZOS)
-                images[key]=np.asarray(image,dtype=float)/255
-        pixels=images[key].copy()
+                images[key]=np.asarray(image)
+        pixels=images[key].astype(float)/255
     except (OSError,ValueError) as error:
         warn(ctx,'texture',path,str(error))
         fallback=np.asarray(_value(shader.GetInput('fallback'),(0,0,0,1),ctx.time))
@@ -163,6 +163,8 @@ def convert_material(binding_prim,ctx):
     for name,default in defaults.items():
         try:
             value,binding=_sample(source.GetInput(name),default,ctx,name)
+            if (value.shape[2:] if binding else value.shape)!=np.asarray(default).shape:
+                raise ValueError('texture/input channel shape does not match shader role')
             if binding:
                 if uv is not None and (binding['uv']!=uv or not np.allclose(binding['transform'],transform)):
                     raise ValueError('incompatible texture UV primvars/transforms')
@@ -212,7 +214,8 @@ def convert_material(binding_prim,ctx):
         sampler('emissiveTexture','emissiveColor')
     else: pbr.emissiveFactor=np.clip(emission/strength,0,1)
     if bindings['normal']:
-        normal=values['normal']; length=np.linalg.norm(normal,axis=2,keepdims=True)
+        normal=values['normal'].copy(); normal[:,:,1]*=-1  # glTF's V reflection reverses tangent Y.
+        length=np.linalg.norm(normal,axis=2,keepdims=True)
         if np.any(length<1e-12): warn(ctx,'normal',str(source.GetPath()),'zero normal texels replaced with +Z')
         normal=np.divide(normal,length,out=np.broadcast_to([0.,0.,1.],normal.shape).copy(),where=length>1e-12)
         pbr.normalTexture=_image(normal*.5+.5); sampler('normalTexture','normal')

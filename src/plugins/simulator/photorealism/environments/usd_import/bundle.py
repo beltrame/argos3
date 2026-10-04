@@ -11,9 +11,9 @@ import math
 import xml.etree.ElementTree as ET
 import numpy as np
 import trimesh
-from pxr import UsdLux, UsdPhysics
+from pxr import UsdGeom, UsdLux, UsdPhysics
 from .scene import iter_occurrences, is_visual, is_collider, warn
-from .geometry import convert_geometry
+from .geometry import GeometryPart, convert_geometry
 from .materials import convert_material, attach_material
 from .lights import Lighting, convert_lights
 
@@ -60,7 +60,14 @@ def _geometry_digest(mesh):
 
 def _add(scene,mesh,transform,key):
     transform=transform.copy()
-    if mesh.visual.kind!='vertex': mesh.merge_vertices(merge_tex=False,merge_norm=False)
+    if mesh.visual.kind!='vertex':
+        normals=mesh.vertex_normals.copy(); attributes=[mesh.vertices,normals]
+        uv=getattr(mesh.visual,'uv',None)
+        if uv is not None: attributes.append(uv)
+        # Exact rows preserve seams; native merge_vertices loses cached normals.
+        rows=np.column_stack(attributes); rows[rows==0]=0  # +0 and -0 are equal geometry.
+        unique,inverse=trimesh.grouping.unique_rows(rows.view(np.uint64))
+        mesh.update_vertices(unique,inverse); mesh.vertex_normals=normals[unique]
     if np.linalg.det(transform[:3,:3])<0:
         reflection=np.diag([-1.,1.,1.,1.])
         mesh=mesh.copy(include_cache=True); mesh.apply_transform(reflection)
@@ -81,15 +88,32 @@ def build_bundle(ctx):
         if not authored: warn(ctx,'collision_fallback','/','no authored colliders; visual geometry used as static collision')
     ctx.report['collision_policy']='visual-fallback' if ctx.options.collision=='auto' and not authored else mode
     visual=trimesh.Scene(); collision=trimesh.Scene() if mode!='none' else None
+    geometry_cache=ctx.cache.setdefault('geometry',{})
     for occ in occurrences:
-        if UsdLux.LightAPI(occ.prim): continue
+        if UsdLux.LightAPI(occ.prim) and not UsdGeom.Gprim(occ.prim): continue
         visible=is_visual(occ,ctx)
         collide=(mode=='authored' and is_collider(occ,ctx)) or (mode=='visual' and visible)
         if not visible and not collide: continue
         if occ.prim.HasAPI(UsdPhysics.RigidBodyAPI):
             warn(ctx,'static_body',occ.key,'rigid-body dynamics ignored; geometry imported statically')
-        parts=convert_geometry(occ,ctx)
-        if collide and not parts: raise ValueError(f'{occ.key}: selected collider has no valid triangles')
+        geometry_key=None
+        if occ.prim.IsInstanceProxy() or occ.key!=str(occ.prim.GetPath()):
+            source=occ.prim.GetPrimInPrototype() if occ.prim.IsInstanceProxy() else occ.prim
+            inherited=tuple(str(p.GetAttr().GetPath()) for p in UsdGeom.PrimvarsAPI(occ.prim).FindPrimvarsWithInheritance()
+                            if not p.GetAttr().GetPrim().IsInstanceProxy() and
+                            (p.GetPrimvarName() in ('displayColor','displayOpacity','normals')
+                             or p.GetTypeName().scalarType.cppTypeName.startswith('GfVec2')))
+            geometry_key=(str(source.GetPath()),inherited)
+        if geometry_key in geometry_cache:
+            cached,diagnostics=geometry_cache[geometry_key]; parts=[]
+            for part in cached:
+                binding=occ.prim.GetChild(part.binding_prim.GetName()) if part.binding_prim.IsA(UsdGeom.Subset) else occ.prim
+                parts.append(GeometryPart(str(binding.GetPath()),binding,part.mesh,part.uvs))
+            for diagnostic in diagnostics: warn(ctx,diagnostic['code'],occ.key,diagnostic['message'],**diagnostic['details'])
+        else:
+            start=len(ctx.report['diagnostics']); parts=convert_geometry(occ,ctx)
+            if geometry_key is not None: geometry_cache[geometry_key]=(parts,ctx.report['diagnostics'][start:].copy())
+        if mode=='authored' and collide and not parts: raise ValueError(f'{occ.key}: selected collider has no valid triangles')
         for part in parts:
             # Include full USD identity rather than lossy sanitized labels in node names.
             key=occ.key+'|'+part.key

@@ -32,6 +32,38 @@ class GeometryTests(unittest.TestCase):
         parts,_=self.convert(s)
         self.assertEqual(len(parts[0].mesh.faces),2)
 
+    def test_adjacent_duplicate_positions_drop_only_degenerate_triangle(self):
+        s=make_stage(self)
+        mesh=author_mesh(s,'/Mesh',[[0,0,0],[1,0,0],[1,0,0],[0,1,0]],[[0,1,2,3]])
+        UsdGeom.PrimvarsAPI(mesh).CreatePrimvar('st',Sdf.ValueTypeNames.TexCoord2fArray,'faceVarying').Set([(0,0),(1,0),(.9,.1),(0,1)])
+        parts,ctx=self.convert(s)
+        self.assertEqual(len(parts[0].mesh.faces),1)
+        self.assertTrue(any(d['code']=='degenerate' and d['details']['count']==1 for d in ctx.report['diagnostics']))
+        np.testing.assert_allclose(parts[0].uvs['st'],[[0,0],[1,0],[0,1]])
+
+    def test_ambiguous_subdivision_quad_is_diagnosed(self):
+        s=make_stage(self)
+        mesh=author_mesh(s,'/Mesh',[[0,0,0],[1,1,0],[0,1,0],[1,0,0]],[[0,1,2,3]])
+        with self.assertRaisesRegex(ValueError,'self-intersecting'): self.convert(s)
+        mesh.CreateSubdivisionSchemeAttr('catmullClark')
+        parts,ctx=self.convert(s)
+        self.assertEqual(len(parts[0].mesh.faces),2)
+        self.assertTrue(any(d['code']=='ambiguous_cage_quad' for d in ctx.report['diagnostics']))
+        with self.assertRaises(ValueError): self.convert(s,strict=True)
+
+    def test_planar_boundary_touch_is_rejected(self):
+        s=make_stage(self)
+        author_mesh(s,'/Mesh',[[0,0,0],[2,0,0],[2,2,0],[1,0,0],[0,2,0]],[[0,1,2,3,4]])
+        with self.assertRaisesRegex(ValueError,'self-intersecting'): self.convert(s)
+
+    def test_analytic_left_handed_orientation(self):
+        s=make_stage(self)
+        cube=UsdGeom.Cube.Define(s,'/Cube')
+        right,_=self.convert(s)
+        cube.CreateOrientationAttr('leftHanded')
+        left,_=self.convert(s)
+        np.testing.assert_allclose(left[0].mesh.face_normals,-right[0].mesh.face_normals)
+
     def test_folded_quad_uses_3d_diagonal_with_diagnostic(self):
         s=make_stage(self)
         author_mesh(s,'/Mesh',[[0,0,0],[0,.3285,-.3823],[-1e-6,.0044,-.6223],[-1e-6,.0054,-.6227]],[[0,1,2,3]])

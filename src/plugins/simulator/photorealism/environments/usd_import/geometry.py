@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 import numpy as np
 import trimesh
-from pxr import UsdGeom, UsdSkel
+from pxr import UsdGeom, UsdPhysics, UsdSkel
 from .scene import warn, is_collider
 
 
@@ -18,9 +18,15 @@ def _cross(a,b):
     return a[0]*b[1]-a[1]*b[0]
 
 
-def _triangulate(points, path, ctx=None):
+def _triangulate(points, path, ctx=None, subdivision_cage=False):
     if len(points) < 3:
         raise ValueError(f'{path}: face has fewer than three corners')
+    corners=np.flatnonzero(np.r_[True,np.any(np.diff(points,axis=0)!=0,axis=1)])
+    if len(corners)>1 and np.array_equal(points[corners[0]],points[corners[-1]]): corners=corners[:-1]
+    if len(corners)<3: return []
+    if len(corners)!=len(points):
+        triangles=_triangulate(points[corners],path,ctx,subdivision_cage)
+        return corners[np.asarray(triangles,dtype=int)].tolist()
     points=points-points[0]
     normal=np.cross(points,np.roll(points,-1,axis=0)).sum(axis=0)
     length=np.linalg.norm(normal)
@@ -32,14 +38,17 @@ def _triangulate(points, path, ctx=None):
     for axis in axes:
         try: return _triangulate_projected(np.delete(points,axis,axis=1),path)
         except ValueError as error: failure=error
-    if len(points)==4 and nonplanar:
+    if len(points)==4 and (nonplanar or subdivision_cage):
         tolerance=np.linalg.norm(np.ptp(points,axis=0))*np.finfo(float).eps*32
-        for a,b,c,d in ((0,1,2,3),(1,2,3,0)):
+        for a,b,c,d in (() if subdivision_cage else ((0,1,2,3),(1,2,3,0))):
             edges=np.column_stack((points[b]-points[a],points[c]-points[d]))
             uv=np.linalg.lstsq(edges,points[c]-points[a],rcond=None)[0]
             if np.all((uv>=0)&(uv<=1)) and np.linalg.norm(edges @ uv-(points[c]-points[a]))<=tolerance:
                 raise ValueError(f'{path}: self-intersecting 3D quad')
-        if ctx is not None: warn(ctx,'twisted_quad',path,'nonplanar quad triangulated along shorter 3D diagonal')
+        if ctx is not None:
+            warn(ctx,'ambiguous_cage_quad' if subdivision_cage else 'twisted_quad',path,
+                 'ambiguous subdivision cage quad approximated with shorter diagonal' if subdivision_cage
+                 else 'nonplanar quad triangulated along shorter 3D diagonal')
         return ([[0,1,2],[0,2,3]] if np.linalg.norm(points[2]-points[0])<=np.linalg.norm(points[3]-points[1])
                 else [[0,1,3],[1,2,3]])
     raise failure
@@ -54,8 +63,11 @@ def _triangulate_projected(p,path):
         for j in range(i+2,n):
             if i==0 and j==n-1: continue
             c,d=p[j],p[(j+1)%n]
-            if (_cross(b-a,c-a)*_cross(b-a,d-a) < -epsilon**2
-                    and _cross(d-c,a-c)*_cross(d-c,b-c) < -epsilon**2):
+            crossing=(_cross(b-a,c-a)*_cross(b-a,d-a) < -epsilon**2
+                      and _cross(d-c,a-c)*_cross(d-c,b-c) < -epsilon**2)
+            touching=any(abs(_cross(y-x,z-x))<=epsilon and np.all(z>=np.minimum(x,y)) and np.all(z<=np.maximum(x,y))
+                         for x,y,z in ((a,b,c),(a,b,d),(c,d,a),(c,d,b)))
+            if crossing or touching:
                 raise ValueError(f'{path}: self-intersecting polygon')
     area = sum(_cross(p[i],p[(i+1)%n]) for i in range(n))
     if abs(area) <= epsilon:
@@ -131,6 +143,9 @@ def convert_geometry(occ,ctx):
         raise ValueError(f'{path}: invalid transform')
     if prim.HasAPI(UsdSkel.BindingAPI):
         warn(ctx,'skinning',path,'skinning is not evaluated; authored points only')
+    if ctx.options.collision in ('auto','authored') and is_collider(occ,ctx) and prim.HasAPI(UsdPhysics.MeshCollisionAPI):
+        approximation=UsdPhysics.MeshCollisionAPI(prim).GetApproximationAttr().Get(time)
+        if approximation!='none': raise ValueError(f'{path}: unsupported authored collider approximation {approximation}')
     source=UsdGeom.Mesh(prim)
     if source:
         points=np.asarray(source.GetPointsAttr().Get(time),dtype=float)
@@ -140,15 +155,16 @@ def convert_geometry(occ,ctx):
                 or counts.ndim!=1 or indices.ndim!=1 or np.any(counts<3)
                 or counts.sum()!=len(indices) or np.any(indices<0) or np.any(indices>=len(points))):
             raise ValueError(f'{path}: invalid mesh topology/points')
-        if source.GetSubdivisionSchemeAttr().Get(time)!='none':
+        subdivision_cage=source.GetSubdivisionSchemeAttr().Get(time)!='none'
+        if subdivision_cage:
             warn(ctx,'subdivision',path,'subdivision exported as control cage')
         holes=set(source.GetHoleIndicesAttr().Get(time) or [])
         if any(i<0 or i>=len(counts) for i in holes): raise ValueError(f'{path}: invalid hole face')
         triangles=[]; face_ids=[]; offset=0; dropped=0
         for face,n in enumerate(counts):
             if face not in holes:
-                local=_triangulate(points[indices[offset:offset+n]],path,ctx)
-                if not local: dropped+=1
+                local=_triangulate(points[indices[offset:offset+n]],path,ctx,subdivision_cage)
+                dropped+=max(0,int(n)-2-len(local))
                 for tri in local:
                     corners=np.asarray(tri)+offset
                     xyz=points[indices[corners]]
@@ -167,9 +183,11 @@ def convert_geometry(occ,ctx):
     else:
         mesh=_primitive(prim,time)
         if mesh is None:
-            if is_collider(occ,ctx): raise ValueError(f'{path}: unsupported authored collider {prim.GetTypeName()}')
+            if is_collider(occ,ctx) and ctx.options.collision in ('auto','authored'):
+                raise ValueError(f'{path}: unsupported authored collider {prim.GetTypeName()}')
             warn(ctx,'geometry',path,f'unsupported geometry {prim.GetTypeName()}')
             return []
+        if UsdGeom.Gprim(prim).GetOrientationAttr().Get(time)=='leftHanded': mesh.invert()
         xyz=mesh.vertices[mesh.faces.ravel()]; faces=np.arange(len(xyz)).reshape(-1,3)
         vertices=mesh.faces.ravel(); corners=np.arange(len(xyz)); face_ids=list(range(len(faces)))
         counts=np.full(len(faces),3); corner_faces=np.repeat(face_ids,3)

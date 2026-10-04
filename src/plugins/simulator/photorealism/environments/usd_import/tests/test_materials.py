@@ -56,6 +56,23 @@ class MaterialTests(unittest.TestCase):
         data=convert_material(m.GetPrim(),context(s))
         self.assertEqual(data.pbr.alphaMode,'MASK'); self.assertAlmostEqual(data.pbr.alphaCutoff,.3)
 
+    def test_malformed_texture_role_has_source_diagnostic(self):
+        for name,channel in [('normal','r'),('roughness','rgb'),('diffuseColor','r')]:
+            with self.subTest(name=name):
+                s,m,_,shader=fixture(self)
+                texture(s,shader,name,[[[64,128,192]]],channel=channel)
+                ctx=context(s); data=convert_material(m.GetPrim(),ctx)
+                self.assertTrue(any(d['code']=='shader' and d['path']=='/Material/Surface' and name in d['message'] for d in ctx.report['diagnostics']))
+                with self.assertRaisesRegex(ValueError,'/Material/Surface'): convert_material(m.GetPrim(),context(s,strict=True))
+
+    def test_constant_material_interface_input(self):
+        s,m,material,shader=fixture(self)
+        interface=material.CreateInput('tint',Sdf.ValueTypeNames.Color3f); interface.Set((1,0,0))
+        shader.CreateInput('diffuseColor',Sdf.ValueTypeNames.Color3f).ConnectToSource(interface)
+        ctx=context(s); data=convert_material(m.GetPrim(),ctx)
+        np.testing.assert_allclose(data.pbr.baseColorFactor[:3],[255,0,0])
+        self.assertEqual(ctx.report['diagnostics'],[])
+
     def test_preview_binding_beats_universal(self):
         s,m,material,_=fixture(self,roughness=.9)
         preview=UsdShade.Material.Define(s,'/Preview')
@@ -70,7 +87,8 @@ class MaterialTests(unittest.TestCase):
         texture(s,sh,'roughness',[[[64,0,0]]],channel='r')
         texture(s,sh,'metallic',[[[0,0,192]]],channel='b')
         texture(s,sh,'normal',[[[128,128,255]]],scale=(2,2,2,1),bias=(-1,-1,-1,0))
-        data=convert_material(m.GetPrim(),context(s))
+        ctx=context(s); data=convert_material(m.GetPrim(),ctx)
+        self.assertTrue(all(image.dtype==np.uint8 for image in ctx.cache['images'].values()))
         np.testing.assert_allclose(np.asarray(data.pbr.metallicRoughnessTexture)[0,0,1:],[64,192],atol=1)
         np.testing.assert_allclose(np.asarray(data.pbr.normalTexture)[0,0],[128,128,255],atol=1)
 

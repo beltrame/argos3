@@ -1,3 +1,4 @@
+import io
 import json
 import struct
 import unittest
@@ -5,11 +6,13 @@ from pathlib import Path
 from unittest import mock
 import numpy as np
 import trimesh
-from pxr import UsdGeom, UsdPhysics, UsdShade, Sdf
+from PIL import Image
+from pxr import UsdGeom, UsdPhysics, UsdShade, UsdLux, Sdf
 from support import author_mesh
 from support import make_stage, context
 from test_materials import fixture, texture
 from usd_import.bundle import build_bundle, export_glb
+from usd_import.geometry import convert_geometry
 
 
 def glb_json(path):
@@ -47,6 +50,60 @@ class BundleTests(unittest.TestCase):
         np.testing.assert_allclose(loaded.bounds,original,atol=1e-6)
         np.testing.assert_allclose(bundle.visual.bounds,original)
         np.testing.assert_allclose(original,[[.99,-.01,-.01],[1.01,.01,.01]],atol=1e-6)
+
+    def test_unsupported_visual_geometry_is_not_a_required_collider(self):
+        for mode in ('auto','visual','none'):
+            stage=make_stage(self); UsdGeom.Cube.Define(stage,'/Box')
+            curves=UsdGeom.BasisCurves.Define(stage,'/Curve')
+            bundle=build_bundle(context(stage,collision=mode))
+            self.assertEqual(bundle.report['counts']['visual_triangles'],12)
+            self.assertTrue(any(d['code']=='geometry' and d['path']=='/Curve' for d in bundle.report['diagnostics']))
+            UsdPhysics.CollisionAPI.Apply(curves.GetPrim())
+            if mode=='auto':
+                with self.assertRaisesRegex(ValueError,'collider'): build_bundle(context(stage,collision=mode))
+            else: self.assertEqual(build_bundle(context(stage,collision=mode)).report['counts']['visual_triangles'],12)
+
+    def test_selected_collider_approximation_is_not_silently_ignored(self):
+        stage=make_stage(self);mesh=author_mesh(stage,'/Mesh',[[0,0,0],[1,0,0],[0,1,0]],[[0,1,2]])
+        UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
+        UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim()).CreateApproximationAttr('convexHull')
+        for mode in ('auto','authored'):
+            with self.assertRaisesRegex(ValueError,'/Mesh.*approximation'): build_bundle(context(stage,collision=mode))
+        for mode in ('none','visual'):
+            self.assertEqual(build_bundle(context(stage,collision=mode)).report['counts']['visual_triangles'],1)
+
+    def test_mesh_light_keeps_visual_and_authored_collision(self):
+        stage=make_stage(self); UsdGeom.Cube.Define(stage,'/Box')
+        mesh=author_mesh(stage,'/Emitter',[[0,0,0],[1,0,0],[0,1,0]],[[0,1,2]])
+        UsdLux.MeshLightAPI.Apply(mesh.GetPrim()); UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
+        bundle=build_bundle(context(stage))
+        self.assertEqual(bundle.report['counts']['visual_triangles'],13)
+        self.assertEqual(bundle.report['counts']['collision_triangles'],1)
+        self.assertTrue(any(s['path']=='/Emitter' and s['collision'] for s in bundle.report['sources']))
+        self.assertTrue(any(d['code']=='light' and d['path']=='/Emitter' for d in bundle.report['diagnostics']))
+
+    def test_shared_prototype_converts_once_and_keeps_instance_materials(self):
+        stage=make_stage(self); UsdGeom.Xform.Define(stage,'/Model'); UsdGeom.Cube.Define(stage,'/Model/Box')
+        for path,color in [('/A',(1,0,0)),('/B',(0,1,0))]:
+            root=UsdGeom.Xform.Define(stage,path); root.GetPrim().GetReferences().AddInternalReference('/Model'); root.GetPrim().SetInstanceable(True)
+            material=UsdShade.Material.Define(stage,path+'Material'); shader=UsdShade.Shader.Define(stage,path+'Material/Surface')
+            shader.CreateIdAttr('UsdPreviewSurface'); shader.CreateInput('diffuseColor',Sdf.ValueTypeNames.Color3f).Set(color)
+            material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(),'surface')
+            UsdShade.MaterialBindingAPI.Apply(root.GetPrim()).Bind(material)
+        with mock.patch('usd_import.bundle.convert_geometry',wraps=convert_geometry) as converter:
+            bundle=build_bundle(context(stage,roots=('/A','/B')))
+            self.assertEqual(converter.call_count,1)
+        self.assertEqual(len(bundle.visual.geometry),2);self.assertEqual(len(bundle.collision.geometry),1)
+        self.assertEqual({tuple(m.visual.material.baseColorFactor[:3]) for m in bundle.visual.geometry.values()},{(255,0,0),(0,255,0)})
+        self.assertEqual({s['part'] for s in bundle.report['sources']},{'/A/Box','/B/Box'})
+
+    def test_inherited_instance_colors_are_not_cached_across_owners(self):
+        stage=make_stage(self);UsdGeom.Xform.Define(stage,'/Model');UsdGeom.Cube.Define(stage,'/Model/Box')
+        for path,color in [('/A',(1,0,0)),('/B',(0,1,0))]:
+            root=UsdGeom.Xform.Define(stage,path);root.GetPrim().GetReferences().AddInternalReference('/Model');root.GetPrim().SetInstanceable(True)
+            UsdGeom.PrimvarsAPI(root).CreatePrimvar('displayColor',Sdf.ValueTypeNames.Color3fArray,'constant').Set([color])
+        bundle=build_bundle(context(stage,roots=('/A','/B')))
+        self.assertEqual({tuple(m.visual.vertex_colors[0,:3]) for m in bundle.visual.geometry.values()},{(255,0,0),(0,255,0)})
 
     def test_shared_diagonal_vertices_are_not_duplicated(self):
         stage=make_stage(self)
@@ -92,6 +149,28 @@ class BundleTests(unittest.TestCase):
         self.assertTrue(all('bufferView' in image and 'uri' not in image for image in tree['images']))
         self.assertNotIn('images',glb_json(directory/'collision.glb'))
 
+    def test_asymmetric_normal_matches_exported_uv_tangent_frame(self):
+        stage,mesh,_,shader=fixture(self)
+        UsdGeom.PrimvarsAPI(mesh).CreatePrimvar('st',Sdf.ValueTypeNames.TexCoord2fArray,'vertex').Set([(0,0),(1,0),(0,1)])
+        texture(stage,shader,'normal',[[[128,204,230]]],scale=(2,2,2,1),bias=(-1,-1,-1,0))
+        path=Path(stage.GetRootLayer().realPath).parent/'normal-direction.glb'
+        export_glb(build_bundle(context(stage)).visual,path)
+        tree=glb_json(path); raw=path.read_bytes(); binary=28+struct.unpack_from('<I',raw,12)[0]
+        primitive=tree['meshes'][0]['primitives'][0]
+        arrays={}
+        for name,width in [('POSITION',3),('NORMAL',3),('TEXCOORD_0',2)]:
+            accessor=tree['accessors'][primitive['attributes'][name]];view=tree['bufferViews'][accessor['bufferView']]
+            arrays[name]=np.frombuffer(raw,dtype='<f4',count=accessor['count']*width,offset=binary+view.get('byteOffset',0)+accessor.get('byteOffset',0)).reshape(-1,width)
+        slot=tree['materials'][0]['normalTexture']['index']; image=tree['images'][tree['textures'][slot]['source']]
+        view=tree['bufferViews'][image['bufferView']];start=binary+view.get('byteOffset',0)
+        with Image.open(io.BytesIO(raw[start:start+view['byteLength']])) as image: normal=np.asarray(image)[0,0,:3]/255*2-1
+        positions=arrays['POSITION']; uv=arrays['TEXCOORD_0']
+        tangent,bitangent=np.linalg.solve(uv[1:]-uv[0],positions[1:]-positions[0])
+        tangent/=np.linalg.norm(tangent);bitangent/=np.linalg.norm(bitangent)
+        reconstructed=tangent*normal[0]+bitangent*normal[1]+arrays['NORMAL'][0]*normal[2]
+        # USD's positive tangent-Y slope remains positive after glTF's V reflection.
+        self.assertGreater(reconstructed[1],.5)
+
     def test_display_opacity_has_blend_material_and_corner_colors(self):
         stage=make_stage(self)
         mesh=author_mesh(stage,'/Mesh',[[0,0,0],[1,0,0],[0,1,0]],[[0,1,2]])
@@ -113,7 +192,7 @@ class BundleTests(unittest.TestCase):
 
     def test_authored_normals_survive_copy_and_export(self):
         stage=make_stage(self)
-        mesh=author_mesh(stage,'/Mesh',[[0,0,0],[1,0,0],[0,1,0]],[[0,1,2]])
+        mesh=author_mesh(stage,'/Mesh',[[0,0,0],[1,0,0],[1,1,0],[0,1,0]],[[0,1,2,3]])
         mesh.CreateNormalsAttr([(1,0,1)]); mesh.SetNormalsInterpolation('constant')
         mesh.AddScaleOp().Set((2,1,1))
         bundle=build_bundle(context(stage))
@@ -125,7 +204,7 @@ class BundleTests(unittest.TestCase):
             transform,key=loaded.graph[node]
             normals=loaded.geometry[key].vertex_normals @ np.linalg.inv(transform[:3,:3])
             normals/=np.linalg.norm(normals,axis=1)[:,None]
-            np.testing.assert_allclose(normals,[[1/np.sqrt(5),0,2/np.sqrt(5)]]*3,atol=1e-6)
+            np.testing.assert_allclose(normals,[[1/np.sqrt(5),0,2/np.sqrt(5)]]*4,atol=1e-6)
 
     def test_export_size_error_is_actionable(self):
         stage=make_stage(self); UsdGeom.Cube.Define(stage,'/Box')
