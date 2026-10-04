@@ -13,6 +13,8 @@
 - [x] Obtain user review of the plan and select an execution method: Native.
 - [x] Implement stage composition, geometry, materials, lights, scene assembly and portable CLI (Tasks 1–6).
 - [x] Implement and unit-test optional render/Jolt smoke runner (Task 7 offline portion).
-- [ ] Run real synthetic render/Jolt smoke: blocked on an available ARGoS/Filament build.
-- [ ] Obtain explicit opt-in for the 9.6 GB ALab asset download; implement setup/notices and run full-scene acceptance (Task 8).
-- [ ] Complete fresh whole-branch review and final verification.
+- [x] Build ARGoS/Filament locally and run real synthetic render/Jolt smoke.
+- [x] Obtain explicit opt-in and safely download/compose ALab structure and 9.6 GB Techvar assets; document setup/notices.
+- [x] Complete full render-purpose ALab conversion, independently reopen both GLBs, and verify actual headless rendering, floor ray and supported foot-bot pose (Task 8). Interactive viewer remains unvalidated: no display.
+- [x] Complete fresh independent whole-branch review; reproduce and fix confirmed findings.
+- [x] Review follow-up fixes (no unresolved source findings) and finish full-target headless verification. Offline suite: 72 passing tests; engine suite: 45 entries, zero failures, one display-dependent skip. ALab calibrated PNGs and source-derived floor/robot checks pass.
