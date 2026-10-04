@@ -24,15 +24,58 @@ namespace argos {
       CJoltSpotModel(CJoltEngine& c_engine,
                            CSpotEntity& c_entity);
 
-      virtual ~CJoltSpotModel() {}
+      ~CJoltSpotModel() override;
+
+      void Reset() override;
+      void MoveTo(const CVector3& c_position, const CQuaternion& c_orientation) override;
 
       /* Set contact-surface drive targets without overriding chassis motion. */
       virtual void UpdateFromEntityStatus() override;
+      /* Velocity-limited leg actuation, only during a checked step. */
+      void UpdatePhysics() override;
+
+      SContactSurfaceVelocity GetContactSurfaceVelocity(
+         const JPH::Body& c_body,
+         JPH::Vec3Arg c_support_normal,
+         JPH::RVec3Arg c_contact_offset,
+         const JPH::ContactPoints& c_contact_points) const override;
 
       void UpdateAuxiliaryAnchor(SAnchor& s_anchor);
 
    private:
 
+      enum class EStepPhase { NONE, LIFT, ADVANCE, RECOVER };
+      void ResetMotionState();
+      void TryStartStep();
+      bool HasStepSupport(JPH::RVec3Arg c_position, float f_reach) const;
+      void EndStep();
+      void UpdateStepRecovery(float f_dt, JPH::RVec3Arg c_position);
+      void ApplyStepVelocity(JPH::Vec3Arg c_planar, float f_height_error, float f_yaw_rate);
+
+      EStepPhase m_eStepPhase = EStepPhase::NONE;
+      JPH::RVec3 m_cStepTarget = JPH::RVec3::sZero();
+      JPH::RVec3 m_cStepLiftPosition = JPH::RVec3::sZero();
+      JPH::Vec3 m_cStepDirection = JPH::Vec3::sZero();
+      bool m_bStepPaused = false;
+      float m_fStepHoldHeight = 0.0f;
+      float m_fStepTimeLeft = 0.0f;
+      float m_fStepPauseTimeLeft = 0.0f;
+      float m_fStepRecoveryTimeLeft = 0.0f;
+      float m_fStepCooldown = 0.0f;
+      float m_fCommandLinear = 0.0f;
+      float m_fCommandAngular = 0.0f;
+      static constexpr float STEEP_CONTACT_NORMAL_Z = 0.76604444f; // cos(40 degrees)
+      static constexpr float MAX_STEP_HEIGHT = 0.35f;
+      static constexpr float MAX_LIFT_SPEED = 0.5f;
+      /* Match the normal simulated platform/Nav2 yaw envelope (rad/s). */
+      static constexpr float MAX_STEP_YAW_RATE = 1.2f;
+      static constexpr float STEP_ALIGNMENT_COS = 0.965925826f; // cos(15 degrees)
+      static constexpr float STEP_PAUSE_ALLOWANCE = 30.0f;
+      static constexpr float STEP_RECOVERY_ALLOWANCE = 10.0f;
+      static constexpr float MAX_RECOVERY_SPEED = 0.3f;
+      static constexpr float RECOVERY_HEADING_TOLERANCE = 0.001f; // radians
+
+      JPH::Ref<JPH::TwoBodyConstraint> m_pcBalance;
       CSpotEntity& m_cSpotEntity;
       CWheeledEntity& m_cWheeledEntity;
 

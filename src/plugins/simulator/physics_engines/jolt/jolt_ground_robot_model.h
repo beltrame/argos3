@@ -24,12 +24,14 @@ namespace argos {
 
       SContactSurfaceVelocity GetContactSurfaceVelocity(
          const JPH::Body& c_body,
-         JPH::Vec3Arg c_support_normal) const override {
+         JPH::Vec3Arg c_support_normal,
+         JPH::RVec3Arg,
+         const JPH::ContactPoints&) const override {
          if(m_fLinearVelocity == 0.0f && m_fAngularVelocity == 0.0f) return {};
          const JPH::Quat cRotation = c_body.GetRotation();
          const JPH::Vec3 cUp = cRotation * JPH::Vec3::sAxisZ();
-         /* Only supporting contacts drive; walls and the roof remain passive.
-          * Include rounded leading edges, not just nearly horizontal faces. */
+         /* Include rounded leading edges for wheel/track wall climbing.
+          * This single-box approximation does not resolve individual wheels. */
          if(c_support_normal.Dot(cUp) <= 0.0f) return {};
          return {cRotation * JPH::Vec3(-m_fLinearVelocity, 0.0f, 0.0f),
                  cUp * -m_fAngularVelocity};

@@ -11,6 +11,8 @@
 #ifndef JOLT_MESH_LOOP_FUNCTIONS_H
 #define JOLT_MESH_LOOP_FUNCTIONS_H
 
+#include <argos3/plugins/simulator/physics_engines/jolt/jolt_model.h>
+#include <Jolt/Physics/PhysicsStepListener.h>
 #include <argos3/core/simulator/loop_functions.h>
 
 #include <string>
@@ -23,13 +25,15 @@ namespace argos {
 using namespace argos;
 
 /** Shared checks for the Jolt mesh experiments. */
-class CMeshLoopFunctions : public CLoopFunctions {
+class CMeshLoopFunctions : public CLoopFunctions, public JPH::PhysicsStepListener {
 
 public:
 
    virtual void Init(TConfigurationNode& t_tree);
    virtual void PostStep();
    virtual void PostExperiment();
+   void Destroy() override;
+   void OnStep(const JPH::PhysicsStepListenerContext& c_context) override;
 
 private:
 
@@ -82,6 +86,75 @@ private:
    UInt32 m_unAttitudeWarmup = 10;
    bool m_bHaveAttitudeStart = false;
    CVector3 m_cAttitudeStartPosition;
+
+   /* Wall-contact and replay measurements, sampled each physics substep. */
+   bool m_bMotionMetrics = false;
+   Real m_fMaximumTilt = 180.0;
+   Real m_fMaximumFinishTilt = 1.0e6;
+   Real m_fFinishTilt = 0.0;
+   Real m_fMaximumSpeed = 1.0e6;
+   Real m_fMaximumRise = 1.0e6;
+   Real m_fMaximumUpSpeed = 1.0e6;
+   Real m_fPeakUpSpeed = 0.0;
+   bool m_bStepCheck = false;
+   Real m_fStepReachedTime = -1.0;
+   Real m_fStepDeadline = 10.0;
+   bool m_bResetGroundCheck = false;
+   UInt32 m_unInterruptTick = 0;
+   UInt32 m_unInterruptTicks = 20;
+   bool m_bHaveHoldStart = false;
+   CVector3 m_cHoldStart;
+   CRadians m_cHoldYaw;
+   Real m_fHoldHeightError = 0.0;
+   Real m_fHoldPlanarMotion = 0.0;
+   Real m_fHoldYaw = 0.0;
+   Real m_fMinimumHoldYaw = 0.0;
+   UInt32 m_unYawLockTick = 0;
+   UInt32 m_unYawLockTicks = 0;
+   Real m_fPeakLockedYawRate = 0.0;
+   bool m_bConeContactCheck = false;
+   bool m_bHaveConeSettleStart = false;
+   CVector3 m_cConeSettleStart;
+   Real m_fConeSettleMotion = 0.0;
+   Real m_fConeSettleSpeed = 0.0;
+   Real m_fConeTiltMin = 180.0;
+   Real m_fConeTiltMax = 0.0;
+   CJoltModel* m_pcMotionModel = nullptr;
+   CVector3 m_cInitialAngularVelocity;
+   UInt32 m_unResetTick = 0;
+   UInt32 m_unMoveTick = 0;
+   Real m_fPeakTilt = 0.0;
+   Real m_fPeakPitch = 0.0;
+   Real m_fPeakRoll = 0.0;
+   Real m_fPeakRise = 0.0;
+   Real m_fPeakSpeed = 0.0;
+   Real m_fTravel = 0.0;
+   Real m_fMinimumTravel = 0.0;
+   CVector3 m_cMotionStart;
+   CVector3 m_cPreviousPosition;
+   void SampleMotion(const JPH::Body& c_body);
+   /* Ballistic drop timing and rebound are independent of the speed ceiling. */
+   bool m_bDrop = false;
+   bool m_bDropAfterRetreat = false;
+   Real m_fRetreatDistance = 0.0;
+   Real m_fPeakRetreatSpeed = 0.0;
+   Real m_fRetreatHeightError = 0.0;
+   Real m_fRetreatYaw = 0.0;
+   bool m_bBlockedRecovery = false;
+   bool m_bHaveBlockedSample = false;
+   CVector3 m_cBlockedPosition;
+   Real m_fBlockedMotion = 0.0;
+   Real m_fBlockedHeightError = 0.0;
+   Real m_fBlockedReleaseTime = -1.0;
+   UInt32 m_unDropStartTick = 0;
+   Real m_fPhysicsTime = 0.0;
+   Real m_fFallStart = -1.0;
+   Real m_fLandTime = -1.0;
+   Real m_fRebound = 0.0;
+   Real m_fPeakHorizontalSpeed = 0.0;
+   Real m_fDropStartHeight = 0.0;
+   Real m_fDropStartVelocity = 0.0;
+   Real m_fDropDistance = 0.0;
 
    /* Ray throughput measurement */
    bool m_bScan = false;

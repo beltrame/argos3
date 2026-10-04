@@ -71,6 +71,43 @@ void CMeshLoopFunctions::Init(TConfigurationNode& t_tree) {
       }
       GetNodeAttributeOrDefault(t_tree, "poses_file", m_strPosesFile,
                                 m_strPosesFile);
+      GetNodeAttributeOrDefault(t_tree, "motion_metrics", m_bMotionMetrics,
+                                m_bMotionMetrics);
+      GetNodeAttributeOrDefault(t_tree, "maximum_tilt", m_fMaximumTilt,
+                                m_fMaximumTilt);
+      GetNodeAttributeOrDefault(t_tree, "maximum_speed", m_fMaximumSpeed,
+                                m_fMaximumSpeed);
+      GetNodeAttributeOrDefault(t_tree, "maximum_rise", m_fMaximumRise,
+                                m_fMaximumRise);
+      GetNodeAttributeOrDefault(t_tree, "minimum_travel", m_fMinimumTravel,
+                                m_fMinimumTravel);
+      m_cMotionStart = m_pcRobot->GetOriginAnchor().Position;
+      m_cPreviousPosition = m_cMotionStart;
+      if(m_bMotionMetrics) {
+         m_pcMotionModel = &dynamic_cast<CJoltModel&>(m_pcRobot->GetPhysicsModel("jolt"));
+         m_pcMotionModel->GetJoltEngine().GetSystem().AddStepListener(this);
+         GetNodeAttributeOrDefault(t_tree, "maximum_finish_tilt", m_fMaximumFinishTilt, m_fMaximumFinishTilt);
+         GetNodeAttributeOrDefault(t_tree, "drop_after_retreat", m_bDropAfterRetreat, m_bDropAfterRetreat);
+         GetNodeAttributeOrDefault(t_tree, "blocked_recovery", m_bBlockedRecovery, m_bBlockedRecovery);
+         GetNodeAttributeOrDefault(t_tree, "drop_check", m_bDrop, m_bDrop);
+         GetNodeAttributeOrDefault(t_tree, "drop_start_tick", m_unDropStartTick, m_unDropStartTick);
+         GetNodeAttributeOrDefault(t_tree, "step_deadline", m_fStepDeadline, m_fStepDeadline);
+         GetNodeAttributeOrDefault(t_tree, "interrupt_tick", m_unInterruptTick, m_unInterruptTick);
+         GetNodeAttributeOrDefault(t_tree, "interrupt_ticks", m_unInterruptTicks, m_unInterruptTicks);
+         GetNodeAttributeOrDefault(t_tree, "yaw_lock_tick", m_unYawLockTick, m_unYawLockTick);
+         GetNodeAttributeOrDefault(t_tree, "yaw_lock_ticks", m_unYawLockTicks, m_unYawLockTicks);
+         GetNodeAttributeOrDefault(t_tree, "minimum_hold_yaw", m_fMinimumHoldYaw, m_fMinimumHoldYaw);
+         GetNodeAttributeOrDefault(t_tree, "step_check", m_bStepCheck, m_bStepCheck);
+         GetNodeAttributeOrDefault(t_tree, "cone_contact_check", m_bConeContactCheck, m_bConeContactCheck);
+         GetNodeAttributeOrDefault(t_tree, "maximum_up_speed", m_fMaximumUpSpeed, m_fMaximumUpSpeed);
+         GetNodeAttributeOrDefault(t_tree, "reset_ground_check", m_bResetGroundCheck, m_bResetGroundCheck);
+         GetNodeAttributeOrDefault(t_tree, "initial_angular_velocity", m_cInitialAngularVelocity,
+                                   m_cInitialAngularVelocity);
+         GetNodeAttributeOrDefault(t_tree, "reset_tick", m_unResetTick, m_unResetTick);
+         GetNodeAttributeOrDefault(t_tree, "move_tick", m_unMoveTick, m_unMoveTick);
+         m_pcMotionModel->GetJoltEngine().GetBodyInterface().SetAngularVelocity(
+            m_pcMotionModel->GetBodies()[0].Id, ToJolt(m_cInitialAngularVelocity));
+      }
       m_bCheckAttitude = NodeAttributeExists(t_tree, "attitude_slope");
       if(m_bCheckAttitude) {
          GetNodeAttribute(t_tree, "attitude_slope", m_fAttitudeSlope);
@@ -381,6 +418,11 @@ void CMeshLoopFunctions::PostStep() {
       CheckRays();
    }
    if(m_pcRobot != nullptr) {
+      if(m_bMotionMetrics) {
+         JPH::BodyLockRead cLock(m_pcMotionModel->GetJoltEngine().GetSystem().GetBodyLockInterface(),
+                                 m_pcMotionModel->GetBodies()[0].Id);
+         SampleMotion(cLock.GetBody());
+      }
       /* Every scenario starts the robot on the X axis and drives it along
        * it, so |Y| is its lateral deviation. */
       m_fMaxLateral = std::max(
@@ -397,6 +439,28 @@ void CMeshLoopFunctions::PostStep() {
    if(m_bScan) {
       RunScan();
    }
+   if(m_bBlockedRecovery && GetSpace().GetSimulationClock() == 45) {
+      auto& cBlock = dynamic_cast<CComposableEntity&>(GetSpace().GetEntity("retreat_block"));
+      cBlock.GetComponent<CEmbodiedEntity>("body").GetPhysicsModel("jolt").MoveTo(
+         CVector3(0.25, 0, 0), CQuaternion());
+      LOG << "[mesh] inserted retreat obstacle behind Spot at tick 45" << std::endl;
+   }
+   const UInt32 unStateTick = m_unMoveTick ? m_unMoveTick : m_unResetTick;
+   if(m_bResetGroundCheck && GetSpace().GetSimulationClock() == unStateTick + 5 &&
+      m_pcRobot->GetOriginAnchor().Position.GetZ() > m_cMotionStart.GetZ() + 0.01) {
+      THROW_ARGOSEXCEPTION("Reset retained stale step lift state");
+   }
+   if(m_pcMotionModel && unStateTick && GetSpace().GetSimulationClock() == unStateTick) {
+      if(m_unMoveTick)
+         m_pcMotionModel->MoveTo(m_cMotionStart, CQuaternion());
+      else
+         m_pcMotionModel->Reset();
+      m_cPreviousPosition = m_pcRobot->GetOriginAnchor().Position;
+      m_pcMotionModel->GetJoltEngine().GetBodyInterface().SetAngularVelocity(
+         m_pcMotionModel->GetBodies()[0].Id, ToJolt(m_cInitialAngularVelocity));
+      LOG << "[mesh] model " << (m_unMoveTick ? "MoveTo" : "reset")
+          << " at tick " << unStateTick << std::endl;
+   }
 }
 
 /****************************************/
@@ -406,6 +470,83 @@ void CMeshLoopFunctions::PostExperiment() {
    if(m_pcRobot != nullptr) {
       if(!m_strPosesFile.empty()) {
          WritePoses();
+      }
+      if(m_bMotionMetrics) {
+         LOG << "[mesh] motion peak_pitch_deg=" << m_fPeakPitch
+             << " peak_roll_deg=" << m_fPeakRoll
+             << " rise_m=" << m_fPeakRise
+             << " speed_m_s=" << m_fPeakSpeed
+             << " travel_m=" << m_fTravel
+             << " tilt_deg=" << m_fPeakTilt
+             << " horizontal_speed_m_s=" << m_fPeakHorizontalSpeed
+             << " up_speed_m_s=" << m_fPeakUpSpeed
+             << " final_x_m=" << m_pcRobot->GetOriginAnchor().Position.GetX()
+             << " final_z_m=" << m_pcRobot->GetOriginAnchor().Position.GetZ()
+             << std::endl;
+         LOG.Flush();
+         if(!std::isfinite(m_fPeakSpeed) || (!m_bDrop && m_fPeakSpeed > m_fMaximumSpeed) ||
+            m_fPeakTilt > m_fMaximumTilt || m_fPeakUpSpeed > m_fMaximumUpSpeed ||
+            m_fTravel < m_fMinimumTravel || m_fPeakRise > m_fMaximumRise) {
+            THROW_ARGOSEXCEPTION("Robot exceeded motion safety limits");
+         }
+      }
+      if(m_bConeContactCheck) {
+         LOG << "[mesh] cone_contact settled_motion_m=" << m_fConeSettleMotion
+             << " tilt_span_deg=" << m_fConeTiltMax - m_fConeTiltMin
+             << " settled_speed_m_s=" << m_fConeSettleSpeed << std::endl;
+         if(!m_bHaveConeSettleStart || m_fConeSettleMotion > 0.01 ||
+            m_fConeTiltMax - m_fConeTiltMin > 0.1 || m_fConeSettleSpeed > 0.02)
+            THROW_ARGOSEXCEPTION("Persistent cone/contact jitter on steep terrain");
+      }
+      if(m_unInterruptTick) {
+         LOG << "[mesh] hold start_z_m=" << m_cHoldStart.GetZ()
+             << " height_error_m=" << m_fHoldHeightError
+             << " planar_motion_m=" << m_fHoldPlanarMotion << " peak_yaw_rad=" << m_fHoldYaw << std::endl;
+         if(!m_bHaveHoldStart || m_fHoldHeightError > 0.02 || m_fHoldPlanarMotion > 0.001 ||
+            m_fHoldYaw < m_fMinimumHoldYaw)
+            THROW_ARGOSEXCEPTION("Interrupted step did not hold position or execute commanded yaw");
+      }
+      if(m_unYawLockTick) {
+         LOG << "[mesh] active step yaw_rate_rad_s=" << m_fPeakLockedYawRate << std::endl;
+         if(m_fPeakLockedYawRate > 0.01)
+            THROW_ARGOSEXCEPTION("Unpaused step retained yaw spin");
+      }
+      if(m_bStepCheck) {
+         LOG << "[mesh] step fully_supported_s=" << m_fStepReachedTime << std::endl;
+         if(m_fStepReachedTime < 0 || m_fStepReachedTime > m_fStepDeadline)
+            THROW_ARGOSEXCEPTION("Robot did not finish climbing within " << m_fStepDeadline << " seconds");
+      }
+      LOG << "[mesh] finish_tilt_deg=" << m_fFinishTilt << std::endl;
+      if(m_fFinishTilt >= m_fMaximumFinishTilt)
+         THROW_ARGOSEXCEPTION("Robot did not finish upright");
+      if(m_bDropAfterRetreat) {
+         LOG << "[mesh] retreat distance_m=" << m_fRetreatDistance
+             << " height_error_m=" << m_fRetreatHeightError << " yaw_rad=" << m_fRetreatYaw
+             << " speed_m_s=" << m_fPeakRetreatSpeed << std::endl;
+         if(m_fRetreatDistance < 0.5 || m_fRetreatHeightError > 0.02 ||
+            m_fRetreatYaw > 0.01 || m_fPeakRetreatSpeed > 0.3001)
+            THROW_ARGOSEXCEPTION("Step recovery did not back out level and aligned");
+      }
+      if(m_bBlockedRecovery) {
+         LOG << "[mesh] blocked motion_m=" << m_fBlockedMotion
+             << " height_error_m=" << m_fBlockedHeightError
+             << " release_s=" << m_fBlockedReleaseTime << std::endl;
+         if(!m_bHaveBlockedSample || m_fBlockedMotion > 0.01 || m_fBlockedHeightError > 0.02 ||
+            m_fBlockedReleaseTime < 44.48 || m_fBlockedReleaseTime > 44.60)
+            THROW_ARGOSEXCEPTION("Blocked recovery did not hold then release");
+      }
+      if(m_bDrop) {
+         const Real fFallTime = m_fLandTime - m_fFallStart;
+         const Real fExpectedTime = (m_fDropStartVelocity + std::sqrt(
+            m_fDropStartVelocity * m_fDropStartVelocity + 2 * 9.81 * m_fDropDistance)) / 9.81;
+         LOG << "[mesh] drop fall_s=" << fFallTime << " ballistic_s=" << fExpectedTime
+             << " distance_m=" << m_fDropDistance << " rebound_m=" << m_fRebound
+             << " start_s=" << m_fFallStart << " landing_s=" << m_fLandTime << std::endl;
+         if(m_fFallStart < 0 || m_fLandTime < 0 || fFallTime < 0.05 ||
+            std::abs(fFallTime - fExpectedTime) > 0.03 || m_fRebound > 0.1 ||
+            m_fPeakHorizontalSpeed > 1.5) {
+            THROW_ARGOSEXCEPTION("Unphysical drop timing, horizontal speed or rebound");
+         }
       }
       CheckRobot();
       if(m_bCheckAttitude) {

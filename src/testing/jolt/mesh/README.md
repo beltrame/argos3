@@ -58,15 +58,275 @@ set by Jolt's vertex quantisation, which stores mesh vertices at 21 bits per
 component relative to the mesh bounding box, i.e. 1.9e-5 m over the 40 m
 corridor and 6.2e-5 m over the 130 m terrain.
 
+## Contact-drive safety regressions
+
+**Operator-approved scope:** "real wheeled and tracked robots can climb walls
+and tip over, so keep wheel/track wall traction in ARGoS; only fix clear
+unrealism." This explicitly supersedes the original no-climbing requirement
+for Bunker and Scout Mini. Their traction is unchanged; the SwarmDeck footprint
+critic and tilt guard provide operational tip prevention.
+
+`jolt_mesh_<robot>_wall_push_<speed>_<yaw>_<plain|lip>` drives Bunker,
+Scout Mini and Spot at 10/60 cm/s, head-on/45 degrees, for 20 seconds against
+a vertical mesh wall, with or without a 3 cm toe. Each run reports peak
+absolute pitch/roll (degrees), origin rise (metres) and origin displacement
+speed sampled at each physics substep. Spot must stay within 10 degrees,
+3 cm rise and 1.5 m/s speed.
+Additional Spot cases exercise a 10 cm toe at both speeds and a flank starting
+1 cm from the wall with (v, w) = (0.2 m/s, -0.5 rad/s).
+
+At 0.1 m/s, wheel/track plain-wall cases assert 10 degrees / 3 cm limits.
+Bunker's 3 cm lip cases assert 10 degrees / 5 cm; Scout's assert 25 degrees /
+10 cm, preserving its measured 18.71-degree, 8.87 cm climb. Wheel/track
+high-speed and lip cases carry CTest labels `characterization;wheel-track-wall`
+(`ctest -L characterization -V`). These tests **do not prohibit climbing or
+tipping** outside the bounded low-speed envelopes: the single-box proxies
+approximate exposed wheels/tracks, not a safety controller or calibrated
+hardware.
+
+`jolt_mesh_<robot>_no_friction` requires no motion under a forward command
+on a frictionless surface. Ordinary ground drive remains friction-limited
+Jolt surface velocity. The separately gated Spot leg actuator described below
+is active only for a checked step with static support within leg reach.
+
+`jolt_mesh_spot_support_contacts` checks the actual Spot callback on a
+translated, rotated body. Sole and lower-leg edge support drive; torso, roof,
+reversed normals, empty and mixed manifolds do not. Spot's single box includes
+leg volume: its bottom 12 cm approximates feet and lower legs. Normals retain
+the positive body-up criterion, because disabling steep contacts pins the
+solid leg-volume proxy against small rocks on SubT. For normals more than
+40 degrees from **world up**, only the drive direction changes: linear Z is
+zero and angular surface motion is yaw-only. This preserves contact traction
+but prevents a pitched chassis from motoring vertically along a wall. World
+axes keep the wall classification stable as the body tips; 16/18-degree ramp
+support keeps the original full surface velocity. This is not an articulated
+gait model. Bunker and Scout retain their existing contact classification.
+
+In a head-on 0.6 m/s lip test, unfiltered Spot reached 90 degrees pitch and
+0.583 m origin rise. Lower-leg-only Spot stays upright; Bunker and Scout still
+reach 90 degrees pitch. The existing incline tests continue to exercise
+terrain following and differential yaw with all three platforms. Additional
+Spot ramp16/ramp18 tests require at least 2.5 m travel in 10 s at 0.3 m/s,
+and final X = 3.85 +/- 0.25 m from X = 1 m: downhill travel cannot qualify.
+
+For optional, local SubT assets, configure with
+`-DARGOS_JOLT_SUBT_MESH=/path/to/finals_prize_round_world_01.collision.glb`.
+Four recorded-route starts must retain their measured progress in 10 s:
+2.95/2.94/2.94/2.86 m for flat/approach/entry/pinned (about 2 cm margin). Three
+constant-command replays at (11.6, -20), yaw -151 degrees, v=0.3 m/s and
+w=0.4/0.8/1.2 rad/s must stay below 1.5 m/s sampled displacement speed.
+The recorded ROS base_link z=0.54 is **not** ARGoS origin height: subtract
+Spot's 0.50 m base_link offset to get z=0.04. This is a local approximate
+replay, not a reconstruction of the entire recorded command history.
+
+The native Spot 10/20/30/35 cm step tests are now **default tests**; no downstream
+helper or opt-in step flag is needed. They require completion within 10 s at
+0.3 m/s, <1.5 m/s peak speed, <=0.5 m/s upward speed (0.1 mm/s numerical
+tolerance), the balance cone, >=2.5 m travel and the correct final height.
+Reset while lifting must discard the old target and pass a second climb;
+a 40 cm step and a low ceiling must prevent assistance. Physics qualification
+must run on an authorized simulation host, not an operator workstation.
+
+## Active Spot balance
+
+Spot has an angular-only Jolt SixDOF constraint: a 30-degree circular swing
+cone relative to world up, free yaw and all three translations free. There is
+no point anchor, spring motor or position reset; unsupported bodies still
+fall under gravity. This models the legged platform's active balance rather
+than a freely overturning box. Constraint warm-start impulses reset with the
+model. MoveTo also clears the leg state and constraint warm-start impulses,
+independently of any controller reset; regressions teleport both during lift
+and while the balance cone is active. The constraint is removed before its body
+is destroyed.
+
+Motion checks sample each physics substep, including instantaneous origin
+velocity, finite-difference pose speed (to catch teleports), and total body-up
+tilt, not just 10 Hz controller poses. Cone checks
+allow 0.1 degree of numerical solver tolerance. An angular-impulse case checks
+balance and free yaw before/after Reset. A ledge departure and a separate 1 m
+free release check ballistic COM motion and <=0.1 m rebound. Falling speed is
+not artificially clamped: only horizontal speed is limited to 1.5 m/s in these
+drop tests. Ramp fixtures now start parallel to the slope instead of dropping
+horizontally onto it, so their speed limit measures traversal, not a setup
+impact. Wheel/track models are unchanged.
+
+`cone_slope35` holds Spot stationary on a 35-degree plane, initially at the
+30-degree swing limit, with the engine's normal friction 1.0. This forces the
+cone to oppose terrain contact continuously. Peak tilt is 30.0142 degrees and
+peak speed 0.17050 m/s during settling. After 2 s, the maximum displacement
+from the settled pose is 2.80e-7 m, tilt span is zero at reported precision,
+and peak speed is 4.95e-8 m/s. Assertions bound settled motion to 1 cm, tilt
+span to 0.1 degree and speed to 0.02 m/s. This qualifies sustained contact,
+not climbing a 35-degree incline on arbitrary-friction ground.
+
+## Smooth Spot stepping
+
+`jolt_spot_step.cpp` probes at control rate for a steep obstruction, overhead
+clearance, a full-body raised advance and a static, walkable landing under
+the future body centre. Ordinary ramp faces are not steps. The full, unshrunken
+collision shape is used. A checked step begins a per-body Lift/Advance state:
+raise at <=0.5 m/s, then advance at commanded speed while holding the checked
+height. This is an idealized leg actuator, not an articulated gait or a
+force-calibrated controller. Jolt integrates every pose and resolves contacts;
+no helper calls SetPosition, moves an anchor, or disables gravity.
+
+Static support must remain within 35 cm leg reach beneath the body centre at
+every physics substep. Zero translation or planar heading more than 15 degrees
+from the checked step direction pauses at the current height without losing the
+original lift target. Lift/advance resumes only after realignment and holds
+angular Z at zero, even if the resumed command requests yaw. Supported holds
+command world-Z yaw (up to the normal 1.2 rad/s envelope), preserving roll/pitch
+angular motion. A turn past 90 degrees is not a reversal: only a forward command
+**below -0.001 m/s** aborts for reversal; near-zero negative noise pauses. Reverse
+commands do not start new assistance. Missing support releases immediately.
+Pauses consume a separate, cumulative **30 s per-step allowance**, not the
+active step timeout; realignment does not replenish it. All state resets with
+the model. Three original interrupt regressions hold
+for 2 s during advance (zero/yaw-only) or lift, then finish the 35 cm climb.
+They bound held height drift to 2 cm, planar drift to 1 mm, tilt to 30.1 degrees
+and speed to 1.5 m/s, and require actual yaw in the turning variant. That short
+turn now turns out and back before resuming, instead of resuming at 0.4 rad.
+
+Four further pause cases cover 1.6 rad turns during both advance and lift,
+forward attempts while misaligned at 1.6 and 0.8 rad, a 10 s pause, and expiry of
+the 30 s allowance. The large-turn cases turn back to the checked direction
+before completing. Their 13 s deadlines include 6 s intentionally paused; the
+long-pause case has a 17 s deadline including 10 s paused. Uninterrupted step
+checks retain their 10 s deadline. Pause expiry is tested during lift above
+clear lower ground, with upright ballistic landing and <=0.1 m rebound;
+gravity-driven vertical falling speed is exempt just as in the other drops.
+Two additional regressions pause on -0.0001 m/s input and resume with a held
+0.4 rad/s yaw command; both must complete, and the active yaw rate must stay zero.
+
+**Expiry during advance:** either timeout starts a recovery instead of dropping
+Spot onto the riser edge. Recovery holds the current height, automatically
+realigns to the saved lift heading (<=1.2 rad/s), then backs along the original
+checked direction at <=0.3 m/s. At the saved lift position it brakes and releases
+onto the lower floor. Ordinary drive commands are ignored during recovery;
+explicit reverse or support loss still releases immediately. Expiry during lift
+continues to release directly over lower ground.
+
+**Blocked-recovery exception:** recovery has its own **10 s allowance**, including
+realignment. A newly obstructed retreat holds height against the obstacle while
+support remains, then logs a recovery-timeout warning and releases where it is.
+It may remain perched on the riser at up to the 30-degree cone limit: an upright
+lower-floor landing is not guaranteed in this approved rare case.
+
+Four default 35 cm recovery cases cover an advance pause at tick 45 lasting
+beyond 30 s, active timeout provoked by slowing to 0.05 m/s, expiry after a
+1.6 rad turn, and a rear obstacle moved into the path at tick 45 without overlap.
+Unblocked returns require finish tilt <5 degrees, <=0.1 m rebound, level and
+aligned retreat, and return to the original lift location. The blocked case
+requires a stable hold until the recovery allowance expires, a timed release,
+peak tilt <=30.1 degrees and speed <=1.5 m/s. Its rear wall and the riser can
+support a level bridge after release; the test measures settling rather than
+requiring a particular tilted pose.
+
+Clearance is conservative (the initial overhead probe uses the maximum supported step).
+**Known limitation:** stair flights are refused by the landing check when the
+next riser intersects the full-body raised advance 1.15 m ahead. The isolated
+step qualification is not a stair-flight capability claim.
+The old SwarmDeck pose-jump helper must exclude Spot; wheel/track behavior and
+helper limits are unchanged. SwarmDeck's Spot max_step_height remains 0.30 m;
+raising it to 0.35 m is a separate planner/configuration decision, needed if
+navigation should use the newly qualified full height.
+
 ## Measured results
 
-All 22 tests of the ARGoS suite pass, the 14 that existed before and the 8
-added here:
+Fix round 5: **89/89 default tests, 96/96 with SubT**. Without recovery, advance
+pause expiry finishes at 30.0003 degrees. With recovery, pause/active/turned
+expiry cases all finish at 0 degrees with zero rebound. Their retreats cover
+0.630/0.798/0.630 m at <=0.300002 m/s, height drift <=2.45e-7 m and retreat
+yaw <=1.91e-5 rad in these fixtures. All three falls take 0.260 s against a
+0.25922 s ballistic prediction. The 2.5506 m/s peak is gravity-driven falling;
+upward speed stays <=0.50 m/s. Blocked recovery holds within 0.08 mm, logs the
+10 s expiry, then settles about 6 mm onto contact support (2 mm crossed at
+44.52 s); its peak speed is 0.50 m/s. Disabling recovery fails all four cases;
+relaxing alignment, doubling retreat speed or extending the recovery allowance
+also fails the respective regression. Tiny-negative and held-yaw resume cases
+finish by 8.40/8.46 s, with zero active-step yaw rate in the latter.
 
-    100% tests passed, 0 tests failed out of 22
-    Total Test time (real) =   0.75 sec
+Fix round 4: **83/83 default tests (3.11 s), 90/90 with SubT (22.17 s)**.
+Large-turn advance/lift cases both reach 1.600 rad yaw and complete at 12.40 s;
+held height drift is <=5.97e-8 m, planar drift <=6.50e-6 m, and peak speed
+0.50 m/s. The 10 s pause completes at 16.40 s with no held-height drift.
+After pause allowance expiry, the 0.28133 m release lands upright with zero
+rebound: measured flight 0.240 s versus ballistic 0.2395 s. Its 2.2563 m/s
+vertical falling speed is gravitational, not a powered speed spike.
+A 90-degree gate fails both large-turn tests; a 60 s allowance fails the timeout
+landing check. All prior wall, slope, SubT, reset and MoveTo cases still pass.
 
-No pre-existing test changed its result.
+Fix round 3: **79/79 default tests (2.77 s), 86/86 with SubT (19.96 s)** on the
+same authorized tuf setup. New checks cover three command interruptions,
+MoveTo during lift and active balance, and sustained 35-degree cone/contact
+opposition. Stop/turn/lift interruptions complete by 8.40/8.64/8.40 s;
+held height error is at most 8.95e-8 m, the turn executes 0.400 rad, and peak
+speed is 0.50 m/s. Reinstating cancellation fails all three interrupt cases;
+omitting MoveTo cleanup fails the stale-target ground check. Loosening the cone
+to 40 degrees makes the new slope fixture fail at 35.005 degrees.
+
+Fix round 2, native fork on tuf (Ubuntu 22.04, GCC 11, Jolt 5.2, Release,
+headless Docker capped at 8 CPUs): 73/73 default tests (2.68 s), or 80/80
+with the local SubT asset (20.27 s), including seven default step checks and
+three balance/drop checks.
+
+| step height (cm) | fully supported by (s) | peak total/up speed (m/s) | final X (m) |
+|---|---:|---:|---:|
+| 10 | 5.77 | 0.50 / 0.50 | 2.832 |
+| 20 | 6.02 | 0.50 / 0.50 | 2.757 |
+| 30 | 6.27 | 0.50 / 0.50 | 2.682 |
+| 35 | 6.40 | 0.50 / 0.50 | 2.643 |
+
+All four finish at the requested step height with <0.001 degree pitch/roll.
+Angular impulse/reset peaks at 30.062 degrees body-up tilt; the ledge drop
+peaks at 30.090 degrees (30 degree nominal cone, 0.1 degree solver tolerance).
+Free release falls for 0.450 s versus 0.455 s analytically; the supported
+rotation off a ledge leaves a shorter detached flight, 0.140 s versus 0.142 s.
+Both have zero rebound. Freefall legitimately reaches 4.415 m/s vertically.
+Ramp16/ramp18 finish at X=3.850/3.820 m at 0.300 m/s. SubT route travel is
+unchanged from balance-only: 2.970/2.963/2.964/2.883 m at physics-substep sampling.
+Removing reset cleanup or doubling the lift-speed cap fails the corresponding
+new regression. Without assistance, all four step heights stall at X=0.450 m.
+
+### Historical fix round 1
+
+Fix round 1, native fork on tuf (Ubuntu 22.04, GCC 11, Jolt 5.2, Release,
+headless Docker capped at 8 CPUs):
+
+    Default: 100% tests passed, 0 tests failed out of 63 (3.26 sec)
+    With SubT asset: 100% tests passed, 0 tests failed out of 70 (37.26 sec)
+
+The 12 wheel/track characterization cases remain labelled separately. The
+three Spot stress cases are default regressions, not opt-in qualifications.
+The 0.6 m/s, 10 cm toe tipped Spot before the world-horizontal drive fix:
+89.39 degrees pitch and 0.592 m rise.
+
+| Spot case | peak pitch (deg) | peak roll (deg) | rise (m) |
+|---|---:|---:|---:|
+| 10 cm toe, 0.1 m/s | 0.09764 | 0.00229 | 0.000905 |
+| 10 cm toe, 0.6 m/s | 0.11516 | 0.02107 | 0.001022 |
+| flank, (0.2 m/s, -0.5 rad/s) | 0.00830 | 0.00724 | 0 |
+
+The rough pinned SubT start retains 2.87512 m travel versus 2.87395 m before
+projection. The 16/18-degree ramps finish at X = 3.87063 / 3.84095 m. Their
+reversed-command negative controls fail the X bound despite sufficient path
+length. A 1 mm rise-budget negative control and high-speed substitutions into
+the low-speed wheel/track cases also fail as intended.
+
+These passing counts exclude the three opt-in step-helper qualifications.
+Without that helper, the unchanged box stalls after about 0.45 m on all
+10/20/30 cm steps. With the current helper and new projection, the 10 cm step
+is climbed but reaches 1.50272 m/s; 20/30 cm steps tip, reaching 2.17866 /
+3.03704 m/s. The helper also violates the native Scout low-speed lip envelope
+and both new Spot 10 cm toe rise limits (six failures out of 73 tests with
+all qualifications enabled). Fix round 2 supersedes Spot's helper disposition
+with native smooth lift; the original collision shape is still unchanged.
+
+### Historical mesh measurements
+
+The ray/throughput tables below are the original mesh-entity measurements,
+with their original environment recorded at the end; they are not timings
+from the current safety-regression run. Those pre-existing tests still pass.
 
 ### Ray distances
 

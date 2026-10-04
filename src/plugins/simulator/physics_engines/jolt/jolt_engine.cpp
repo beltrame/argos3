@@ -84,10 +84,12 @@ namespace argos {
          const auto* pcModel1 = reinterpret_cast<const CJoltModel*>(c_body1.GetUserData());
          const auto* pcModel2 = reinterpret_cast<const CJoltModel*>(c_body2.GetUserData());
          const auto sVelocity1 = pcModel1 ?
-            pcModel1->GetContactSurfaceVelocity(c_body1, -c_manifold.mWorldSpaceNormal) :
+            pcModel1->GetContactSurfaceVelocity(c_body1, -c_manifold.mWorldSpaceNormal,
+               c_manifold.mBaseOffset, c_manifold.mRelativeContactPointsOn1) :
             CJoltModel::SContactSurfaceVelocity{};
          const auto sVelocity2 = pcModel2 ?
-            pcModel2->GetContactSurfaceVelocity(c_body2, c_manifold.mWorldSpaceNormal) :
+            pcModel2->GetContactSurfaceVelocity(c_body2, c_manifold.mWorldSpaceNormal,
+               c_manifold.mBaseOffset, c_manifold.mRelativeContactPointsOn2) :
             CJoltModel::SContactSurfaceVelocity{};
          /* Jolt expresses relative angular surface motion about body 1's COM. */
          c_settings.mRelativeLinearSurfaceVelocity +=

@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+  <framework>
+    <system threads="0" />
+    <experiment length="0.2" ticks_per_second="10" random_seed="1" />
+  </framework>
+  <controllers>
+    <mesh_drive_controller id="drive"
+                           library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_controller">
+      <actuators><differential_steering implementation="default" /></actuators>
+      <sensors />
+      <params left="20" right="40" />
+    </mesh_drive_controller>
+  </controllers>
+  <loop_functions library="@CMAKE_CURRENT_BINARY_DIR@/libmesh_jolt_support_contacts"
+                  label="support_contacts" />
+  <arena size="20,20,10" center="0,0,3">
+    <spot id="test">
+      <body position="3,2,2" orientation="37,16,-5" />
+      <controller config="drive" />
+    </spot>
+  </arena>
+  <physics_engines><jolt id="jolt" threads="1" /></physics_engines>
+  <media />
+</argos-configuration>
