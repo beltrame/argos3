@@ -5,6 +5,7 @@
 set(ARGOS3_HEADERS_PLUGINS_SIMULATOR_MEDIA
   directional_led_medium.h
   led_medium.h
+  mesh_medium.h
   rab_medium.h
   simple_radio_medium.h
   tag_medium.h)
@@ -16,6 +17,7 @@ set(ARGOS3_SOURCES_PLUGINS_SIMULATOR_MEDIA
   ${ARGOS3_HEADERS_PLUGINS_SIMULATOR_MEDIA}
   directional_led_medium.cpp
   led_medium.cpp
+  mesh_medium.cpp
   rab_medium.cpp
   simple_radio_medium.cpp
   tag_medium.cpp)
